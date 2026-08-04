@@ -1,4 +1,5 @@
 import { Geist } from "next/font/google";
+import localFont from "next/font/local";
 import "@rainbow-me/rainbowkit/styles.css";
 import { Metadata } from "next";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
@@ -9,6 +10,13 @@ import "~~/styles/globals.css";
 const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist",
+});
+
+const epilogue = localFont({
+  src: "./fonts/Epilogue-VariableFont_wght.ttf",
+  weight: "100 900",
+  style: "normal",
+  variable: "--font-accent",
 });
 
 const baseUrl = process.env.VERCEL_URL
@@ -48,18 +56,20 @@ export const metadata: Metadata = {
     },
     description,
   },
-  icons: {
-    icon: [{ url: "/favicon.png", sizes: "32x32", type: "image/png" }],
-  },
 };
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html suppressHydrationWarning className={geist.variable}>
+    <html
+      suppressHydrationWarning
+      className={`${geist.variable} ${epilogue.variable}`}
+    >
       <body className="font-sans" suppressHydrationWarning>
         <ThemeProvider>
           <TooltipProvider>
-            <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
+            <ScaffoldEthAppWithProviders>
+              {children}
+            </ScaffoldEthAppWithProviders>
           </TooltipProvider>
         </ThemeProvider>
       </body>
