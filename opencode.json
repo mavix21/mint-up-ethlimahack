@@ -4,8 +4,8 @@
     "build": {
       "permission": {
         "question": "allow",
-      },
-    },
+      }
+    }
   },
   "provider": {
     "openai": {
@@ -13,20 +13,20 @@
         "gpt-5.6-sol": {
           "options": {
             "text": {
-              "verbosity": "low",
+              "verbosity": "low"
             },
-            "textVerbosity": "low",
+            "texVerbosity": "low",
             "reasoningSummary": "concise",
-            "personality": "pragmatic",
-          },
-        },
-      },
-    },
+            "personality": "pragmatic"
+          }
+        }
+      }
+    }
   },
   "references": {
-    "mint-up-production": {
-      "repository": "../../../projects/mint-up-corp",
-      "branch": "main",
-    },
-  },
+    "mint-up-prod": {
+      "path": "../../../projects/mint-up-corp",
+      "description": "The project this module belongs to"
+    }
+  }
 }
