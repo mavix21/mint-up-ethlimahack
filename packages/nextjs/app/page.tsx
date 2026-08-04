@@ -3,7 +3,13 @@ import { CalendarXIcon } from "lucide-react";
 
 import { EventCard } from "~~/components/events/EventCard";
 import { getEventListingCardViewModel } from "~~/components/events/event-listing-card-model";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "~~/components/ui/empty";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "~~/components/ui/empty";
 import { mintUpApi } from "~~/lib/mint-up-api";
 
 export const instant = false;
@@ -25,8 +31,12 @@ export default async function Home() {
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8">
       <header className="mb-8 max-w-2xl">
-        <p className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">Mint Up passes</p>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">Upcoming events</h1>
+        <p className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
+          Mint Up passes
+        </p>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
+          Upcoming events
+        </h1>
         <p className="mt-3 text-base text-muted-foreground sm:text-lg">
           Public events hosted directly on Mint Up, ready for onchain passes.
         </p>
@@ -35,7 +45,10 @@ export default async function Home() {
       {result.page.length > 0 ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {result.page.map(event => (
-            <EventCard key={event._id} event={getEventListingCardViewModel(event, now)} />
+            <EventCard
+              key={event._id}
+              event={getEventListingCardViewModel(event, now)}
+            />
           ))}
         </div>
       ) : (
@@ -46,7 +59,8 @@ export default async function Home() {
             </EmptyMedia>
             <EmptyTitle>No upcoming events</EmptyTitle>
             <EmptyDescription>
-              There are no public Mint Up events scheduled right now. Check back soon for new events and onchain passes.
+              There are no public Mint Up events scheduled right now. Check back
+              soon for new events and onchain passes.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
