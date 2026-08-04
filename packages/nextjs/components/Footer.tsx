@@ -19,7 +19,7 @@ export const Footer = () => {
           {isLocalNetwork ? (
             <>
               <Faucet />
-              <Button render={<Link href="/blockexplorer" />} variant="outline">
+              <Button render={<Link href="/blockexplorer" />} nativeButton={false} variant="outline">
                 <MagnifyingGlassIcon />
                 <span>Block Explorer</span>
               </Button>
@@ -30,6 +30,7 @@ export const Footer = () => {
       <div className="flex w-full justify-end gap-2">
         <Button
           render={<a href="https://github.com/Arb-Stylus/scaffold-stylus" target="_blank" rel="noreferrer" />}
+          nativeButton={false}
           variant="outline"
           size="sm"
         >
@@ -37,6 +38,7 @@ export const Footer = () => {
         </Button>
         <Button
           render={<a href="https://t.me/arbitrum_stylus" target="_blank" rel="noreferrer" />}
+          nativeButton={false}
           variant="outline"
           size="sm"
         >

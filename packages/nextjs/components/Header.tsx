@@ -43,6 +43,7 @@ export const HeaderMenuLinks = ({ onNavigate }: { onNavigate?: () => void }) => 
           <li key={href}>
             <Button
               render={<Link href={href} onClick={onNavigate} />}
+              nativeButton={false}
               variant={isActive ? "secondary" : "ghost"}
               size="sm"
             >
