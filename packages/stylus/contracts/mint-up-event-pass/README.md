@@ -63,6 +63,28 @@ cargo stylus check --endpoint https://sepolia-rollup.arbitrum.io/rpc
 The complete Solidity interface, including events, is in
 `abi/IMintUpEventPass.sol`.
 
+## Local End-to-End Test
+
+From the repository root:
+
+```sh
+yarn chain
+yarn deploy
+yarn test:local
+```
+
+`yarn deploy` checks whether the USDC address in
+`deployments/412346_local-deps.json` still has bytecode. Nitro DevNode resets
+its state when restarted, so if the address is stale the deploy script compiles
+and deploys `scripts/local/MockUsdc.sol`, updates the dependency file, and then
+deploys Event Pass with the new token address.
+
+`yarn test:local` runs a complete on-chain flow: mint mock USDC, register a live
+event, approve USDC, purchase one pass, verify direct payment, transfer the pass,
+check it in, and verify its final attended state. The mock has permissionless
+minting and is only selected automatically for chain ID `412346`; it must never
+be used as a production payment token.
+
 Deploy to Arbitrum Sepolia with:
 
 ```sh

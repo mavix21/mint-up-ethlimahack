@@ -149,8 +149,6 @@ export async function generateTsAbi(
   txHash: string,
   chainId: string,
 ) {
-  const TARGET_DIR = "../nextjs/contracts/";
-  const TARGET_FILE = `${TARGET_DIR}deployedContracts.ts`;
   const abiTxt = fs.readFileSync(abiFilePath, "utf8");
 
   // Extract from 4th row to the end
@@ -158,10 +156,29 @@ export async function generateTsAbi(
   const extractedAbi = lines.slice(3).join("\n");
   const abiJson = JSON.parse(extractedAbi);
 
+  await generateTsContractDefinition(
+    abiJson,
+    contractName,
+    contractAddress,
+    txHash,
+    chainId,
+  );
+}
+
+export async function generateTsContractDefinition(
+  abi: readonly unknown[],
+  contractName: string,
+  contractAddress: string,
+  txHash: string,
+  chainId: string,
+) {
+  const TARGET_DIR = "../nextjs/contracts/";
+  const TARGET_FILE = `${TARGET_DIR}deployedContracts.ts`;
+
   const newContractEntry = {
     address: contractAddress,
     txHash: txHash,
-    abi: abiJson,
+    abi,
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -195,7 +212,12 @@ export async function generateTsAbi(
 
   fs.writeFileSync(
     TARGET_FILE,
-    await prettier.format(output, { parser: "typescript" }),
+    await prettier.format(output, {
+      parser: "typescript",
+      arrowParens: "avoid",
+      printWidth: 120,
+      trailingComma: "all",
+    }),
   );
 
   console.log(

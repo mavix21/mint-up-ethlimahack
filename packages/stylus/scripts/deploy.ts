@@ -2,33 +2,26 @@ import deployStylusContract from "./deploy_contract";
 import {
   getDeploymentConfig,
   getRpcUrlFromChain,
+  generateTsContractDefinition,
   printDeployedAddresses,
 } from "./utils/";
 import { DeployOptions } from "./utils/type";
 import { config as dotenvConfig } from "dotenv";
 import * as path from "path";
 import * as fs from "fs";
+import { arbitrumNitro } from "../../nextjs/utils/scaffold-stylus/supportedChains";
+import { ensureLocalUsdc } from "./local/usdc";
 
 const OFFICIAL_USDC: Record<number, string> = {
   42161: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
   421614: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
 };
 
-function getEventPassUsdc(chainId: number, deploymentDir: string): string {
+function getEventPassUsdc(chainId: number): string {
   if (process.env["EVENT_PASS_USDC_ADDRESS"]) {
     return process.env["EVENT_PASS_USDC_ADDRESS"]!;
   }
   if (OFFICIAL_USDC[chainId]) return OFFICIAL_USDC[chainId]!;
-
-  const localDepsPath = path.resolve(
-    deploymentDir,
-    `${chainId}_local-deps.json`,
-  );
-  if (fs.existsSync(localDepsPath)) {
-    const usdc = JSON.parse(fs.readFileSync(localDepsPath, "utf8")).usdc;
-    if (typeof usdc === "string") return usdc;
-  }
-
   throw new Error(
     `USDC address not configured for chain ${chainId}. Set EVENT_PASS_USDC_ADDRESS.`,
   );
@@ -57,7 +50,11 @@ export default async function deployScript(deployOptions: DeployOptions) {
   if (!config.deployerAddress) {
     throw new Error("Deployer address is not configured");
   }
-  const usdc = getEventPassUsdc(config.chain.id, config.deploymentDir);
+  const localUsdc =
+    config.chain.id === arbitrumNitro.id
+      ? await ensureLocalUsdc(config)
+      : undefined;
+  const usdc = localUsdc?.address || getEventPassUsdc(config.chain.id);
 
   // Deploy a contract. Each deployStylusContract() call deploys ONE contract
   // (its own tx + address) and, on success, automatically:
@@ -70,6 +67,15 @@ export default async function deployScript(deployOptions: DeployOptions) {
     constructorArgs: [config.deployerAddress, usdc, false],
     ...deployOptions,
   });
+  if (localUsdc) {
+    await generateTsContractDefinition(
+      localUsdc.abi,
+      "mock-usdc",
+      localUsdc.address,
+      localUsdc.txHash,
+      config.chain.id.toString(),
+    );
+  }
   // ─── Deploying MULTIPLE contracts ─────────────────────────────────────────
   // 1. Scaffold each new contract: yarn new-module <name>
   //    (creates packages/stylus/contracts/<name>/ and auto-registers it via members=["*"])
