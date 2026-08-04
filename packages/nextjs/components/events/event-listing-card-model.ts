@@ -1,9 +1,15 @@
 import type { MintUpEvent } from "~~/lib/mint-up-api";
-import { formatEventDate, formatEventTime, getCalendarDateKey } from "~~/lib/dates";
+import {
+  formatEventDate,
+  formatEventTime,
+  getCalendarDateKey,
+} from "~~/lib/dates";
 
 const mintUpWebUrl =
   process.env.MINT_UP_WEB_URL ??
-  (process.env.NODE_ENV === "production" ? "https://mint-up.xyz" : "http://localhost:3001");
+  (process.env.NODE_ENV === "production"
+    ? "https://mint-up.xyz"
+    : "http://localhost:3001");
 
 export interface EventListingCardViewModel {
   title: string;
@@ -26,23 +32,43 @@ export interface EventListingCardViewModel {
 }
 
 function location(event: MintUpEvent) {
-  if (event.place.kind === "online") return { shortLocation: "Online", venueName: undefined };
+  if (event.place.kind === "online")
+    return { shortLocation: "Online", venueName: undefined };
   const value = event.place.location;
   const text = value.kind === "resolved" ? value.address : value.label;
   const venueName = value.kind === "resolved" ? value.venueName : undefined;
   return { shortLocation: venueName ?? text, venueName };
 }
 
-export function getEventListingCardViewModel(event: MintUpEvent, now: number): EventListingCardViewModel {
+export function getEventListingCardViewModel(
+  event: MintUpEvent,
+  now: number,
+): EventListingCardViewModel {
   const locale = "en-US";
   const live = event.startTime <= now && event.endTime > now;
   const image = event.organizer?.image;
-  const organizerImage = typeof image === "string" ? image : image?.kind === "url" ? image.url : undefined;
-  let timeLabel = formatEventTime(locale, event.startTime, event.endTime, event.timezone);
+  const organizerImage =
+    typeof image === "string"
+      ? image
+      : image?.kind === "url"
+        ? image.url
+        : undefined;
+  let timeLabel = formatEventTime(
+    locale,
+    event.startTime,
+    event.endTime,
+    event.timezone,
+  );
   if (live) {
-    const end = formatEventTime(locale, event.endTime, undefined, event.timezone);
+    const end = formatEventTime(
+      locale,
+      event.endTime,
+      undefined,
+      event.timezone,
+    );
     const endLabel =
-      getCalendarDateKey(now, event.timezone) === getCalendarDateKey(event.endTime, event.timezone)
+      getCalendarDateKey(now, event.timezone) ===
+      getCalendarDateKey(event.endTime, event.timezone)
         ? end
         : `${new Intl.DateTimeFormat(locale, { timeZone: event.timezone, weekday: "long" }).format(event.endTime)} ${end}`;
     timeLabel = `Until ${endLabel}`;
@@ -57,9 +83,16 @@ export function getEventListingCardViewModel(event: MintUpEvent, now: number): E
     ...location(event),
     bylineLabel: event.organizer ? "Organized by" : undefined,
     bylineHosts: event.organizer
-      ? [{ name: event.organizer.name, ...(organizerImage ? { image: organizerImage } : {}) }]
+      ? [
+          {
+            name: event.organizer.name,
+            ...(organizerImage ? { image: organizerImage } : {}),
+          },
+        ]
       : undefined,
-    dateLabel: live ? "Live" : formatEventDate(locale, event.startTime, event.timezone),
+    dateLabel: live
+      ? "Live"
+      : formatEventDate(locale, event.startTime, event.timezone),
     timeLabel,
     locale,
     startTime: event.startTime,
