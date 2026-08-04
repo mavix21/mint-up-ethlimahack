@@ -4,6 +4,336 @@
  */
 import { GenericContractsDeclaration } from "../utils/scaffold-eth/contract";
 
-const deployedContracts = {} as const;
+const deployedContracts = {
+  "412346": {
+    "mint-up-event-pass": {
+      address: "0xab8e440727a38bbb180f7032ca4a8009e7b52b80",
+      txHash: "0xb979d5ea847aa3b0f71d9c3f134137f4d1dff942a9c762847c7ef06541d4f328",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          name: "MintUpError",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "cancelEvent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "checkIn",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "config",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "eventInfo",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "isValidForCheckIn",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "passInfo",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "purchase",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "revenue_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "price",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "maximum_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_end",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "sales_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "transfers_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "check_in_operator",
+              type: "address",
+            },
+          ],
+          name: "registerEvent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+          ],
+          name: "setCheckInOperator",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "setEventSales",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bool",
+              name: "paused",
+              type: "bool",
+            },
+          ],
+          name: "setPaused",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+          ],
+          name: "transferPass",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ],
+    },
+  },
+} as const;
 
 export default deployedContracts satisfies GenericContractsDeclaration;

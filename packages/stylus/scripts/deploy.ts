@@ -9,6 +9,31 @@ import { config as dotenvConfig } from "dotenv";
 import * as path from "path";
 import * as fs from "fs";
 
+const OFFICIAL_USDC: Record<number, string> = {
+  42161: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+  421614: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+};
+
+function getEventPassUsdc(chainId: number, deploymentDir: string): string {
+  if (process.env["EVENT_PASS_USDC_ADDRESS"]) {
+    return process.env["EVENT_PASS_USDC_ADDRESS"]!;
+  }
+  if (OFFICIAL_USDC[chainId]) return OFFICIAL_USDC[chainId]!;
+
+  const localDepsPath = path.resolve(
+    deploymentDir,
+    `${chainId}_local-deps.json`,
+  );
+  if (fs.existsSync(localDepsPath)) {
+    const usdc = JSON.parse(fs.readFileSync(localDepsPath, "utf8")).usdc;
+    if (typeof usdc === "string") return usdc;
+  }
+
+  throw new Error(
+    `USDC address not configured for chain ${chainId}. Set EVENT_PASS_USDC_ADDRESS.`,
+  );
+}
+
 const envPath = path.resolve(__dirname, "../.env");
 if (fs.existsSync(envPath)) {
   dotenvConfig({ path: envPath });
@@ -29,6 +54,11 @@ export default async function deployScript(deployOptions: DeployOptions) {
   console.log(`📁 Deployment directory: ${config.deploymentDir}`);
   console.log(`\n`);
 
+  if (!config.deployerAddress) {
+    throw new Error("Deployer address is not configured");
+  }
+  const usdc = getEventPassUsdc(config.chain.id, config.deploymentDir);
+
   // Deploy a contract. Each deployStylusContract() call deploys ONE contract
   // (its own tx + address) and, on success, automatically:
   // 1. saves the address/tx to packages/stylus/deployments/
@@ -36,8 +66,8 @@ export default async function deployScript(deployOptions: DeployOptions) {
   //    packages/nextjs/contracts/deployedContracts.ts (keyed by chainId + name),
   //    so the Next.js frontend picks it up immediately.
   await deployStylusContract({
-    contract: "your-contract", // folder name under packages/stylus/contracts/
-    constructorArgs: [config.deployerAddress!], // omit/empty if the contract has no #[constructor]
+    contract: "mint-up-event-pass",
+    constructorArgs: [config.deployerAddress, usdc, false],
     ...deployOptions,
   });
   // ─── Deploying MULTIPLE contracts ─────────────────────────────────────────
@@ -57,8 +87,8 @@ export default async function deployScript(deployOptions: DeployOptions) {
   //
   // Deploy the SAME crate again under a different key using 'name':
   // await deployStylusContract({
-  //   contract: "your-contract",
-  //   name: "your-contract-v2",
+  //   contract: "mint-up-event-pass",
+  //   name: "mint-up-event-pass-v2",
   //   constructorArgs: [config.deployerAddress!],
   //   ...deployOptions,
   // });

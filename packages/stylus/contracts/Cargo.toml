@@ -6,6 +6,6 @@ exclude = ["target"]
 [profile.release]
 codegen-units = 1
 strip = true
-lto = true
+lto = "fat"
 panic = "abort"
-opt-level = 3
+opt-level = "z"
