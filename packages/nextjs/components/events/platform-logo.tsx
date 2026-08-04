@@ -11,7 +11,15 @@ const platformLogos: Record<Platform, ReactNode> = {
       />
     </svg>
   ),
-  mintup: <Image src="/logo.svg" alt="" width={48} height={48} className="size-full object-contain" />,
+  mintup: (
+    <Image
+      src="/logo.png"
+      alt=""
+      width={48}
+      height={48}
+      className="size-full object-contain"
+    />
+  ),
   eventbrite: <span className="font-bold text-[#ee543d]">e</span>,
   meetup: <span className="font-bold text-[#ff4a79]">m</span>,
   other: (
@@ -24,6 +32,12 @@ const platformLogos: Record<Platform, ReactNode> = {
   ),
 };
 
-export function PlatformLogo({ platform, className }: { platform: Platform; className?: string }) {
+export function PlatformLogo({
+  platform,
+  className,
+}: {
+  platform: Platform;
+  className?: string;
+}) {
   return <span className={className}>{platformLogos[platform]}</span>;
 }

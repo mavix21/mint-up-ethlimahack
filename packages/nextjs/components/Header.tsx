@@ -9,7 +9,13 @@ import { Bars3Icon } from "@heroicons/react/24/outline";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { Button } from "~~/components/ui/button";
 import { Separator } from "~~/components/ui/separator";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "~~/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~~/components/ui/sheet";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 import { arbitrumNitro } from "~~/utils/scaffold-stylus/supportedChains";
 
@@ -31,7 +37,11 @@ export const menuLinks: HeaderMenuLink[] = [
   },
 ];
 
-export const HeaderMenuLinks = ({ onNavigate }: { onNavigate?: () => void }) => {
+export const HeaderMenuLinks = ({
+  onNavigate,
+}: {
+  onNavigate?: () => void;
+}) => {
   const pathname = usePathname();
 
   return (
@@ -68,9 +78,29 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 px-4 py-3 lg:static">
       <div className="flex w-auto items-center lg:w-1/2">
+        <Link href="/" className="flex shrink-0 items-center gap-0.5">
+          <Image
+            src="/logo.png"
+            alt="Mint Up"
+            width={56}
+            height={56}
+            className="size-10 md:size-12"
+          />
+          <span className="mt-1 font-heading text-xl font-bold md:text-2xl">
+            mint up!
+          </span>
+        </Link>
         <div className="lg:hidden">
           <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-            <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open navigation" />}>
+            <SheetTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Open navigation"
+                />
+              }
+            >
               <Bars3Icon />
             </SheetTrigger>
             <SheetContent side="left">
@@ -85,16 +115,7 @@ export const Header = () => {
             </SheetContent>
           </Sheet>
         </div>
-        <Link href="/" className="ml-4 mr-6 hidden shrink-0 items-center gap-2 lg:flex">
-          <div className="flex relative w-12 h-12">
-            <Image alt="Scaffold Stylus logo" className="cursor-pointer" fill src="/logo.svg" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-heading text-base font-medium">Scaffold Stylus</span>
-            <span className="text-xs text-muted-foreground">Arbitrum dev stack</span>
-          </div>
-        </Link>
-        <ul className="hidden gap-2 lg:flex lg:flex-nowrap">
+        <ul className="ml-6 hidden gap-2 lg:flex lg:flex-nowrap">
           <HeaderMenuLinks />
         </ul>
       </div>
@@ -103,7 +124,9 @@ export const Header = () => {
         <div className="h-6">
           <Separator orientation="vertical" />
         </div>
-        <SwitchTheme className={`pointer-events-auto ${isLocalNetwork ? "self-end md:self-auto" : ""}`} />
+        <SwitchTheme
+          className={`pointer-events-auto ${isLocalNetwork ? "self-end md:self-auto" : ""}`}
+        />
       </div>
     </header>
   );
