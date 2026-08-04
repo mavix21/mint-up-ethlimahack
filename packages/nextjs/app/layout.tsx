@@ -1,9 +1,15 @@
-import { Inter, Orbitron } from "next/font/google";
+import { Geist, Inter, Orbitron } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import { Metadata } from "next";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 import { ThemeProvider } from "~~/components/ThemeProvider";
+import { TooltipProvider } from "~~/components/ui/tooltip";
 import "~~/styles/globals.css";
+
+const geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist",
+});
 
 const inter = Inter({
   subsets: ["latin"],
@@ -60,10 +66,12 @@ export const metadata: Metadata = {
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html suppressHydrationWarning>
-      <body className={`${inter.variable} ${orbitron.variable} font-sans`} suppressHydrationWarning>
+    <html suppressHydrationWarning className={`${geist.variable} ${inter.variable} ${orbitron.variable}`}>
+      <body className="font-sans" suppressHydrationWarning>
         <ThemeProvider>
-          <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
+          <TooltipProvider>
+            <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>
