@@ -31,9 +31,6 @@ export default async function Home() {
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8">
       <header className="mb-8 max-w-2xl">
-        <p className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
-          Mint Up passes
-        </p>
         <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
           Upcoming events
         </h1>
