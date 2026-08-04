@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "develop-secure-contracts": {
+      "source": "OpenZeppelin/openzeppelin-skills",
+      "sourceType": "github",
+      "skillPath": "skills/develop-secure-contracts/SKILL.md",
+      "computedHash": "92aa3881d7c5db98ce41670852668cfbe691576284d05d78a72587cdb2760fe8"
+    },
+    "setup-stylus-contracts": {
+      "source": "OpenZeppelin/openzeppelin-skills",
+      "sourceType": "github",
+      "skillPath": "skills/setup-stylus-contracts/SKILL.md",
+      "computedHash": "c625fb2aa2a714f7246b6fa4d9a51538ba3640e3034eec3419b8224a01564634"
+    }
+  }
+}
