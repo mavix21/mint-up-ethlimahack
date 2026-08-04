@@ -1,94 +1,56 @@
-"use client";
+import { fetchQuery } from "convex/nextjs";
+import { CalendarXIcon } from "lucide-react";
 
-import type { NextPage } from "next";
-import { useTheme } from "next-themes";
-import { useAccount } from "wagmi";
-import { Card } from "~~/components/Card";
-import { Address } from "~~/components/scaffold-eth";
-import CompassIcon from "~~/icons/CompassIcon";
-import DarkBugAntIcon from "~~/icons/DarkBugAntIcon";
-import LightBugAntIcon from "~~/icons/LightBugAntIcon";
+import { EventCard } from "~~/components/events/EventCard";
+import { getEventListingCardViewModel } from "~~/components/events/event-listing-card-model";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "~~/components/ui/empty";
+import { mintUpApi } from "~~/lib/mint-up-api";
 
-const Home: NextPage = () => {
-  const { address: connectedAddress } = useAccount();
-  const { resolvedTheme } = useTheme();
-  const isDarkMode = resolvedTheme === "dark";
+export const instant = false;
+
+export default async function Home() {
+  "use cache";
+  // Server render time is intentionally shared by every card in this response.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
+  const result = await fetchQuery(
+    mintUpApi.eventDiscovery.discover,
+    {
+      filters: { platforms: ["mintup"] },
+      paginationOpts: { numItems: 24, cursor: null },
+    },
+    { url: process.env.NEXT_PUBLIC_CONVEX_URL },
+  );
 
   return (
-    <>
-      <div className="flex items-center flex-col justify-between flex-grow pt-10">
-        <div className="flex flex-col justify-center flex-grow">
-          <div className="px-5">
-            <h1 className="text-center">
-              <span className="block text-2xl mb-2">Welcome to</span>
-              <span className="block text-4xl font-bold">Scaffold-Stylus</span>
-            </h1>
-            <div className="flex justify-center items-center space-x-2 my-4">
-              <p className={`my-2 font-medium ${!isDarkMode ? "text-[#E3066E]" : ""}`}>Connected Address:</p>
-              <Address address={connectedAddress} />
-            </div>
-            <p className="text-center text-lg">
-              Get started by editing{" "}
-              <code
-                className="inline-block max-w-full break-all bg-muted font-bold italic text-foreground"
-                style={{
-                  backgroundColor: isDarkMode ? "white" : "#F0F0F0",
-                }}
-              >
-                packages/nextjs/app/page.tsx
-              </code>
-            </p>
-            <p className="text-center text-lg">
-              Edit your smart contract{" "}
-              <code
-                className="inline-block max-w-full break-all bg-muted font-bold italic text-foreground"
-                style={{
-                  backgroundColor: isDarkMode ? "white" : "#F0F0F0",
-                }}
-              >
-                lib.rs
-              </code>{" "}
-              in{" "}
-              <code
-                className="inline-block max-w-full break-all bg-muted font-bold italic text-foreground"
-                style={{
-                  backgroundColor: isDarkMode ? "white" : "#F0F0F0",
-                }}
-              >
-                packages/stylus/contracts/your-contract/src
-              </code>
-            </p>
-          </div>
-        </div>
+    <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8">
+      <header className="mb-8 max-w-2xl">
+        <p className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">Mint Up passes</p>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">Upcoming events</h1>
+        <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+          Public events hosted directly on Mint Up, ready for onchain passes.
+        </p>
+      </header>
 
-        <div
-          className="h-auto sm:h-[306px] mb-3 w-full py-11"
-          style={{
-            backgroundColor: isDarkMode ? "#050505" : "white",
-          }}
-        >
-          <div className="flex justify-center items-center h-full gap-12 flex-col sm:flex-row">
-            {/* Debug Contracts Card */}
-            <Card
-              icon={isDarkMode ? <DarkBugAntIcon /> : <LightBugAntIcon />}
-              description={<>Tinker with your smart contract using the</>}
-              linkHref="/debug"
-              linkText="Debug Contracts"
-              isDarkMode={isDarkMode}
-            />
-            {/* Block Explorer Card */}
-            <Card
-              icon={<CompassIcon />}
-              description={<>Explore your local transactions with the</>}
-              linkHref="/blockexplorer"
-              linkText="Block Explorer"
-              isDarkMode={isDarkMode}
-            />
-          </div>
+      {result.page.length > 0 ? (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {result.page.map(event => (
+            <EventCard key={event._id} event={getEventListingCardViewModel(event, now)} />
+          ))}
         </div>
-      </div>
-    </>
+      ) : (
+        <Empty className="min-h-72 border bg-card">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <CalendarXIcon />
+            </EmptyMedia>
+            <EmptyTitle>No upcoming events</EmptyTitle>
+            <EmptyDescription>
+              There are no public Mint Up events scheduled right now. Check back soon for new events and onchain passes.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </div>
   );
-};
-
-export default Home;
+}

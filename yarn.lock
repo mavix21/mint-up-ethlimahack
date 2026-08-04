@@ -6449,6 +6449,8 @@ __metadata:
     burner-connector: 0.0.20
     class-variance-authority: ^0.7.1
     clsx: ^2.1.1
+    convex: ^1.43.0
+    convex-helpers: ^0.1.121
     eslint: 9.39.1
     eslint-config-next: 16.3.0
     eslint-config-prettier: ^10.1.8
@@ -10037,6 +10039,60 @@ __metadata:
   version: 2.0.0
   resolution: "convert-source-map@npm:2.0.0"
   checksum: 63ae9933be5a2b8d4509daca5124e20c14d023c820258e484e32dc324d34c2754e71297c94a05784064ad27615037ef677e3f0c00469fb55f409d2bb21261035
+  languageName: node
+  linkType: hard
+
+"convex-helpers@npm:^0.1.121":
+  version: 0.1.121
+  resolution: "convex-helpers@npm:0.1.121"
+  peerDependencies:
+    "@standard-schema/spec": ^1.0.0
+    convex: ^1.43.0
+    hono: ^4.0.5
+    react: ^17.0.2 || ^18.0.0 || ^19.0.0
+    typescript: ^5.5 || ^6.0.0
+    zod: ^3.25.0 || ^4.0.0
+  peerDependenciesMeta:
+    "@standard-schema/spec":
+      optional: true
+    hono:
+      optional: true
+    react:
+      optional: true
+    typescript:
+      optional: true
+    zod:
+      optional: true
+  bin:
+    convex-helpers: bin.cjs
+  checksum: b0606b7fdf62258113e99d3bb5547d121c5136989285484ef2711bb0c7ab598f212d71fb1f3c0f6c4cd5b2b79cb7ecd54e995e3b270336f26b6dc164d6cf752d
+  languageName: node
+  linkType: hard
+
+"convex@npm:^1.43.0":
+  version: 1.43.0
+  resolution: "convex@npm:1.43.0"
+  dependencies:
+    esbuild: 0.27.0
+    prettier: ^3.0.0
+    ws: 8.21.0
+  peerDependencies:
+    "@auth0/auth0-react": ^2.0.1
+    "@clerk/clerk-react": ^4.12.8 || ^5.0.0
+    "@clerk/react": ^6.4.3
+    react: ^18.0.0 || ^19.0.0-0 || ^19.0.0
+  peerDependenciesMeta:
+    "@auth0/auth0-react":
+      optional: true
+    "@clerk/clerk-react":
+      optional: true
+    "@clerk/react":
+      optional: true
+    react:
+      optional: true
+  bin:
+    convex: bin/main.js
+  checksum: 4643bef86b0e6262985dabd4e6dae12db5283eccc21983620a40daa1708198f857c7368940a9754ea24c31909370bbb44888dcfc961ebf85cf419bbce2a3f31c
   languageName: node
   linkType: hard
 
@@ -17804,6 +17860,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"prettier@npm:^3.0.0":
+  version: 3.9.6
+  resolution: "prettier@npm:3.9.6"
+  bin:
+    prettier: bin/prettier.cjs
+  checksum: 3fb6a3b6462b05afb825697a3fdcdd9bd1480c11d10d655b7ddbcaf2560beb695caffbe155b5020466005aa06bff74a61ba9c16e602bff849331b62f5db26cdf
+  languageName: node
+  linkType: hard
+
 "prettier@npm:^3.6.2":
   version: 3.6.2
   resolution: "prettier@npm:3.6.2"
@@ -21643,6 +21708,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ws@npm:8.21.0, ws@npm:^8.19.0":
+  version: 8.21.0
+  resolution: "ws@npm:8.21.0"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 83ff89ae011bc5c3c5605a45a0d50e12589143c7500ca4de83a8d43b3cd26e71f422cb3206fd1a9e6d541d666eeb66255c30d095d62d413b3c7afe5d2c5cb928
+  languageName: node
+  linkType: hard
+
 "ws@npm:^7.5.1":
   version: 7.5.10
   resolution: "ws@npm:7.5.10"
@@ -21655,21 +21735,6 @@ __metadata:
     utf-8-validate:
       optional: true
   checksum: f9bb062abf54cc8f02d94ca86dcd349c3945d63851f5d07a3a61c2fcb755b15a88e943a63cf580cbdb5b74436d67ef6b67f745b8f7c0814e411379138e1863cb
-  languageName: node
-  linkType: hard
-
-"ws@npm:^8.19.0":
-  version: 8.21.0
-  resolution: "ws@npm:8.21.0"
-  peerDependencies:
-    bufferutil: ^4.0.1
-    utf-8-validate: ">=5.0.2"
-  peerDependenciesMeta:
-    bufferutil:
-      optional: true
-    utf-8-validate:
-      optional: true
-  checksum: 83ff89ae011bc5c3c5605a45a0d50e12589143c7500ca4de83a8d43b3cd26e71f422cb3206fd1a9e6d541d666eeb66255c30d095d62d413b3c7afe5d2c5cb928
   languageName: node
   linkType: hard
 

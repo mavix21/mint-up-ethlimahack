@@ -1,0 +1,37 @@
+"use client";
+
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
+import { cn } from "~~/lib/utils";
+
+function Popover(props: PopoverPrimitive.Root.Props) {
+  return <PopoverPrimitive.Root data-slot="popover" {...props} />;
+}
+
+function PopoverTrigger(props: PopoverPrimitive.Trigger.Props) {
+  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
+}
+
+function PopoverContent({
+  className,
+  align = "center",
+  side = "bottom",
+  sideOffset = 4,
+  ...props
+}: PopoverPrimitive.Popup.Props & Pick<PopoverPrimitive.Positioner.Props, "align" | "side" | "sideOffset">) {
+  return (
+    <PopoverPrimitive.Portal>
+      <PopoverPrimitive.Positioner align={align} side={side} sideOffset={sideOffset} className="isolate z-50">
+        <PopoverPrimitive.Popup
+          data-slot="popover-content"
+          className={cn(
+            "bg-popover text-popover-foreground data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 z-50 flex max-h-(--available-height) w-72 origin-(--transform-origin) flex-col gap-4 overflow-hidden rounded-3xl p-4 text-sm shadow-lg ring-1 ring-foreground/5 outline-hidden duration-100",
+            className,
+          )}
+          {...props}
+        />
+      </PopoverPrimitive.Positioner>
+    </PopoverPrimitive.Portal>
+  );
+}
+
+export { Popover, PopoverContent, PopoverTrigger };
