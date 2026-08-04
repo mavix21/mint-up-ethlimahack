@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { hexToString, isHex, stringToHex } from "viem";
 import { CommonInputProps, InputBase } from "~~/components/scaffold-eth";
+import { InputGroupButton } from "~~/components/ui/input-group";
 
 export const Bytes32Input = ({ value, onChange, name, placeholder, disabled }: CommonInputProps) => {
   const convertStringToBytes32 = useCallback(() => {
@@ -18,13 +19,9 @@ export const Bytes32Input = ({ value, onChange, name, placeholder, disabled }: C
       onChange={onChange}
       disabled={disabled}
       suffix={
-        <button
-          className="self-center cursor-pointer text-xl font-semibold px-4 text-accent"
-          onClick={convertStringToBytes32}
-          type="button"
-        >
+        <InputGroupButton onClick={convertStringToBytes32} aria-label="Toggle bytes32 representation">
           #
-        </button>
+        </InputGroupButton>
       }
     />
   );

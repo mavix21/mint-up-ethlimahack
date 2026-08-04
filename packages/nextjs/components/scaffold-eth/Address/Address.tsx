@@ -6,6 +6,7 @@ import { Address as AddressType, getAddress, isAddress } from "viem";
 import { normalize } from "viem/ens";
 import { useEnsAvatar, useEnsName } from "wagmi";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
+import { Skeleton } from "~~/components/ui/skeleton";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { arbitrumNitro, getBlockExplorerAddressLink } from "~~/utils/scaffold-stylus";
 
@@ -118,29 +119,29 @@ export const Address = ({
   if (!checkSumAddress) {
     return (
       <div className="flex items-center">
-        <div
-          className="shrink-0 skeleton rounded-full"
+        <Skeleton
+          className="shrink-0 rounded-full"
           style={{
             width: (blockieSizeMap[blockieSize] * 24) / blockieSizeMap["base"],
             height: (blockieSizeMap[blockieSize] * 24) / blockieSizeMap["base"],
           }}
-        ></div>
+        />
         <div className="flex flex-col space-y-1">
           {!onlyEnsOrAddress && (
-            <div className={`ml-1.5 skeleton rounded-lg font-bold ${textSizeMap[ensSize]}`}>
+            <Skeleton className={`ml-1.5 rounded-lg font-bold ${textSizeMap[ensSize]}`}>
               <span className="invisible">0x1234...56789</span>
-            </div>
+            </Skeleton>
           )}
-          <div className={`ml-1.5 skeleton rounded-lg ${textSizeMap[addressSize]}`}>
+          <Skeleton className={`ml-1.5 rounded-lg ${textSizeMap[addressSize]}`}>
             <span className="invisible">0x1234...56789</span>
-          </div>
+          </Skeleton>
         </div>
       </div>
     );
   }
 
   if (!isAddress(checkSumAddress)) {
-    return <span className="text-error">Wrong address</span>;
+    return <span className="text-destructive">Wrong address</span>;
   }
 
   const blockExplorerAddressLink = getBlockExplorerAddressLink(targetNetwork, checkSumAddress);
@@ -157,9 +158,9 @@ export const Address = ({
       <div className="flex flex-col">
         {showSkeleton &&
           (isEnsNameLoading ? (
-            <div className={`ml-1.5 skeleton rounded-lg font-bold ${textSizeMap[ensSize]}`}>
+            <Skeleton className={`ml-1.5 rounded-lg font-bold ${textSizeMap[ensSize]}`}>
               <span className="invisible">{shortAddress}</span>
-            </div>
+            </Skeleton>
           ) : (
             <span className={`ml-1.5 ${textSizeMap[ensSize]} font-bold`}>
               <AddressLinkWrapper

@@ -1,6 +1,10 @@
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { ContractInput } from "./ContractInput";
 import { getFunctionInputKey, getInitialTupleArrayFormState } from "./utilsContract";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { Badge } from "~~/components/ui/badge";
+import { Button } from "~~/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~~/components/ui/collapsible";
 import { replacer } from "~~/utils/scaffold-eth/common";
 import { AbiParameterTuple } from "~~/utils/scaffold-eth/contract";
 
@@ -99,18 +103,16 @@ export const TupleArray = ({ abiTupleParameter, setParentForm, parentStateObject
   };
 
   return (
-    <div>
-      <div className="collapse collapse-arrow bg-base-200 pl-4 py-1.5 border-2 border-secondary">
-        <input type="checkbox" className="min-h-fit! peer" />
-        <div className="collapse-title after:top-3.5! p-0 min-h-fit! peer-checked:mb-1 text-primary-content/50">
-          <p className="m-0 text-[1rem]">{abiTupleParameter.internalType}</p>
-        </div>
-        <div className="ml-3 flex-col space-y-2 border-secondary/70 border-l-2 pl-4 collapse-content">
+    <Collapsible>
+      <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
+        <span>{abiTupleParameter.internalType}</span>
+        <ChevronDownIcon />
+      </CollapsibleTrigger>
+      <CollapsibleContent keepMounted>
+        <div className="ml-3 flex flex-col space-y-2 border-l pl-4">
           {additionalInputs.map((additionalInput, additionalIndex) => (
             <div key={additionalIndex} className="space-y-1">
-              <span className="badge bg-base-300 badge-sm">
-                {depth > 1 ? `${additionalIndex}` : `tuple[${additionalIndex}]`}
-              </span>
+              <Badge variant="secondary">{depth > 1 ? `${additionalIndex}` : `tuple[${additionalIndex}]`}</Badge>
               <div className="space-y-4">
                 {additionalInput.map((param, index) => {
                   const key = getFunctionInputKey(
@@ -126,17 +128,17 @@ export const TupleArray = ({ abiTupleParameter, setParentForm, parentStateObject
             </div>
           ))}
           <div className="flex space-x-2">
-            <button className="btn btn-sm btn-secondary" onClick={addInput}>
+            <Button type="button" variant="secondary" size="sm" onClick={addInput} aria-label="Add tuple">
               +
-            </button>
+            </Button>
             {additionalInputs.length > 0 && (
-              <button className="btn btn-sm btn-secondary" onClick={removeInput}>
+              <Button type="button" variant="secondary" size="sm" onClick={removeInput} aria-label="Remove tuple">
                 -
-              </button>
+              </Button>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 };

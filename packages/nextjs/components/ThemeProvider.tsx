@@ -15,13 +15,7 @@ export const ThemeProvider = ({ children, ...props }: ThemeProviderProps) => {
   }
 
   return (
-    <NextThemesProvider
-      attribute={["class", "data-theme"]}
-      defaultTheme="dark"
-      enableSystem
-      disableTransitionOnChange
-      {...props}
-    >
+    <NextThemesProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange {...props}>
       {children}
     </NextThemesProvider>
   );

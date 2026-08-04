@@ -6449,7 +6449,6 @@ __metadata:
     burner-connector: 0.0.20
     class-variance-authority: ^0.7.1
     clsx: ^2.1.1
-    daisyui: ^5.5.19
     eslint: 9.39.1
     eslint-config-next: 16.3.0
     eslint-config-prettier: ^10.1.8
@@ -10234,13 +10233,6 @@ __metadata:
     "@ipld/dag-cbor": ^9.0.0
     multiformats: ~13.1.3
   checksum: 5f2c5145deb62f66a73c62fe2aece0355b25ceb2f0a2c716d8d906e645be0d1b7c404155bac4add99907c3cfe58af2fd7efee4600c3ab991b41f01d12dcebdff
-  languageName: node
-  linkType: hard
-
-"daisyui@npm:^5.5.19":
-  version: 5.5.20
-  resolution: "daisyui@npm:5.5.20"
-  checksum: 187e166a8fcf0c9032020399bebbdb4fbd2d3fa9cb099a9ee225dae7436c0b435dd2e677ae264a1ec685aacd6d99f36bc86fee284b274dbafdba95d9fd08827f
   languageName: node
   linkType: hard
 

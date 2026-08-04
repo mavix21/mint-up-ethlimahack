@@ -1,6 +1,9 @@
 "use client";
 
 import { Address, formatEther } from "viem";
+import { Alert, AlertTitle } from "~~/components/ui/alert";
+import { Button } from "~~/components/ui/button";
+import { Skeleton } from "~~/components/ui/skeleton";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { useWatchBalance } from "~~/hooks/scaffold-eth/useWatchBalance";
 
@@ -25,10 +28,10 @@ export const Balance = ({ address, className = "" }: BalanceProps) => {
 
   if (!address || isLoading || balance === null) {
     return (
-      <div className="animate-pulse flex space-x-4">
-        <div className="rounded-md bg-slate-300 h-6 w-6"></div>
-        <div className="flex items-center space-y-6">
-          <div className="h-2 w-28 bg-slate-300 rounded-sm"></div>
+      <div className="flex space-x-4">
+        <Skeleton className="size-6 rounded-md" />
+        <div className="flex items-center">
+          <Skeleton className="h-2 w-28 rounded-sm" />
         </div>
       </div>
     );
@@ -36,23 +39,20 @@ export const Balance = ({ address, className = "" }: BalanceProps) => {
 
   if (isError) {
     return (
-      <div className="border-2 border-base-content/30 rounded-md px-2 flex flex-col items-center max-w-fit cursor-pointer">
-        <div className="text-warning">Error</div>
-      </div>
+      <Alert variant="destructive">
+        <AlertTitle>Balance unavailable</AlertTitle>
+      </Alert>
     );
   }
 
   const formattedBalance = balance ? Number(formatEther(balance.value)) : 0;
 
   return (
-    <button
-      className={`btn btn-sm btn-ghost flex flex-col font-normal items-center hover:bg-transparent ${className}`}
-      type="button"
-    >
-      <div className="w-full flex items-center justify-center">
+    <div className={className}>
+      <Button variant="ghost" size="sm" type="button">
         <span>{formattedBalance.toFixed(4)}</span>
-        <span className="text-[0.8em] font-bold ml-1">{targetNetwork.nativeCurrency.symbol}</span>
-      </div>
-    </button>
+        <span>{targetNetwork.nativeCurrency.symbol}</span>
+      </Button>
+    </div>
   );
 };

@@ -1,6 +1,9 @@
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { ContractInput } from "./ContractInput";
 import { getFunctionInputKey, getInitialTupleFormState } from "./utilsContract";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { Button } from "~~/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~~/components/ui/collapsible";
 import { replacer } from "~~/utils/scaffold-eth/common";
 import { AbiParameterTuple } from "~~/utils/scaffold-eth/contract";
 
@@ -26,19 +29,19 @@ export const Tuple = ({ abiTupleParameter, setParentForm, parentStateObjectKey }
   }, [JSON.stringify(form, replacer)]);
 
   return (
-    <div>
-      <div tabIndex={0} className="collapse collapse-arrow bg-base-200 pl-4 py-1.5 border-2 border-secondary">
-        <input type="checkbox" className="min-h-fit! peer" />
-        <div className="collapse-title after:top-3.5! p-0 min-h-fit! peer-checked:mb-2 text-primary-content/50">
-          <p className="m-0 p-0 text-[1rem]">{abiTupleParameter.internalType}</p>
-        </div>
-        <div className="ml-3 flex-col space-y-4 border-secondary/80 border-l-2 pl-4 collapse-content">
+    <Collapsible>
+      <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
+        <span>{abiTupleParameter.internalType}</span>
+        <ChevronDownIcon />
+      </CollapsibleTrigger>
+      <CollapsibleContent keepMounted>
+        <div className="ml-3 flex flex-col space-y-4 border-l pl-4">
           {abiTupleParameter?.components?.map((param, index) => {
             const key = getFunctionInputKey(abiTupleParameter.name || "tuple", param, index);
             return <ContractInput setForm={setForm} form={form} key={key} stateObjectKey={key} paramType={param} />;
           })}
         </div>
-      </div>
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 };

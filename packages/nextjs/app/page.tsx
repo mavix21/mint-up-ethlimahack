@@ -30,7 +30,7 @@ const Home: NextPage = () => {
             <p className="text-center text-lg">
               Get started by editing{" "}
               <code
-                className="italic bg-base-300 text-black text-base font-bold max-w-full break-words break-all inline-block"
+                className="inline-block max-w-full break-all bg-muted font-bold italic text-foreground"
                 style={{
                   backgroundColor: isDarkMode ? "white" : "#F0F0F0",
                 }}
@@ -41,7 +41,7 @@ const Home: NextPage = () => {
             <p className="text-center text-lg">
               Edit your smart contract{" "}
               <code
-                className="italic bg-base-300 text-black text-base font-bold max-w-full break-words break-all inline-block"
+                className="inline-block max-w-full break-all bg-muted font-bold italic text-foreground"
                 style={{
                   backgroundColor: isDarkMode ? "white" : "#F0F0F0",
                 }}
@@ -50,7 +50,7 @@ const Home: NextPage = () => {
               </code>{" "}
               in{" "}
               <code
-                className="italic bg-base-300 text-black text-base font-bold max-w-full break-words break-all inline-block"
+                className="inline-block max-w-full break-all bg-muted font-bold italic text-foreground"
                 style={{
                   backgroundColor: isDarkMode ? "white" : "#F0F0F0",
                 }}

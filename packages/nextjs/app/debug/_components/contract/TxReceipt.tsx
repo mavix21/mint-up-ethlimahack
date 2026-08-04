@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { TransactionReceipt } from "viem";
-import { CheckCircleIcon, DocumentDuplicateIcon, ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { ObjectFieldDisplay } from "~~/app/debug/_components/contract";
+import { Button } from "~~/components/ui/button";
+import { Card, CardContent } from "~~/components/ui/card";
 import { useCopyToClipboard } from "~~/hooks/scaffold-eth/useCopyToClipboard";
 import { replacer } from "~~/utils/scaffold-eth/common";
 
@@ -11,48 +13,42 @@ export const TxReceipt = ({ txResult }: { txResult: TransactionReceipt }) => {
     useCopyToClipboard();
 
   return (
-    <div
-      className="text-sm rounded-lg min-h-0 p-4"
-      style={{
-        background: "var(--bg-surface-input-20, rgba(255, 255, 255, 0.04))",
-        backdropFilter: "blur(25px)",
-        border: "none",
-      }}
-    >
-      {/* Fixed Header */}
-      <div className="flex items-center">
+    <Card size="sm">
+      <CardContent>
         <div className="flex items-center">
           {isTxResultCopiedToClipboard ? (
-            <CheckCircleIcon
-              className="text-xl font-normal text-base-content h-5 w-5 cursor-pointer"
-              aria-hidden="true"
-            />
+            <CheckCircleIcon className="size-5 text-foreground" aria-hidden="true" />
           ) : (
-            <DocumentDuplicateIcon
-              className="text-xl font-normal h-5 w-5 cursor-pointer"
-              aria-hidden="true"
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => copyTxResultToClipboard(JSON.stringify(txResult, replacer, 2))}
-            />
+              aria-label="Copy transaction receipt"
+            >
+              <DocumentDuplicateIcon />
+            </Button>
           )}
+          <div className="flex flex-1 items-center pl-2">
+            <strong>Transaction Receipt</strong>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            aria-label={isExpanded ? "Collapse transaction receipt" : "Expand transaction receipt"}
+          >
+            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </Button>
         </div>
-        <div className="flex-1 flex items-center pl-2">
-          <strong>Transaction Receipt</strong>
-        </div>
-        <div className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-          {isExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
-        </div>
-      </div>
 
-      {/* Collapsible Content */}
-      {isExpanded && (
-        <div className="overflow-auto rounded-t-none mt-2">
-          <pre className="text-xs">
+        {isExpanded ? (
+          <div className="mt-2 overflow-auto">
             {Object.entries(txResult).map(([k, v]) => (
               <ObjectFieldDisplay name={k} value={v} size="xs" leftPad={false} key={k} />
             ))}
-          </pre>
-        </div>
-      )}
-    </div>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 };

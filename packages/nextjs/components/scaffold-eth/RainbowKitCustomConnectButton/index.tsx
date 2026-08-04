@@ -10,6 +10,7 @@ import { RevealBurnerPKModal } from "./RevealBurnerPKModal";
 import { WrongNetworkDropdown } from "./WrongNetworkDropdown";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Address } from "viem";
+import { Button } from "~~/components/ui/button";
 import { useNetworkColor } from "~~/hooks/scaffold-eth";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { saveBurnerPK } from "~~/utils/scaffold-stylus/burner";
@@ -22,6 +23,8 @@ export const RainbowKitCustomConnectButton = () => {
   const networkColor = useNetworkColor();
   const { targetNetwork } = useTargetNetwork();
   const [isBurnerModalOpen, setIsBurnerModalOpen] = useState(false);
+  const [isQRCodeOpen, setIsQRCodeOpen] = useState(false);
+  const [isRevealBurnerPKOpen, setIsRevealBurnerPKOpen] = useState(false);
 
   const handleBurnerWalletSelect = async (privateKey: string) => {
     saveBurnerPK({ privateKey: privateKey as `0x${string}` });
@@ -47,14 +50,9 @@ export const RainbowKitCustomConnectButton = () => {
               {(() => {
                 if (!connected) {
                   return (
-                    <button
-                      className="btn bg-secondary btn-sm"
-                      onClick={handleConnect}
-                      type="button"
-                      data-testid="connect-wallet"
-                    >
+                    <Button onClick={handleConnect} type="button" data-testid="connect-wallet">
                       Connect
-                    </button>
+                    </Button>
                   );
                 }
 
@@ -75,9 +73,15 @@ export const RainbowKitCustomConnectButton = () => {
                       displayName={account.displayName}
                       ensAvatar={account.ensAvatar}
                       onSwitchAccount={() => setIsBurnerModalOpen(true)}
+                      onShowQRCode={() => setIsQRCodeOpen(true)}
+                      onRevealBurnerPK={() => setIsRevealBurnerPKOpen(true)}
                     />
-                    <AddressQRCodeModal address={account.address as Address} modalId="qrcode-modal" />
-                    <RevealBurnerPKModal />
+                    <AddressQRCodeModal
+                      address={account.address as Address}
+                      open={isQRCodeOpen}
+                      onOpenChange={setIsQRCodeOpen}
+                    />
+                    <RevealBurnerPKModal open={isRevealBurnerPKOpen} onOpenChange={setIsRevealBurnerPKOpen} />
                   </>
                 );
               })()}
@@ -87,8 +91,8 @@ export const RainbowKitCustomConnectButton = () => {
       </ConnectButton.Custom>
 
       <BurnerWalletModal
-        isOpen={isBurnerModalOpen}
-        onClose={() => setIsBurnerModalOpen(false)}
+        open={isBurnerModalOpen}
+        onOpenChange={setIsBurnerModalOpen}
         onSelectAccount={handleBurnerWalletSelect}
       />
     </>

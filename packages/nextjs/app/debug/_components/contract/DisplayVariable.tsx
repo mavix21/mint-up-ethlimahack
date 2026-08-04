@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useTheme } from "next-themes";
 import { InheritanceTooltip } from "./InheritanceTooltip";
 import { displayTxResult } from "./utilsDisplay";
 import { Abi, AbiFunction } from "abitype";
+import { useTheme } from "next-themes";
 import { Address } from "viem";
 import { useReadContract } from "wagmi";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { Button } from "~~/components/ui/button";
+import { Spinner } from "~~/components/ui/spinner";
 import { useAnimationConfig } from "~~/hooks/scaffold-eth";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { getParsedError, notification } from "~~/utils/scaffold-eth";
@@ -70,20 +72,16 @@ export const DisplayVariable = ({
         >
           {abiFunction.name}
         </h3>
-        <button className="btn btn-ghost btn-xs" onClick={async () => await refetch()}>
-          {isFetching ? (
-            <span className="loading loading-spinner loading-xs"></span>
-          ) : (
-            <ArrowPathIcon className="h-3 w-3 cursor-pointer" aria-hidden="true" />
-          )}
-        </button>
+        <Button variant="ghost" size="icon-xs" onClick={async () => await refetch()} aria-label="Refresh variable">
+          {isFetching ? <Spinner /> : <ArrowPathIcon className="h-3 w-3 cursor-pointer" aria-hidden="true" />}
+        </Button>
         <InheritanceTooltip inheritedFrom={inheritedFrom} />
       </div>
       <div className="font-medium flex flex-col items-start">
         <div>
           <div
             className={`break-all block transition bg-transparent ${
-              showAnimation ? "bg-warning rounded-sm animate-pulse-fast" : ""
+              showAnimation ? "bg-accent rounded-sm animate-pulse-fast" : ""
             }`}
             style={{
               color: isDarkMode ? "white" : "black",

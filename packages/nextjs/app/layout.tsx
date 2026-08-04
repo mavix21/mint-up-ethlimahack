@@ -1,4 +1,4 @@
-import { Geist, Inter, Orbitron } from "next/font/google";
+import { Geist } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import { Metadata } from "next";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
@@ -9,17 +9,6 @@ import "~~/styles/globals.css";
 const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
-const orbitron = Orbitron({
-  subsets: ["latin"],
-  variable: "--font-orbitron",
-  weight: ["400", "700", "900"],
 });
 
 const baseUrl = process.env.VERCEL_URL
@@ -66,7 +55,7 @@ export const metadata: Metadata = {
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html suppressHydrationWarning className={`${geist.variable} ${inter.variable} ${orbitron.variable}`}>
+    <html suppressHydrationWarning className={geist.variable}>
       <body className="font-sans" suppressHydrationWarning>
         <ThemeProvider>
           <TooltipProvider>

@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useCallback, useRef, useState, useMemo } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import { SwitchTheme } from "./SwitchTheme";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
-import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { Button } from "~~/components/ui/button";
+import { Separator } from "~~/components/ui/separator";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "~~/components/ui/sheet";
+import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 import { arbitrumNitro } from "~~/utils/scaffold-stylus/supportedChains";
 
 type HeaderMenuLink = {
@@ -29,10 +31,8 @@ export const menuLinks: HeaderMenuLink[] = [
   },
 ];
 
-export const HeaderMenuLinks = () => {
+export const HeaderMenuLinks = ({ onNavigate }: { onNavigate?: () => void }) => {
   const pathname = usePathname();
-  const { resolvedTheme } = useTheme();
-  const isDarkMode = useMemo(() => resolvedTheme === "dark", [resolvedTheme]);
 
   return (
     <>
@@ -41,34 +41,14 @@ export const HeaderMenuLinks = () => {
 
         return (
           <li key={href}>
-            <Link
-              href={href}
-              passHref
-              className={`${
-                isActive ? "shadow-md" : ""
-              } hover:bg-secondary hover:shadow-md focus:!bg-secondary active:!text-neutral py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col`}
-              style={{
-                color: isActive
-                  ? isDarkMode
-                    ? "#2B2B2B"
-                    : "black"
-                  : isDarkMode
-                    ? "var(--text-sub-600, rgba(255, 255, 255, 0.60))"
-                    : "black",
-                fontFamily: "Orbitron, sans-serif",
-                fontSize: "14px",
-                fontWeight: 700,
-                letterSpacing: "-0.28px",
-                textTransform: "uppercase",
-                background: isActive ? "linear-gradient(180deg, #FFF 18.79%, #D5D5D5 100%)" : undefined,
-                borderBottom: isActive ? "2px solid #ABABAB" : undefined,
-                borderRadius: isActive ? "8px" : undefined,
-                padding: isActive ? "8px 16px" : undefined,
-              }}
+            <Button
+              render={<Link href={href} onClick={onNavigate} />}
+              variant={isActive ? "secondary" : "ghost"}
+              size="sm"
             >
               {icon}
               <span>{label}</span>
-            </Link>
+            </Button>
           </li>
         );
       })}
@@ -81,96 +61,49 @@ export const HeaderMenuLinks = () => {
  */
 export const Header = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const burgerMenuRef = useRef<HTMLDivElement>(null);
   const { targetNetwork } = useTargetNetwork();
-  const { resolvedTheme } = useTheme();
-  const isDarkMode = useMemo(() => resolvedTheme === "dark", [resolvedTheme]);
   const isLocalNetwork = targetNetwork?.id === arbitrumNitro.id;
-  useOutsideClick(
-    burgerMenuRef,
-    useCallback(() => setIsDrawerOpen(false), []),
-  );
 
   return (
-    <div
-      className="sticky lg:static top-0 navbar min-h-0 flex-shrink-0 justify-between z-20 px-0 sm:px-2"
-      style={{
-        display: "flex",
-        // height: "46px",
-        padding: "12px var(--spacing-2xl, 16px)",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: "var(--spacing-md, 8px)",
-        alignSelf: "stretch",
-      }}
-    >
-      <div className="navbar-start w-auto lg:w-1/2">
-        <div className={`lg:hidden dropdown ${isDrawerOpen ? "dropdown-open" : ""}`} ref={burgerMenuRef}>
-          <label
-            className={`ml-1 btn btn-ghost ${isDrawerOpen ? "hover:bg-secondary" : "hover:bg-transparent"}`}
-            onClick={() => {
-              setIsDrawerOpen(prevIsOpenState => !prevIsOpenState);
-            }}
-          >
-            <Bars3Icon className="h-1/2" />
-          </label>
-          {isDrawerOpen && (
-            <ul
-              tabIndex={0}
-              className="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52"
-              onClick={() => {
-                setIsDrawerOpen(false);
-              }}
-            >
-              <HeaderMenuLinks />
-            </ul>
-          )}
+    <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 px-4 py-3 lg:static">
+      <div className="flex w-auto items-center lg:w-1/2">
+        <div className="lg:hidden">
+          <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+            <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open navigation" />}>
+              <Bars3Icon />
+            </SheetTrigger>
+            <SheetContent side="left">
+              <SheetHeader>
+                <SheetTitle>Navigation</SheetTitle>
+              </SheetHeader>
+              <nav className="px-6">
+                <ul className="flex flex-col gap-2">
+                  <HeaderMenuLinks onNavigate={() => setIsDrawerOpen(false)} />
+                </ul>
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
-        <Link href="/" passHref className="hidden lg:flex items-center gap-2 ml-4 mr-6 shrink-0">
+        <Link href="/" className="ml-4 mr-6 hidden shrink-0 items-center gap-2 lg:flex">
           <div className="flex relative w-12 h-12">
             <Image alt="Scaffold Stylus logo" className="cursor-pointer" fill src="/logo.svg" />
           </div>
           <div className="flex flex-col">
-            <span
-              style={{
-                color: isDarkMode ? "#FFF" : "black",
-                fontFamily: "Orbitron, sans-serif",
-                fontSize: "16px",
-                fontWeight: 700,
-                lineHeight: "normal",
-                letterSpacing: "-0.32px",
-                textTransform: "uppercase",
-              }}
-            >
-              SCAFFOLD STYLUS
-            </span>
-            <span
-              style={{
-                color: isDarkMode ? "#FFF" : "black",
-                fontFamily: "Inter, sans-serif",
-                fontSize: "12px",
-                fontWeight: 600,
-                lineHeight: "20px",
-              }}
-            >
-              Arbitrum dev stack
-            </span>
+            <span className="font-heading text-base font-medium">Scaffold Stylus</span>
+            <span className="text-xs text-muted-foreground">Arbitrum dev stack</span>
           </div>
         </Link>
-        <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
+        <ul className="hidden gap-2 lg:flex lg:flex-nowrap">
           <HeaderMenuLinks />
         </ul>
       </div>
-      <div className="flex items-center gap-4 navbar-end flex-grow mr-4">
+      <div className="mr-4 flex flex-grow items-center justify-end gap-4">
         <RainbowKitCustomConnectButton />
-        <div
-          className="h-6 w-px opacity-20"
-          style={{
-            backgroundColor: isDarkMode ? "white" : "black",
-          }}
-        ></div>
+        <div className="h-6">
+          <Separator orientation="vertical" />
+        </div>
         <SwitchTheme className={`pointer-events-auto ${isLocalNetwork ? "self-end md:self-auto" : ""}`} />
       </div>
-    </div>
+    </header>
   );
 };

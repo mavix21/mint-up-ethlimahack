@@ -1,5 +1,6 @@
 import { ChangeEvent, FocusEvent, ReactNode, useCallback, useEffect, useRef } from "react";
 import { CommonInputProps } from "~~/components/scaffold-eth";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "~~/components/ui/input-group";
 
 type InputBaseProps<T> = CommonInputProps<T> & {
   error?: boolean;
@@ -21,13 +22,6 @@ export const InputBase = <T extends { toString: () => string } | undefined = str
 }: InputBaseProps<T>) => {
   const inputReft = useRef<HTMLInputElement>(null);
 
-  let modifier = "";
-  if (error) {
-    modifier = "border-error";
-  } else if (disabled) {
-    modifier = "border-disabled bg-base-300";
-  }
-
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       onChange(e.target.value as unknown as T);
@@ -47,10 +41,9 @@ export const InputBase = <T extends { toString: () => string } | undefined = str
   }, [reFocus]);
 
   return (
-    <div className={`flex text-accent ${modifier}`}>
-      {prefix}
-      <input
-        className="input input-ghost focus-within:border-transparent focus:outline-hidden focus:bg-transparent h-[2.2rem] min-h-[2.2rem] px-4 border w-full font-medium placeholder:text-accent/70 text-base-content/70 focus:text-base-content/70"
+    <InputGroup data-disabled={disabled || undefined}>
+      {prefix ? <InputGroupAddon align="inline-start">{prefix}</InputGroupAddon> : null}
+      <InputGroupInput
         placeholder={placeholder}
         name={name}
         value={value?.toString()}
@@ -59,9 +52,10 @@ export const InputBase = <T extends { toString: () => string } | undefined = str
         autoComplete="off"
         ref={inputReft}
         onFocus={onFocus}
+        aria-invalid={error || undefined}
         data-testid="function-input"
       />
-      {suffix}
-    </div>
+      {suffix ? <InputGroupAddon align="inline-end">{suffix}</InputGroupAddon> : null}
+    </InputGroup>
   );
 };

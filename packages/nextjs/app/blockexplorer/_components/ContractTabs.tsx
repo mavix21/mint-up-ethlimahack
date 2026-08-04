@@ -7,6 +7,7 @@ import { AddressStorageTab } from "./AddressStorageTab";
 import { PaginationButton } from "./PaginationButton";
 import { TransactionsTable } from "./TransactionsTable";
 import { Address, createPublicClient, http } from "viem";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~~/components/ui/tabs";
 import { useFetchBlocks } from "~~/hooks/scaffold-eth";
 import { arbitrumNitro } from "~~/utils/scaffold-stylus/supportedChains";
 
@@ -40,50 +41,30 @@ export const ContractTabs = ({ address, contractData }: PageProps) => {
   }, [address]);
 
   return (
-    <>
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
       {isContract && (
-        <div role="tablist" className="tabs tabs-lift">
-          <button
-            role="tab"
-            className={`tab ${activeTab === "transactions" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("transactions")}
-          >
-            Transactions
-          </button>
-          <button
-            role="tab"
-            className={`tab ${activeTab === "code" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("code")}
-          >
-            Code
-          </button>
-          <button
-            role="tab"
-            className={`tab  ${activeTab === "storage" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("storage")}
-          >
-            Storage
-          </button>
-          <button
-            role="tab"
-            className={`tab  ${activeTab === "logs" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("logs")}
-          >
-            Logs
-          </button>
-        </div>
+        <TabsList>
+          <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="code">Code</TabsTrigger>
+          <TabsTrigger value="storage">Storage</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
+        </TabsList>
       )}
-      {activeTab === "transactions" && (
-        <div className="pt-4">
+      <TabsContent value="transactions">
+        <div>
           <TransactionsTable blocks={blocks} transactionReceipts={transactionReceipts} />
           <PaginationButton currentPage={currentPage} hasNextPage={hasNextPage} setCurrentPage={setCurrentPage} />
         </div>
-      )}
-      {activeTab === "code" && contractData && (
-        <AddressCodeTab bytecode={contractData.bytecode} assembly={contractData.assembly} />
-      )}
-      {activeTab === "storage" && <AddressStorageTab address={address} />}
-      {activeTab === "logs" && <AddressLogsTab address={address} />}
-    </>
+      </TabsContent>
+      <TabsContent value="code">
+        {contractData ? <AddressCodeTab bytecode={contractData.bytecode} assembly={contractData.assembly} /> : null}
+      </TabsContent>
+      <TabsContent value="storage">
+        <AddressStorageTab address={address} />
+      </TabsContent>
+      <TabsContent value="logs">
+        <AddressLogsTab address={address} />
+      </TabsContent>
+    </Tabs>
   );
 };

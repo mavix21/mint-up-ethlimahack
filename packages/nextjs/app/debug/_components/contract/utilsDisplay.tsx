@@ -2,6 +2,8 @@ import { ReactElement, useState } from "react";
 import { TransactionBase, TransactionReceipt, formatEther, isAddress, isHex } from "viem";
 import { ArrowsRightLeftIcon } from "@heroicons/react/24/solid";
 import { Address } from "~~/components/scaffold-eth";
+import { Button } from "~~/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~~/components/ui/tooltip";
 import { replacer } from "~~/utils/scaffold-eth/common";
 
 type DisplayContent =
@@ -58,16 +60,24 @@ const NumberDisplay = ({ value }: { value: bigint }) => {
   }
 
   return (
-    <div className="flex items-baseline">
+    <div className="flex items-baseline gap-2">
       {isEther ? "Ξ" + formatEther(value) : String(value)}
-      <span
-        className="tooltip tooltip-secondary font-sans ml-2"
-        data-tip={isEther ? "Multiply by 1e18" : "Divide by 1e18"}
-      >
-        <button className="btn btn-ghost btn-circle btn-xs" onClick={() => setIsEther(!isEther)}>
-          <ArrowsRightLeftIcon className="h-3 w-3 opacity-65" />
-        </button>
-      </span>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => setIsEther(!isEther)}
+              aria-label={isEther ? "Multiply by 1e18" : "Divide by 1e18"}
+            />
+          }
+        >
+          <ArrowsRightLeftIcon className="opacity-65" />
+        </TooltipTrigger>
+        <TooltipContent>{isEther ? "Multiply by 1e18" : "Divide by 1e18"}</TooltipContent>
+      </Tooltip>
     </div>
   );
 };
@@ -85,8 +95,8 @@ export const ObjectFieldDisplay = ({
 }) => {
   return (
     <div className={`flex flex-row items-baseline ${leftPad ? "ml-4" : ""}`}>
-      <span className="text-base-content/60 mr-2">{name}:</span>
-      <span className="text-base-content">{displayTxResult(value, size)}</span>
+      <span className="text-muted-foreground mr-2">{name}:</span>
+      <span className="text-foreground">{displayTxResult(value, size)}</span>
     </div>
   );
 };

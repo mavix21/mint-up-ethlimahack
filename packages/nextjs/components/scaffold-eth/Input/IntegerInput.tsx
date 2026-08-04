@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { parseEther } from "viem";
-import { useTheme } from "next-themes";
 import { CommonInputProps, InputBase, IntegerVariant, isValidInteger } from "~~/components/scaffold-eth";
+import { InputGroupButton } from "~~/components/ui/input-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~~/components/ui/tooltip";
 
 type IntegerInputProps = CommonInputProps<string> & {
   variant?: IntegerVariant;
@@ -17,8 +18,6 @@ export const IntegerInput = ({
   variant = IntegerVariant.UINT256,
   disableMultiplyBy1e18 = false,
 }: IntegerInputProps) => {
-  const { resolvedTheme } = useTheme();
-  const isDarkMode = resolvedTheme === "dark";
   const [inputError, setInputError] = useState(false);
   const multiplyBy1e18 = useCallback(() => {
     if (!value) {
@@ -36,38 +35,26 @@ export const IntegerInput = ({
   }, [value, variant]);
 
   return (
-    <div
-      className="integer-input-wrapper input-container"
-      style={{
-        padding: "12px 16px",
-      }}
-    >
-      <InputBase
-        name={name}
-        value={value}
-        placeholder={placeholder}
-        error={inputError}
-        onChange={onChange}
-        disabled={disabled}
-        suffix={
-          !inputError &&
-          !disableMultiplyBy1e18 && (
-            <div
-              className="space-x-4 flex tooltip tooltip-top tooltip-secondary before:content-[attr(data-tip)] before:right-[-10px] before:left-auto before:transform-none"
-              data-tip="Multiply by 1e18 (wei)"
+    <InputBase
+      name={name}
+      value={value}
+      placeholder={placeholder}
+      error={inputError}
+      onChange={onChange}
+      disabled={disabled}
+      suffix={
+        !inputError &&
+        !disableMultiplyBy1e18 && (
+          <Tooltip>
+            <TooltipTrigger
+              render={<InputGroupButton onClick={multiplyBy1e18} disabled={disabled} aria-label="Multiply by 1e18" />}
             >
-              <button
-                className={`${disabled ? "cursor-not-allowed" : "cursor-pointer"} font-semibold px-4 text-accent`}
-                onClick={multiplyBy1e18}
-                disabled={disabled}
-                type="button"
-              >
-                ∗
-              </button>
-            </div>
-          )
-        }
-      />
-    </div>
+              ∗
+            </TooltipTrigger>
+            <TooltipContent>Multiply by 1e18 (wei)</TooltipContent>
+          </Tooltip>
+        )
+      }
+    />
   );
 };

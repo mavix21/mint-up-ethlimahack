@@ -7,6 +7,9 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/solid";
+import { Button } from "~~/components/ui/button";
+import { Card, CardContent } from "~~/components/ui/card";
+import { Spinner } from "~~/components/ui/spinner";
 
 type NotificationProps = {
   content: React.ReactNode;
@@ -23,11 +26,11 @@ type NotificationOptions = {
 };
 
 const ENUM_STATUSES = {
-  success: <CheckCircleIcon className="w-7 text-success" />,
-  loading: <span className="w-6 loading loading-spinner"></span>,
-  error: <ExclamationCircleIcon className="w-7 text-error" />,
-  info: <InformationCircleIcon className="w-7 text-info" />,
-  warning: <ExclamationTriangleIcon className="w-7 text-warning" />,
+  success: <CheckCircleIcon className="w-7 text-primary" />,
+  loading: <Spinner className="size-6" />,
+  error: <ExclamationCircleIcon className="w-7 text-destructive" />,
+  info: <InformationCircleIcon className="w-7 text-primary" />,
+  warning: <ExclamationTriangleIcon className="w-7 text-amber-500" />,
 };
 
 const DEFAULT_DURATION = 3000;
@@ -46,19 +49,29 @@ const Notification = ({
   return toast.custom(
     (t: Toast) => (
       <div
-        className={`flex flex-row items-start justify-between max-w-sm rounded-xl shadow-center shadow-accent bg-base-200 p-4 transform-gpu relative transition-all duration-500 ease-in-out space-x-2
+        className={`relative max-w-sm transform-gpu transition-all duration-500 ease-in-out
         ${
           position.substring(0, 3) == "top"
             ? `hover:translate-y-1 ${t.visible ? "top-0" : "-top-96"}`
             : `hover:-translate-y-1 ${t.visible ? "bottom-0" : "-bottom-96"}`
         }`}
       >
-        <div className="leading-[0] self-center">{icon ? icon : ENUM_STATUSES[status]}</div>
-        <div className={`overflow-x-hidden break-words whitespace-pre-line ${icon ? "mt-1" : ""}`}>{content}</div>
-
-        <div className={`cursor-pointer text-lg ${icon ? "mt-1" : ""}`} onClick={() => toast.dismiss(t.id)}>
-          <XMarkIcon className="w-6 cursor-pointer" onClick={() => toast.remove(t.id)} />
-        </div>
+        <Card size="sm">
+          <CardContent>
+            <div className="flex items-start justify-between gap-2">
+              <div className="self-center leading-[0]">{icon ? icon : ENUM_STATUSES[status]}</div>
+              <div className={`overflow-x-hidden break-words whitespace-pre-line ${icon ? "mt-1" : ""}`}>{content}</div>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => toast.remove(t.id)}
+                aria-label="Dismiss notification"
+              >
+                <XMarkIcon />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     ),
     {

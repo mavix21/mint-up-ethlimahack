@@ -31,15 +31,15 @@ const BlockExplorer: NextPage = () => {
       notification.error(
         <>
           <p className="font-bold mt-0 mb-1">
-            <code className="italic bg-base-300 text-base font-bold"> targetNetwork </code> is not localhost
+            <code className="bg-muted text-base font-bold italic"> targetNetwork </code> is not localhost
           </p>
           <p className="m-0">
-            - You are on <code className="italic bg-base-300 text-base font-bold">{targetNetwork.name}</code> .This
-            block explorer is only for <code className="italic bg-base-300 text-base font-bold">localhost</code>.
+            - You are on <code className="bg-muted text-base font-bold italic">{targetNetwork.name}</code> .This block
+            explorer is only for <code className="bg-muted text-base font-bold italic">localhost</code>.
           </p>
           <p className="mt-1 break-normal">
             - You can use{" "}
-            <a className="text-accent" href={targetNetwork.blockExplorers?.default.url}>
+            <a className="text-primary" href={targetNetwork.blockExplorers?.default.url}>
               {targetNetwork.blockExplorers?.default.name}
             </a>{" "}
             instead
@@ -60,11 +60,11 @@ const BlockExplorer: NextPage = () => {
         <>
           <p className="font-bold mt-0 mb-1">Cannot connect to local provider</p>
           <p className="m-0">
-            - Did you forget to run <code className="italic bg-base-300 text-base font-bold">yarn chain</code> ?
+            - Did you forget to run <code className="bg-muted text-base font-bold italic">yarn chain</code> ?
           </p>
           <p className="mt-1 break-normal">
-            - Or you can change <code className="italic bg-base-300 text-base font-bold">targetNetwork</code> in{" "}
-            <code className="italic bg-base-300 text-base font-bold">scaffold.config.ts</code>
+            - Or you can change <code className="bg-muted text-base font-bold italic">targetNetwork</code> in{" "}
+            <code className="bg-muted text-base font-bold italic">scaffold.config.ts</code>
           </p>
         </>,
       );

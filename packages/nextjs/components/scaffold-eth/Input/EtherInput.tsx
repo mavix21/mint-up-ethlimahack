@@ -1,4 +1,5 @@
 import { CommonInputProps, InputBase, SIGNED_NUMBER_REGEX } from "~~/components/scaffold-eth";
+import { InputGroupText } from "~~/components/ui/input-group";
 
 /**
  * Input for ETH amount.
@@ -21,7 +22,7 @@ export const EtherInput = ({ value, name, placeholder, onChange, disabled }: Com
       placeholder={placeholder}
       onChange={handleChangeNumber}
       disabled={disabled}
-      prefix={<span className="pl-4 -mr-2 text-accent self-center">Ξ</span>}
+      prefix={<InputGroupText>Ξ</InputGroupText>}
     />
   );
 };
