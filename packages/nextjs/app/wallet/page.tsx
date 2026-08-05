@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
-import { CircleDollarSign, Fuel, ShieldCheck, WalletCards } from "lucide-react";
+import { CircleDollarSign, Fuel, WalletCards } from "lucide-react";
 
 import { CopyAddressButton } from "~~/components/wallet/copy-address-button";
 import { RetryWalletButton } from "~~/components/wallet/retry-wallet-button";
+import { WalletIdentitySelector } from "~~/components/wallet/wallet-identity-selector";
+import {
+  eventPassChainName,
+  eventPassEnvironment,
+} from "~~/contracts/eventPassEnvironment";
 import { WalletLoadError } from "~~/lib/mint-up-wallet";
-import { getMintUpWallet } from "~~/lib/mint-up-wallet-server";
+import { getMintUpWalletPageData } from "~~/lib/mint-up-wallet-server";
+import { getMintUpSiweOrigin } from "~~/lib/siwe-server";
 
 export const metadata: Metadata = { title: "Wallet" };
 
@@ -26,9 +32,9 @@ function WalletUnavailable({ message }: { message: string }) {
 }
 
 export default async function WalletPage() {
-  let wallet;
+  let pageData;
   try {
-    wallet = await getMintUpWallet();
+    pageData = await getMintUpWalletPageData();
   } catch (error) {
     if (error instanceof WalletLoadError) {
       return <WalletUnavailable message={error.message} />;
@@ -38,21 +44,29 @@ export default async function WalletPage() {
       <WalletUnavailable message="We could not load your wallet securely. Try again in a moment." />
     );
   }
+  const { wallet, walletOptions } = pageData;
 
   return (
     <main className="mx-auto min-h-[70svh] w-full max-w-6xl px-5 py-10 sm:px-8 sm:py-16">
       <div className="mb-8 max-w-3xl">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-          Embedded wallet
+          Verified wallets
         </p>
         <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight sm:text-5xl">
-          Your Mint Up Wallet
+          Your Mint Up wallets
         </h1>
         <p className="mt-4 text-base text-base-content/70 sm:text-lg">
-          Your event funds live in a smart wallet secured by your Mint Up
-          identity. No separate wallet connection is needed.
+          Your embedded wallet and verified external wallets stay distinct. Pick
+          the address you want to use, or prove control of another wallet.
         </p>
       </div>
+
+      <WalletIdentitySelector
+        wallets={walletOptions}
+        origin={getMintUpSiweOrigin()}
+        targetChainId={eventPassEnvironment.chainId}
+        targetChainName={eventPassChainName}
+      />
 
       <section className="overflow-hidden rounded-4xl bg-neutral text-neutral-content shadow-xl">
         <div className="grid gap-8 p-6 sm:p-9 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -61,7 +75,7 @@ export default async function WalletPage() {
               <WalletCards className="size-6" />
             </div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-content/60">
-              Wallet address
+              Embedded wallet address
             </p>
             <p className="mt-2 break-all font-mono text-lg font-semibold sm:text-2xl">
               {wallet.address}

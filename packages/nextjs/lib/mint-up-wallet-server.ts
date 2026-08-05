@@ -1,9 +1,10 @@
 import "server-only";
 
 import { eventPassEnvironment } from "~~/contracts/eventPassEnvironment";
-import { fetchAuthAction } from "~~/lib/auth-server";
+import { fetchAuthAction, fetchAuthQuery } from "~~/lib/auth-server";
 import { loadMintUpWallet, type MintUpWallet } from "~~/lib/mint-up-wallet";
 import { createMintUpWalletDependencies } from "~~/lib/mint-up-wallet-provider";
+import { createWalletOptions } from "~~/lib/wallet-identities";
 import {
   arbitrumNitro,
   arbitrumSepolia,
@@ -19,6 +20,15 @@ const provisionEmbeddedWallet = anyApi.passesIdentityActions
   "public",
   Record<string, never>,
   ProvisionWalletResult
+>;
+const getSessionWallets = anyApi.passesIdentity
+  .getSessionWallets as FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  {
+    linkedWallets: Array<{ address: string; chainId: number }>;
+  }
 >;
 
 const chain =
@@ -43,4 +53,16 @@ const dependencies = createMintUpWalletDependencies({
 
 export function getMintUpWallet(): Promise<MintUpWallet> {
   return loadMintUpWallet(dependencies);
+}
+
+export async function getMintUpWalletPageData() {
+  const wallet = await getMintUpWallet();
+  const sessionWallets = await fetchAuthQuery(getSessionWallets, {});
+  return {
+    wallet,
+    walletOptions: createWalletOptions(
+      wallet.address,
+      sessionWallets.linkedWallets,
+    ),
+  };
 }

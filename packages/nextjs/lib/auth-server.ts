@@ -9,8 +9,13 @@ if (!convexUrl || !convexSiteUrl) {
   );
 }
 
-export const { fetchAuthAction, handler, isAuthenticated } =
-  convexBetterAuthNextJs({
-    convexUrl,
-    convexSiteUrl,
-  });
+export const {
+  fetchAuthAction,
+  fetchAuthMutation,
+  fetchAuthQuery,
+  handler,
+  isAuthenticated,
+} = convexBetterAuthNextJs({
+  convexUrl,
+  convexSiteUrl,
+});

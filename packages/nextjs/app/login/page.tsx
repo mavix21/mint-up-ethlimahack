@@ -1,6 +1,12 @@
 import { Suspense } from "react";
 import { getLocalRedirect } from "~~/lib/auth-redirect";
 import { GoogleSignInButton } from "~~/components/auth/google-sign-in-button";
+import { WalletProofButton } from "~~/components/auth/wallet-proof-button";
+import {
+  eventPassChainName,
+  eventPassEnvironment,
+} from "~~/contracts/eventPassEnvironment";
+import { getMintUpSiweOrigin } from "~~/lib/siwe-server";
 
 async function LoginCard({
   searchParams,
@@ -20,9 +26,22 @@ async function LoginCard({
           Your passes, one sign-in away.
         </h1>
         <p className="mb-8 mt-3 text-base-content/70">
-          Sign in with the same Google identity you use for Mint Up.
+          Continue with your Mint Up identity or prove control of an external
+          wallet.
         </p>
         <GoogleSignInButton callbackUrl={destination} />
+        <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-widest text-base-content/45">
+          <span className="h-px flex-1 bg-base-300" />
+          or
+          <span className="h-px flex-1 bg-base-300" />
+        </div>
+        <WalletProofButton
+          intent="sign-in"
+          origin={getMintUpSiweOrigin()}
+          targetChainId={eventPassEnvironment.chainId}
+          targetChainName={eventPassChainName}
+          callbackUrl={destination}
+        />
       </section>
     </main>
   );

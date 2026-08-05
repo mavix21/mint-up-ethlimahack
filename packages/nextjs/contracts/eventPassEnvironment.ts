@@ -56,3 +56,6 @@ export function resolveEventPassEnvironment({
 export const eventPassEnvironment = resolveEventPassEnvironment({
   environment: process.env["NEXT_PUBLIC_EVENT_PASS_ENVIRONMENT"] ?? "local",
 });
+
+export const eventPassChainName =
+  eventPassEnvironment.name === "local" ? "Nitro DevNode" : "Arbitrum Sepolia";
