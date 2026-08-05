@@ -80,10 +80,10 @@ and deploys `scripts/local/MockUsdc.sol`, updates the dependency file, and then
 deploys Event Pass with the new token address.
 
 `yarn test:local` runs a complete on-chain flow: mint mock USDC, register a live
-event, approve USDC, purchase one pass, verify direct payment, transfer the pass,
-check it in, and verify its final attended state. The mock has permissionless
-minting and is only selected automatically for chain ID `412346`; it must never
-be used as a production payment token.
+event, approve USDC, verify sale boundaries and direct payment, transfer and
+check in a pass, and exercise cancellation, pause, authorization, errors, and
+events. The mock has permissionless minting and is only selected automatically
+for chain ID `412346`; it must never be used as a production payment token.
 
 Deploy to Arbitrum Sepolia with:
 
@@ -94,6 +94,10 @@ cargo stylus deploy \
   --constructor-args "$ADMIN" 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d false \
   --no-verify
 ```
+
+This ticket does not deploy to Sepolia. After a later deployment, set the
+`ARBITRUM_SEPOLIA_EVENT_PASS` constant in
+`packages/nextjs/contracts/eventPassEnvironment.ts` to the deployed address.
 
 ## Verified Size
 

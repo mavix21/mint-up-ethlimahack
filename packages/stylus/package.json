@@ -23,7 +23,7 @@
     "lint:fix": "eslint scripts --ext .ts --fix",
     "new-module": "bash scripts/new_module.sh",
     "start": "node dist/index.js",
-    "test": "ts-node scripts/test.ts",
+    "test": "ts-node scripts/test.ts && jest --runInBand",
     "test:local": "ts-node scripts/local/test_event_pass.ts"
   },
   "dependencies": {

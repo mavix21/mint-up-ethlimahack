@@ -3,6 +3,7 @@ import * as fs from "fs";
 import { ethers } from "ethers";
 import toml from "toml";
 import prettier from "prettier";
+import { execFileSync } from "child_process";
 import { DeploymentData, ExportConfig } from "./type";
 import { getContractDataFromDeployments } from "./deployment";
 import { Address } from "viem";
@@ -155,14 +156,45 @@ export async function generateTsAbi(
   const lines = abiTxt.split("\n");
   const extractedAbi = lines.slice(3).join("\n");
   const abiJson = JSON.parse(extractedAbi);
+  const completeAbi = addSourceEvents(abiJson, contractName);
 
   await generateTsContractDefinition(
-    abiJson,
+    completeAbi,
     contractName,
     contractAddress,
     txHash,
     chainId,
   );
+}
+
+function addSourceEvents(abi: readonly unknown[], contractName: string) {
+  const abiDirectory = path.resolve("contracts", contractName, "abi");
+  if (!fs.existsSync(abiDirectory)) return abi;
+
+  const interfaceFile = `I${contractName
+    .split("-")
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join("")}.sol`;
+
+  const sourcePath = path.join(abiDirectory, interfaceFile);
+  if (!fs.existsSync(sourcePath)) return abi;
+  const output = JSON.parse(
+    execFileSync("solc", ["--combined-json", "abi", sourcePath], {
+      encoding: "utf8",
+    }),
+  ) as { contracts: Record<string, { abi: readonly { type: string }[] }> };
+  const interfaceName = path.basename(interfaceFile, ".sol");
+  const sourceContract = Object.entries(output.contracts).find(([name]) =>
+    name.endsWith(`:${interfaceName}`),
+  )?.[1];
+  if (!sourceContract) {
+    throw new Error(`Could not compile source interface at ${sourcePath}`);
+  }
+
+  return [
+    ...abi,
+    ...sourceContract.abi.filter((entry) => entry.type === "event"),
+  ];
 }
 
 export async function generateTsContractDefinition(

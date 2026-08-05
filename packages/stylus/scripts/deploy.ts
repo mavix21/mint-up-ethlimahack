@@ -12,19 +12,14 @@ import * as fs from "fs";
 import { arbitrumNitro } from "../../nextjs/utils/scaffold-stylus/supportedChains";
 import { ensureLocalUsdc } from "./local/usdc";
 
-const OFFICIAL_USDC: Record<number, string> = {
-  42161: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-  421614: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-};
-
 function getEventPassUsdc(chainId: number): string {
-  if (process.env["EVENT_PASS_USDC_ADDRESS"]) {
+  if (chainId === arbitrumNitro.id && process.env["EVENT_PASS_USDC_ADDRESS"]) {
     return process.env["EVENT_PASS_USDC_ADDRESS"]!;
   }
-  if (OFFICIAL_USDC[chainId]) return OFFICIAL_USDC[chainId]!;
-  throw new Error(
-    `USDC address not configured for chain ${chainId}. Set EVENT_PASS_USDC_ADDRESS.`,
-  );
+  if (chainId === 421614) {
+    return "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
+  }
+  throw new Error(`Event Pass deployment is unsupported on chain ${chainId}`);
 }
 
 const envPath = path.resolve(__dirname, "../.env");

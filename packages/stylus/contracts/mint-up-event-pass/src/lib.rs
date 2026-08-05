@@ -237,7 +237,7 @@ impl MintUpEventPass {
         if !event.sales_enabled.get() {
             return Err(error(SALES_CLOSED));
         }
-        if now < event.sale_start.get().to::<u64>() || now > event.sale_end.get().to::<u64>() {
+        if now < event.sale_start.get().to::<u64>() || now >= event.sale_end.get().to::<u64>() {
             return Err(error(OUTSIDE_SALE_WINDOW));
         }
         let issued_supply = event.issued_supply.get().to::<u32>();
@@ -594,9 +594,17 @@ mod tests {
     fn sale_guards_and_pause_block_purchases() {
         let (vm, mut contract) = setup();
         let id = event_id(1);
-        register(&mut contract, id, 1, true, address(4));
+        register(&mut contract, id, 2, true, address(4));
         vm.set_sender(address(6));
         vm.set_block_timestamp(99);
+        assert_error(contract.purchase(id), OUTSIDE_SALE_WINDOW);
+
+        vm.set_block_timestamp(START);
+        mock_payment(&vm, address(6), Ok(true_word()));
+        contract.purchase(id).unwrap();
+
+        vm.set_sender(address(7));
+        vm.set_block_timestamp(END);
         assert_error(contract.purchase(id), OUTSIDE_SALE_WINDOW);
 
         vm.set_sender(address(1));
