@@ -1,5 +1,5 @@
+import { Suspense } from "react";
 import { CalendarXIcon } from "lucide-react";
-import { connection } from "next/server";
 
 import { OfferCard } from "~~/components/passes/offer-card";
 import {
@@ -11,12 +11,57 @@ import {
 } from "~~/components/ui/empty";
 import { listEventPassOffers } from "~~/lib/event-pass-offer-data";
 
-export const instant = false;
-
-export default async function Home() {
-  await connection();
+async function Offers() {
   const offers = await listEventPassOffers();
 
+  return offers.length > 0 ? (
+    <section aria-labelledby="available-passes">
+      <div className="mb-6 flex items-baseline justify-between gap-4">
+        <h2 id="available-passes" className="font-heading text-2xl font-bold">
+          Available passes
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {offers.length} live offer{offers.length === 1 ? "" : "s"}
+        </p>
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {offers.map(offer => (
+          <OfferCard key={offer.eventId} offer={offer} />
+        ))}
+      </div>
+    </section>
+  ) : (
+    <Empty className="min-h-72 border bg-card">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <CalendarXIcon />
+        </EmptyMedia>
+        <EmptyTitle>No Event Passes available</EmptyTitle>
+        <EmptyDescription>
+          There are no eligible offers on sale right now. Check back soon.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+}
+
+function OffersFallback() {
+  return (
+    <section aria-label="Loading available passes">
+      <div className="mb-6 h-8 w-48 animate-pulse rounded-lg bg-muted" />
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {[0, 1, 2].map(item => (
+          <div
+            key={item}
+            className="aspect-[4/3] animate-pulse rounded-3xl bg-muted"
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default function Home() {
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-16">
       <header className="mb-10 grid gap-6 border-b pb-10 lg:grid-cols-[1fr_22rem] lg:items-end">
@@ -34,38 +79,9 @@ export default async function Home() {
         </p>
       </header>
 
-      {offers.length > 0 ? (
-        <section aria-labelledby="available-passes">
-          <div className="mb-6 flex items-baseline justify-between gap-4">
-            <h2
-              id="available-passes"
-              className="font-heading text-2xl font-bold"
-            >
-              Available passes
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {offers.length} live offer{offers.length === 1 ? "" : "s"}
-            </p>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {offers.map(offer => (
-              <OfferCard key={offer.eventId} offer={offer} />
-            ))}
-          </div>
-        </section>
-      ) : (
-        <Empty className="min-h-72 border bg-card">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <CalendarXIcon />
-            </EmptyMedia>
-            <EmptyTitle>No Event Passes available</EmptyTitle>
-            <EmptyDescription>
-              There are no eligible offers on sale right now. Check back soon.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
+      <Suspense fallback={<OffersFallback />}>
+        <Offers />
+      </Suspense>
     </div>
   );
 }

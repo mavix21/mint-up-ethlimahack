@@ -1,7 +1,7 @@
 import "server-only";
 
-import { cache } from "react";
 import { fetchQuery } from "convex/nextjs";
+import { cacheLife, cacheTag } from "next/cache";
 
 import { eligibleOfferPayload } from "../tests/fixtures/event-pass-offers";
 import { parseOffer, parseOfferCatalog } from "./event-pass-offers";
@@ -20,24 +20,62 @@ function queryOptions() {
   return { url };
 }
 
-export async function listEventPassOffers(now = Date.now()) {
-  const response = fixtureEnabled()
-    ? { offers: [eligibleOfferPayload] }
-    : await fetchQuery(mintUpApi.eventPassOffers.list, {}, queryOptions());
-  return parseOfferCatalog(response, now).filter(
-    offer => offer.availability.kind === "available",
-  );
+async function getCachedOfferCatalog() {
+  "use cache";
+  cacheLife({ stale: 30, revalidate: 30, expire: 60 });
+  cacheTag("event-pass-offers");
+  try {
+    return fixtureEnabled()
+      ? { offers: [eligibleOfferPayload] }
+      : await fetchQuery(mintUpApi.eventPassOffers.list, {}, queryOptions());
+  } catch {
+    return null;
+  }
 }
 
-export const getEventPassOffer = cache(async (eventId: string) => {
-  const response = fixtureEnabled()
-    ? eventId === eligibleOfferPayload.eventId
-      ? eligibleOfferPayload
-      : null
-    : await fetchQuery(
-        mintUpApi.eventPassOffers.getByEventId,
-        { eventId },
-        queryOptions(),
-      );
-  return response === null ? null : parseOffer(response);
-});
+export async function listEventPassOffers() {
+  "use cache";
+  cacheLife({ stale: 1, revalidate: 1, expire: 2 });
+  cacheTag("event-pass-offers-availability");
+  try {
+    const response = await getCachedOfferCatalog();
+    return response === null
+      ? []
+      : parseOfferCatalog(response).filter(
+          offer => offer.availability.kind === "available",
+        );
+  } catch {
+    return [];
+  }
+}
+
+async function getCachedEventPassOffer(eventId: string) {
+  "use cache";
+  cacheLife({ stale: 30, revalidate: 30, expire: 60 });
+  cacheTag("event-pass-offers", `event-pass-offer-${eventId}`);
+  try {
+    return fixtureEnabled()
+      ? eventId === eligibleOfferPayload.eventId
+        ? eligibleOfferPayload
+        : null
+      : await fetchQuery(
+          mintUpApi.eventPassOffers.getByEventId,
+          { eventId },
+          queryOptions(),
+        );
+  } catch {
+    return null;
+  }
+}
+
+export async function getEventPassOffer(eventId: string) {
+  "use cache";
+  cacheLife({ stale: 1, revalidate: 1, expire: 2 });
+  cacheTag(`event-pass-offer-availability-${eventId}`);
+  try {
+    const response = await getCachedEventPassOffer(eventId);
+    return response === null ? null : parseOffer(response);
+  } catch {
+    return null;
+  }
+}

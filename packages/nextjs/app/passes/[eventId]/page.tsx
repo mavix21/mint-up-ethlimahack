@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
 import {
   ArrowLeft,
   CalendarDays,
@@ -18,8 +17,6 @@ import { shouldOptimizeImage } from "~~/lib/image-optimization";
 
 type EventPassPageProps = { params: Promise<{ eventId: string }> };
 
-export const instant = false;
-
 function dateTime(value: number, timezone: string) {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "long",
@@ -32,16 +29,14 @@ export async function generateMetadata({
   params,
 }: EventPassPageProps): Promise<Metadata> {
   const { eventId } = await params;
-  await connection();
   const offer = await getEventPassOffer(eventId);
   return offer
     ? { title: `${offer.name} Event Pass`, description: offer.description }
     : { title: "Event Pass unavailable" };
 }
 
-export default async function EventPassPage({ params }: EventPassPageProps) {
+async function EventPassDetails({ params }: EventPassPageProps) {
   const { eventId } = await params;
-  await connection();
   const offer = await getEventPassOffer(eventId);
   if (!offer) notFound();
   return (
@@ -160,3 +155,24 @@ export default async function EventPassPage({ params }: EventPassPageProps) {
     </div>
   );
 }
+
+function EventPassFallback() {
+  return (
+    <div className="mx-auto w-full max-w-7xl animate-pulse px-5 py-8 sm:px-8 sm:py-12">
+      <div className="mb-8 h-5 w-24 rounded bg-muted" />
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
+        <div className="aspect-[16/10] rounded-3xl bg-muted" />
+        <div className="h-96 rounded-3xl bg-muted" />
+      </div>
+    </div>
+  );
+}
+
+export default function EventPassPage(props: EventPassPageProps) {
+  return (
+    <Suspense fallback={<EventPassFallback />}>
+      <EventPassDetails {...props} />
+    </Suspense>
+  );
+}
+import { Suspense } from "react";

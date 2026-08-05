@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -37,7 +37,7 @@ export const menuLinks: HeaderMenuLink[] = [
   },
 ];
 
-export const HeaderMenuLinks = ({
+const HeaderMenuLinksContent = ({
   onNavigate,
 }: {
   onNavigate?: () => void;
@@ -66,6 +66,16 @@ export const HeaderMenuLinks = ({
     </>
   );
 };
+
+export const HeaderMenuLinks = ({
+  onNavigate,
+}: {
+  onNavigate?: () => void;
+}) => (
+  <Suspense fallback={null}>
+    <HeaderMenuLinksContent onNavigate={onNavigate} />
+  </Suspense>
+);
 
 /**
  * Site header
