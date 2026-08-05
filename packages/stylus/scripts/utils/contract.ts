@@ -156,7 +156,7 @@ export async function generateTsAbi(
   const lines = abiTxt.split("\n");
   const extractedAbi = lines.slice(3).join("\n");
   const abiJson = JSON.parse(extractedAbi);
-  const completeAbi = addSourceEvents(abiJson, contractName);
+  const completeAbi = addSourceMetadata(abiJson, contractName);
 
   await generateTsContractDefinition(
     completeAbi,
@@ -167,7 +167,13 @@ export async function generateTsAbi(
   );
 }
 
-function addSourceEvents(abi: readonly unknown[], contractName: string) {
+function addSourceMetadata(abi: readonly unknown[], contractName: string) {
+  type AbiEntry = {
+    inputs?: readonly { type: string }[];
+    name?: string;
+    type: string;
+  };
+
   const abiDirectory = path.resolve("contracts", contractName, "abi");
   if (!fs.existsSync(abiDirectory)) return abi;
 
@@ -182,7 +188,7 @@ function addSourceEvents(abi: readonly unknown[], contractName: string) {
     execFileSync("solc", ["--combined-json", "abi", sourcePath], {
       encoding: "utf8",
     }),
-  ) as { contracts: Record<string, { abi: readonly { type: string }[] }> };
+  ) as { contracts: Record<string, { abi: readonly AbiEntry[] }> };
   const interfaceName = path.basename(interfaceFile, ".sol");
   const sourceContract = Object.entries(output.contracts).find(([name]) =>
     name.endsWith(`:${interfaceName}`),
@@ -191,8 +197,19 @@ function addSourceEvents(abi: readonly unknown[], contractName: string) {
     throw new Error(`Could not compile source interface at ${sourcePath}`);
   }
 
+  const key = (entry: AbiEntry) =>
+    `${entry.type}:${entry.name ?? ""}:${(entry.inputs ?? [])
+      .map((input) => input.type)
+      .join(",")}`;
+  const sourceEntries = new Map(
+    sourceContract.abi.map((entry) => [key(entry), entry]),
+  );
+  const enrichedAbi = (abi as readonly AbiEntry[]).map(
+    (entry) => sourceEntries.get(key(entry)) ?? entry,
+  );
+
   return [
-    ...abi,
+    ...enrichedAbi,
     ...sourceContract.abi.filter((entry) => entry.type === "event"),
   ];
 }
@@ -247,7 +264,7 @@ export async function generateTsContractDefinition(
     await prettier.format(output, {
       parser: "typescript",
       arrowParens: "avoid",
-      printWidth: 120,
+      printWidth: 80,
       trailingComma: "all",
     }),
   );

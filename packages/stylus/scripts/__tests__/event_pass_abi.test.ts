@@ -18,12 +18,15 @@ type AbiParameter = {
   type: string;
 };
 
-function signature(entry: AbiEntry): string {
-  const parameters = (values: readonly AbiParameter[] | undefined) =>
+function signature(entry: AbiEntry, includeMetadataNames: boolean): string {
+  const parameters = (
+    values: readonly AbiParameter[] | undefined,
+    includeNames: boolean,
+  ) =>
     (values ?? [])
       .map(
         ({ indexed, name, type }) =>
-          `${type}:${name ?? ""}:${indexed === undefined ? "" : indexed}`,
+          `${type}:${includeNames ? (name ?? "") : ""}:${indexed === undefined ? "" : indexed}`,
       )
       .join(",");
 
@@ -32,15 +35,23 @@ function signature(entry: AbiEntry): string {
     entry.name ?? "",
     entry.stateMutability ?? "",
     entry.anonymous ?? "",
-    parameters(entry.inputs),
-    parameters(entry.outputs),
+    parameters(
+      entry.inputs,
+      entry.type === "event" ||
+        (entry.type === "function" && includeMetadataNames),
+    ),
+    parameters(entry.outputs, includeMetadataNames),
   ].join("|");
 }
 
-function signatures(abi: readonly AbiEntry[], types: readonly string[]) {
+function signatures(
+  abi: readonly AbiEntry[],
+  types: readonly string[],
+  includeMetadataNames: boolean,
+) {
   return abi
     .filter((entry) => types.includes(entry.type))
-    .map(signature)
+    .map((entry) => signature(entry, includeMetadataNames))
     .sort();
 }
 
@@ -79,11 +90,13 @@ describe("Event Pass ABI parity", () => {
     const frontend = deployedContracts["412346"]["mint-up-event-pass"]
       .abi as readonly AbiEntry[];
 
-    expect(signatures(stylus, ["function", "error"])).toEqual(
-      signatures(source, ["function", "error"]),
+    expect(signatures(stylus, ["function", "error"], false)).toEqual(
+      signatures(source, ["function", "error"], false),
     );
-    expect(signatures(frontend, ["function", "error", "event"])).toEqual(
-      signatures(source, ["function", "error", "event"]),
+    expect(
+      signatures(frontend, ["function", "error", "event"], true),
+    ).toEqual(
+      signatures(source, ["function", "error", "event"], true),
     );
   });
 });

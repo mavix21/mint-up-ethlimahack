@@ -15,7 +15,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint8",
-              name: "",
+              name: "code",
               type: "uint8",
             },
           ],
@@ -59,17 +59,17 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "address",
-              name: "",
+              name: "administrator",
               type: "address",
             },
             {
               internalType: "address",
-              name: "",
+              name: "usdc",
               type: "address",
             },
             {
               internalType: "bool",
-              name: "",
+              name: "paused",
               type: "bool",
             },
           ],
@@ -88,52 +88,52 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "address",
-              name: "",
+              name: "revenue_recipient",
               type: "address",
             },
             {
               internalType: "uint64",
-              name: "",
+              name: "price",
               type: "uint64",
             },
             {
               internalType: "uint32",
-              name: "",
+              name: "maximum_supply",
               type: "uint32",
             },
             {
               internalType: "uint32",
-              name: "",
+              name: "issued_supply",
               type: "uint32",
             },
             {
               internalType: "uint64",
-              name: "",
+              name: "sale_start",
               type: "uint64",
             },
             {
               internalType: "uint64",
-              name: "",
+              name: "sale_end",
               type: "uint64",
             },
             {
               internalType: "bool",
-              name: "",
+              name: "sales_enabled",
               type: "bool",
             },
             {
               internalType: "bool",
-              name: "",
+              name: "transfers_enabled",
               type: "bool",
             },
             {
               internalType: "bool",
-              name: "",
+              name: "cancelled",
               type: "bool",
             },
             {
               internalType: "address",
-              name: "",
+              name: "check_in_operator",
               type: "address",
             },
           ],
@@ -171,22 +171,22 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "address",
-              name: "",
+              name: "owner",
               type: "address",
             },
             {
               internalType: "bytes32",
-              name: "",
+              name: "event_id",
               type: "bytes32",
             },
             {
               internalType: "uint8",
-              name: "",
+              name: "state",
               type: "uint8",
             },
             {
               internalType: "bool",
-              name: "",
+              name: "valid_for_check_in",
               type: "bool",
             },
           ],
@@ -205,7 +205,7 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "uint64",
-              name: "",
+              name: "pass_id",
               type: "uint64",
             },
           ],

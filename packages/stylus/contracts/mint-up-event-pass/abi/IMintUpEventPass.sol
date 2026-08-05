@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 interface IMintUpEventPass {
-    error MintUpError(uint8);
+    error MintUpError(uint8 code);
 
     event EventRegistered(
         bytes32 indexed event_id,
@@ -46,35 +46,35 @@ interface IMintUpEventPass {
     function setCheckInOperator(bytes32 event_id, address operator) external;
     function cancelEvent(bytes32 event_id) external;
     function setPaused(bool paused) external;
-    function purchase(bytes32 event_id) external returns (uint64);
+    function purchase(bytes32 event_id) external returns (uint64 pass_id);
     function transferPass(uint64 pass_id, address to) external;
     function checkIn(bytes32 event_id, uint64 pass_id) external;
 
     function config()
         external
         view
-        returns (address, address, bool);
+        returns (address administrator, address usdc, bool paused);
 
     function eventInfo(bytes32 event_id)
         external
         view
         returns (
-            address,
-            uint64,
-            uint32,
-            uint32,
-            uint64,
-            uint64,
-            bool,
-            bool,
-            bool,
-            address
+            address revenue_recipient,
+            uint64 price,
+            uint32 maximum_supply,
+            uint32 issued_supply,
+            uint64 sale_start,
+            uint64 sale_end,
+            bool sales_enabled,
+            bool transfers_enabled,
+            bool cancelled,
+            address check_in_operator
         );
 
     function passInfo(uint64 pass_id)
         external
         view
-        returns (address, bytes32, uint8, bool);
+        returns (address owner, bytes32 event_id, uint8 state, bool valid_for_check_in);
 
     function isValidForCheckIn(uint64 pass_id) external view returns (bool);
 }
