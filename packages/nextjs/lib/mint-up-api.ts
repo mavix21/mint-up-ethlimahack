@@ -10,7 +10,10 @@ type EventLocation =
     };
 
 type EventPlace =
-  | { kind: "online"; audience: { kind: "global" } | { kind: "market"; marketAreaId: string } }
+  | {
+      kind: "online";
+      audience: { kind: "global" } | { kind: "market"; marketAreaId: string };
+    }
   | { kind: "physical"; location: EventLocation }
   | { kind: "hybrid"; location: EventLocation };
 
@@ -45,9 +48,27 @@ type DiscoverFirstPartyEvents = FunctionReference<
   }
 >;
 
+type ListEventPassOffers = FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  unknown
+>;
+
+type GetEventPassOffer = FunctionReference<
+  "query",
+  "public",
+  { eventId: string },
+  unknown
+>;
+
 interface MintUpPublicApi {
   eventDiscovery: {
     discover: DiscoverFirstPartyEvents;
+  };
+  eventPassOffers: {
+    list: ListEventPassOffers;
+    getByEventId: GetEventPassOffer;
   };
 }
 

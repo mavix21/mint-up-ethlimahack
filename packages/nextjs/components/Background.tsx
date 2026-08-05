@@ -1,16 +1,6 @@
-import React from "react";
-import { useTheme } from "next-themes";
-
 export const BackGround = () => {
-  const { resolvedTheme } = useTheme();
-  const isDarkMode = resolvedTheme === "dark";
-
-  if (!isDarkMode) {
-    return <></>;
-  }
-
   return (
-    <>
+    <div className="hidden dark:block" aria-hidden="true">
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[70vh] w-[70vh] rounded-full -z-50"
         style={{
@@ -32,6 +22,6 @@ export const BackGround = () => {
           filter: "blur(274.85px)",
         }}
       />
-    </>
+    </div>
   );
 };

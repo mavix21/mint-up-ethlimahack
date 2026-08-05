@@ -24,9 +24,10 @@ const baseUrl = process.env.VERCEL_URL
   : `http://localhost:${process.env.PORT || 3000}`;
 const imageUrl = `${baseUrl}/thumbnail.jpg`;
 
-const title = "Create Stylus Dapp";
-const titleTemplate = "%s | Create Stylus Dapp";
-const description = "Built with 🏗 Scaffold-Stylus";
+const title = "Mint Up Passes";
+const titleTemplate = "%s | Mint Up Passes";
+const description =
+  "Discover and manage onchain Event Passes for Mint Up events.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),

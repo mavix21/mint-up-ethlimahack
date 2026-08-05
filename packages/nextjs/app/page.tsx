@@ -1,8 +1,7 @@
-import { fetchQuery } from "convex/nextjs";
 import { CalendarXIcon } from "lucide-react";
+import { connection } from "next/server";
 
-import { EventCard } from "~~/components/events/EventCard";
-import { getEventListingCardViewModel } from "~~/components/events/event-listing-card-model";
+import { OfferCard } from "~~/components/passes/offer-card";
 import {
   Empty,
   EmptyDescription,
@@ -10,54 +9,59 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "~~/components/ui/empty";
-import { mintUpApi } from "~~/lib/mint-up-api";
+import { listEventPassOffers } from "~~/lib/event-pass-offer-data";
 
 export const instant = false;
 
 export default async function Home() {
-  "use cache";
-  // Server render time is intentionally shared by every card in this response.
-  // eslint-disable-next-line react-hooks/purity
-  const now = Date.now();
-  const result = await fetchQuery(
-    mintUpApi.eventDiscovery.discover,
-    {
-      filters: { platforms: ["mintup"] },
-      paginationOpts: { numItems: 24, cursor: null },
-    },
-    { url: process.env.NEXT_PUBLIC_CONVEX_URL },
-  );
+  await connection();
+  const offers = await listEventPassOffers();
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8">
-      <header className="mb-8 max-w-2xl">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-          Upcoming events
-        </h1>
-        <p className="mt-3 text-base text-muted-foreground sm:text-lg">
-          Public events hosted directly on Mint Up, ready for onchain passes.
+    <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-16">
+      <header className="mb-10 grid gap-6 border-b pb-10 lg:grid-cols-[1fr_22rem] lg:items-end">
+        <div className="max-w-3xl">
+          <p className="mb-4 text-sm font-bold uppercase tracking-[0.22em] text-primary-foreground">
+            Mint Up Passes
+          </p>
+          <h1 className="font-heading text-4xl font-black tracking-tight sm:text-6xl">
+            Your way into what&apos;s next.
+          </h1>
+        </div>
+        <p className="text-base leading-7 text-muted-foreground">
+          Browse eligible Mint Up events and secure one onchain Event Pass, paid
+          directly to the organizer in USDC.
         </p>
       </header>
 
-      {result.page.length > 0 ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {result.page.map(event => (
-            <EventCard
-              key={event._id}
-              event={getEventListingCardViewModel(event, now)}
-            />
-          ))}
-        </div>
+      {offers.length > 0 ? (
+        <section aria-labelledby="available-passes">
+          <div className="mb-6 flex items-baseline justify-between gap-4">
+            <h2
+              id="available-passes"
+              className="font-heading text-2xl font-bold"
+            >
+              Available passes
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {offers.length} live offer{offers.length === 1 ? "" : "s"}
+            </p>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {offers.map(offer => (
+              <OfferCard key={offer.eventId} offer={offer} />
+            ))}
+          </div>
+        </section>
       ) : (
         <Empty className="min-h-72 border bg-card">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <CalendarXIcon />
             </EmptyMedia>
-            <EmptyTitle>No upcoming events</EmptyTitle>
+            <EmptyTitle>No Event Passes available</EmptyTitle>
             <EmptyDescription>
-              There are no public Mint Up events scheduled right now. Check back
-              soon for new events and onchain passes.
+              There are no eligible offers on sale right now. Check back soon.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
