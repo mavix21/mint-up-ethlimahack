@@ -2,7 +2,8 @@ import deployedContracts from "./deployedContracts";
 
 const ARBITRUM_SEPOLIA_USDC =
   "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d" as const;
-const ARBITRUM_SEPOLIA_EVENT_PASS: `0x${string}` | undefined = undefined;
+const ARBITRUM_SEPOLIA_EVENT_PASS =
+  process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_EVENT_PASS;
 
 type EventPassEnvironmentInput = {
   environment: string;

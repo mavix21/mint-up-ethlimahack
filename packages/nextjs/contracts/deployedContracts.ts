@@ -9,7 +9,7 @@ const deployedContracts = {
     "mint-up-event-pass": {
       address: "0xab8e440727a38bbb180f7032ca4a8009e7b52b80",
       txHash:
-        "0x0215d9c00e18b1cd22d4ce8fb48303dd22b73c2af42fee4272b051adf9bd2552",
+        "0xe4438a6004048f2f1f33d1684c7db6862df5556c9b1451dedd6e593d9a42bba2",
       abi: [
         {
           inputs: [
@@ -740,6 +740,506 @@ const deployedContracts = {
           ],
           stateMutability: "nonpayable",
           type: "function",
+        },
+      ],
+    },
+  },
+  "421614": {
+    "mint-up-event-pass": {
+      address: "0xc84b2ca3a144cf7a599129f445ef1009ee1810fa",
+      txHash:
+        "0x3dee840078ec86ccca3a34800a7abfe9cfd03dcb546574ea6fc82c5d8b78995c",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "code",
+              type: "uint8",
+            },
+          ],
+          name: "MintUpError",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "cancelEvent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "checkIn",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "config",
+          outputs: [
+            {
+              internalType: "address",
+              name: "administrator",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "usdc",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "paused",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "eventInfo",
+          outputs: [
+            {
+              internalType: "address",
+              name: "revenue_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "price",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "maximum_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "issued_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_end",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "sales_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "transfers_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "cancelled",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "check_in_operator",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "isValidForCheckIn",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "passInfo",
+          outputs: [
+            {
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint8",
+              name: "state",
+              type: "uint8",
+            },
+            {
+              internalType: "bool",
+              name: "valid_for_check_in",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "purchase",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "revenue_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "price",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "maximum_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_end",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "sales_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "transfers_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "check_in_operator",
+              type: "address",
+            },
+          ],
+          name: "registerEvent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+          ],
+          name: "setCheckInOperator",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "setEventSales",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bool",
+              name: "paused",
+              type: "bool",
+            },
+          ],
+          name: "setPaused",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+          ],
+          name: "transferPass",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+          ],
+          name: "CheckInOperatorChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "paused",
+              type: "bool",
+            },
+          ],
+          name: "ContractPaused",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "EventCancelled",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "attendee",
+              type: "address",
+            },
+          ],
+          name: "EventPassCheckedIn",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "buyer",
+              type: "address",
+            },
+          ],
+          name: "EventPassPurchased",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "previous_owner",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "new_owner",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "EventPassTransferred",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "revenue_recipient",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "check_in_operator",
+              type: "address",
+            },
+          ],
+          name: "EventRegistered",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "EventSalesStatusChanged",
+          type: "event",
         },
       ],
     },
