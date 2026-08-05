@@ -31,6 +31,10 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/",
   },
   {
+    label: "Wallet",
+    href: "/wallet",
+  },
+  {
     label: "Debug Contracts",
     href: "/debug",
     // icon: <BugAntIcon className="h-4 w-4" />,
@@ -76,6 +80,23 @@ export const HeaderMenuLinks = ({
     <HeaderMenuLinksContent onNavigate={onNavigate} />
   </Suspense>
 );
+
+const HeaderWalletConnection = () => {
+  const pathname = usePathname();
+  const isWalletView =
+    pathname === "/wallet" || pathname.startsWith("/wallet/");
+
+  if (isWalletView) return null;
+
+  return (
+    <>
+      <RainbowKitCustomConnectButton />
+      <div className="h-6">
+        <Separator orientation="vertical" />
+      </div>
+    </>
+  );
+};
 
 /**
  * Site header
@@ -130,10 +151,9 @@ export const Header = () => {
         </ul>
       </div>
       <div className="mr-4 flex flex-grow items-center justify-end gap-4">
-        <RainbowKitCustomConnectButton />
-        <div className="h-6">
-          <Separator orientation="vertical" />
-        </div>
+        <Suspense fallback={null}>
+          <HeaderWalletConnection />
+        </Suspense>
         <SwitchTheme
           className={`pointer-events-auto ${isLocalNetwork ? "self-end md:self-auto" : ""}`}
         />
