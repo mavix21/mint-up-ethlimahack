@@ -9,7 +9,6 @@
     "format": "prettier --write . '!(node_modules|.next|contracts)/**/*'",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:e2e": "playwright test",
     "serve": "next start",
     "start": "next dev",
     "vercel": "vercel",
@@ -45,7 +44,6 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.2.4",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
     "@types/node": "^24",
