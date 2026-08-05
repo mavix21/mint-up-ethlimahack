@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SwitchTheme } from "./SwitchTheme";
 import { Bars3Icon } from "@heroicons/react/24/outline";
+import { SessionButton } from "~~/components/auth/session-button";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { Button } from "~~/components/ui/button";
 import { Separator } from "~~/components/ui/separator";
@@ -151,6 +152,7 @@ export const Header = () => {
         </ul>
       </div>
       <div className="mr-4 flex flex-grow items-center justify-end gap-4">
+        <SessionButton />
         <Suspense fallback={null}>
           <HeaderWalletConnection />
         </Suspense>
