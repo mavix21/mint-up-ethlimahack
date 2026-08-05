@@ -111,28 +111,6 @@ export default async function WalletPage() {
           )}
         </div>
       </section>
-
-      <section className="mt-8 grid gap-5 rounded-4xl border border-border bg-card p-6 sm:p-8 lg:grid-cols-[auto_1fr] lg:gap-7">
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <ShieldCheck className="size-6" />
-        </div>
-        <div>
-          <h2 className="font-heading text-xl font-bold">Wallet recovery</h2>
-          <p className="mt-2 max-w-3xl leading-7 text-base-content/70">
-            {wallet.recovery.provider} protects this wallet through the same
-            verified Mint Up sign-in used to create it. To recover access, sign
-            in again with that same identity and complete any proof Openfort
-            requests.
-          </p>
-          <p className="mt-3 max-w-3xl text-sm font-medium text-base-content/80">
-            {wallet.recovery.requiresIdentityProof
-              ? "Mint Up Passes cannot bypass the required identity proof or recover access without it. "
-              : null}
-            Support will never ask for a private key, recovery secret, or
-            one-time code.
-          </p>
-        </div>
-      </section>
     </main>
   );
 }
