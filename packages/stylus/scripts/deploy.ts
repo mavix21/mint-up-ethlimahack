@@ -12,6 +12,8 @@ import * as fs from "fs";
 import { arbitrumNitro } from "../../nextjs/utils/scaffold-stylus/supportedChains";
 import { ensureLocalUsdc } from "./local/usdc";
 
+const EVENT_PASS_ADMINISTRATOR = "0x2b85e2bed0297c2f53f8a5a85448e86c309f26fb";
+
 function getEventPassUsdc(chainId: number): string {
   if (chainId === arbitrumNitro.id && process.env["EVENT_PASS_USDC_ADDRESS"]) {
     return process.env["EVENT_PASS_USDC_ADDRESS"]!;
@@ -59,7 +61,7 @@ export default async function deployScript(deployOptions: DeployOptions) {
   //    so the Next.js frontend picks it up immediately.
   await deployStylusContract({
     contract: "mint-up-event-pass",
-    constructorArgs: [config.deployerAddress, usdc, false],
+    constructorArgs: [EVENT_PASS_ADMINISTRATOR, usdc, false],
     ...deployOptions,
   });
   if (localUsdc) {
