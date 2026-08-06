@@ -13,12 +13,12 @@ import {
 import { createWalletClient, custom, getAddress, type Chain } from "viem";
 
 async function getEncryptionSession(endpoint: string) {
-  const { data } = await authClient.convex.token();
-  if (!data?.token)
+  const { data } = await authClient.getSession();
+  if (!data?.session.token)
     throw new Error("Your wallet session expired. Sign in again.");
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: { authorization: `Bearer ${data.token}` },
+    headers: { authorization: `Bearer ${data.session.token}` },
   });
   const value: unknown = await response.json();
   if (
@@ -52,8 +52,8 @@ export async function createEmbeddedWalletClient({
     thirdPartyAuth: {
       provider: ThirdPartyOAuthProvider.BETTER_AUTH,
       getAccessToken: async () => {
-        const { data } = await authClient.convex.token();
-        return data?.token ?? null;
+        const { data } = await authClient.getSession();
+        return data?.session.token ?? null;
       },
     },
   });
