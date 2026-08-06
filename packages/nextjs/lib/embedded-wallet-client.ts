@@ -1,6 +1,7 @@
 "use client";
 
 import { authClient } from "./auth-client";
+import type { OpenfortBrowserConfig } from "./openfort-browser-config";
 import {
   AccountTypeEnum,
   ChainTypeEnum,
@@ -10,13 +11,6 @@ import {
   ThirdPartyOAuthProvider,
 } from "@openfort/openfort-js";
 import { createWalletClient, custom, getAddress, type Chain } from "viem";
-
-type EmbeddedWalletConfig = {
-  publishableKey: string;
-  shieldPublishableKey: string;
-  recoveryEndpoint: string;
-  feeSponsorshipId?: string;
-};
 
 async function getEncryptionSession(endpoint: string) {
   const { data } = await authClient.convex.token();
@@ -48,7 +42,7 @@ export async function createEmbeddedWalletClient({
   address: `0x${string}`;
   chain: Chain;
   rpcUrl: string;
-  config: EmbeddedWalletConfig;
+  config: OpenfortBrowserConfig;
 }) {
   const openfort = new Openfort({
     baseConfiguration: { publishableKey: config.publishableKey },
@@ -70,6 +64,11 @@ export async function createEmbeddedWalletClient({
   ) {
     account = await openfort.embeddedWallet.get();
   } else {
+    if (!config.recoveryEndpoint) {
+      throw new Error(
+        "This embedded wallet needs recovery, but wallet recovery is not configured for this deployment.",
+      );
+    }
     account = await openfort.embeddedWallet.configure({
       chainId: chain.id,
       chainType: ChainTypeEnum.EVM,

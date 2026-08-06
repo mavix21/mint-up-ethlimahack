@@ -21,6 +21,7 @@ import { getEventPassOffer } from "~~/lib/event-pass-offer-data";
 import { formatUsdc } from "~~/lib/event-pass-offers";
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
 import { getMintUpWalletPageData } from "~~/lib/mint-up-wallet-server";
+import { resolveOpenfortBrowserConfig } from "~~/lib/openfort-browser-config";
 
 type EventPassPageProps = { params: Promise<{ eventId: string }> };
 
@@ -73,14 +74,12 @@ async function EventPassDetails({ params }: EventPassPageProps) {
         shieldPublishableKey: "shield_fixture",
         recoveryEndpoint: "/api/test/openfort-recovery",
       }
-    : publishableKey && shieldPublishableKey && recoveryEndpoint
-      ? {
-          publishableKey,
-          shieldPublishableKey,
-          recoveryEndpoint,
-          feeSponsorshipId: process.env.NEXT_PUBLIC_OPENFORT_FEE_SPONSORSHIP_ID,
-        }
-      : null;
+    : resolveOpenfortBrowserConfig({
+        publishableKey,
+        shieldPublishableKey,
+        recoveryEndpoint,
+        feeSponsorshipId: process.env.NEXT_PUBLIC_OPENFORT_FEE_SPONSORSHIP_ID,
+      });
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
       <Link

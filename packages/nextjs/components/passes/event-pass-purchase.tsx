@@ -16,6 +16,7 @@ import {
 } from "viem";
 
 import type { PurchaseStatus } from "~~/lib/event-pass-purchase-api";
+import type { OpenfortBrowserConfig } from "~~/lib/openfort-browser-config";
 import {
   responseJson,
   preparedPurchaseSchema,
@@ -52,12 +53,7 @@ type Props = {
   priceAmountSubunits: string;
   remaining: number;
   revenueRecipient: `0x${string}`;
-  openfort: {
-    publishableKey: string;
-    shieldPublishableKey: string;
-    recoveryEndpoint: string;
-    feeSponsorshipId?: string;
-  } | null;
+  openfort: OpenfortBrowserConfig | null;
   fixtureMode?: boolean;
 };
 
