@@ -3,6 +3,7 @@ import { Fingerprint, KeyRound, ShieldCheck, Smartphone } from "lucide-react";
 
 import { CopyAddressButton } from "~~/components/wallet/copy-address-button";
 import { SecureEventPasses } from "~~/components/wallet/secure-event-passes";
+import { SponsoredAction } from "~~/components/wallet/sponsored-action";
 import { fetchAuthQuery } from "~~/lib/auth-server";
 import { reconstructKernelAccount } from "~~/lib/kernel-account";
 import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
@@ -49,6 +50,7 @@ async function WalletContent() {
               <div className="mt-5">
                 <CopyAddressButton address={account.address} />
               </div>
+              <SponsoredAction account={account} />
             </div>
           ) : (
             <div className="mt-10">

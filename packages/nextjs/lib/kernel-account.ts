@@ -48,7 +48,19 @@ export const kernelAccountMatrix = {
 } as const;
 
 type KernelParameters = Parameters<typeof toKernelSmartAccount>[0];
+type KernelAccount = Awaited<ReturnType<typeof toKernelSmartAccount>>;
 
+export function reconstructKernelAccount(
+  configuration: WalletPasskeyAccount,
+): Promise<KernelAccount>;
+export function reconstructKernelAccount(
+  configuration: WalletPasskeyAccount,
+  dependencies: {
+    createKernel: (
+      parameters: KernelParameters,
+    ) => Promise<{ address: Address }>;
+  },
+): Promise<{ address: Address }>;
 export async function reconstructKernelAccount(
   configuration: WalletPasskeyAccount,
   dependencies: {
