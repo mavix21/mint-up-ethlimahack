@@ -4274,7 +4274,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/curves@npm:^1.6.0, @noble/curves@npm:^1.9.7, @noble/curves@npm:~1.9.0":
+"@noble/curves@npm:^1.6.0, @noble/curves@npm:^1.9.0, @noble/curves@npm:^1.9.7, @noble/curves@npm:~1.9.0":
   version: 1.9.7
   resolution: "@noble/curves@npm:1.9.7"
   dependencies:
@@ -4336,7 +4336,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:1.8.0, @noble/hashes@npm:^1.3.1, @noble/hashes@npm:^1.5.0, @noble/hashes@npm:^1.8.0, @noble/hashes@npm:~1.8.0":
+"@noble/hashes@npm:1.8.0, @noble/hashes@npm:^1.3.1, @noble/hashes@npm:^1.5.0, @noble/hashes@npm:^1.7.0, @noble/hashes@npm:^1.8.0, @noble/hashes@npm:~1.8.0":
   version: 1.8.0
   resolution: "@noble/hashes@npm:1.8.0"
   checksum: c94e98b941963676feaba62475b1ccfa8341e3f572adbb3b684ee38b658df44100187fa0ef4220da580b13f8d27e87d5492623c8a02ecc61f23fb9960c7918f5
@@ -5418,7 +5418,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@scure/base@npm:^1.1.3, @scure/base@npm:~1.2.2, @scure/base@npm:~1.2.4, @scure/base@npm:~1.2.5":
+"@scure/base@npm:^1.1.3, @scure/base@npm:^1.2.6, @scure/base@npm:~1.2.2, @scure/base@npm:~1.2.4, @scure/base@npm:~1.2.5":
   version: 1.2.6
   resolution: "@scure/base@npm:1.2.6"
   checksum: 1058cb26d5e4c1c46c9cc0ae0b67cc66d306733baf35d6ebdd8ddaba242b80c3807b726e3b48cb0411bb95ec10d37764969063ea62188f86ae9315df8ea6b325
@@ -5578,6 +5578,33 @@ __metadata:
   version: 9.47.1
   resolution: "@sentry/core@npm:9.47.1"
   checksum: 78cbc04dd2838741e0a3f70aeae494c2bb582b87ba995ab40a0699cfac396d36a6559f924b7e3c9d6a994041d2b3e0ce074c3e422254a3fedc90ebe5a6d42023
+  languageName: node
+  linkType: hard
+
+"@signinwithethereum/siwe-parser@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "@signinwithethereum/siwe-parser@npm:4.2.0"
+  dependencies:
+    "@noble/hashes": ^1.7.0
+    apg-js: ^4.4.0
+  checksum: 7f2bb262b968816ad4c0b4133d148249675c08cd3218d78f58ace39f8d51a9e5769c3662a94c6ea9e7835f98c573f0ecef14bb6535252a563d90bb012c0cca37
+  languageName: node
+  linkType: hard
+
+"@signinwithethereum/siwe@npm:^4.1.0":
+  version: 4.2.0
+  resolution: "@signinwithethereum/siwe@npm:4.2.0"
+  dependencies:
+    "@signinwithethereum/siwe-parser": ^4.2.0
+  peerDependencies:
+    ethers: ^5.7.0 || ^6.13.0
+    viem: ^2.7.0
+  peerDependenciesMeta:
+    ethers:
+      optional: true
+    viem:
+      optional: true
+  checksum: 48e3a579f73a3578cddec345d809e64f8aaf1496eaa3f9e3865a18029f5efe8aebfe7e9da718ec32dba104e7087203e33700e84d1fbe03a90cb27f03646fe07f
   languageName: node
   linkType: hard
 
@@ -6115,12 +6142,31 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@solana-program/compute-budget@npm:^0.11.0":
+  version: 0.11.0
+  resolution: "@solana-program/compute-budget@npm:0.11.0"
+  peerDependencies:
+    "@solana/kit": ^5.0
+  checksum: 9dd948894b1bb11166d4897ae94fc6bf3b8b806e63565c0d9fdda09c0c2e0c6b14411fce00e33a6ee468eb43d395f7555f8fce7b4e18310fd757d8357ef9b380
+  languageName: node
+  linkType: hard
+
 "@solana-program/system@npm:^0.10.0":
   version: 0.10.0
   resolution: "@solana-program/system@npm:0.10.0"
   peerDependencies:
     "@solana/kit": ^5.0
   checksum: 1772fc40e2edceb10e85a5b48d347271c8b484a0b8a887fc86453644e28f8590421c20b6d2abd2e74fd4093c000efb1bddddbd928c913c9b169c0e7f0f46b8d3
+  languageName: node
+  linkType: hard
+
+"@solana-program/token-2022@npm:^0.6.1":
+  version: 0.6.1
+  resolution: "@solana-program/token-2022@npm:0.6.1"
+  peerDependencies:
+    "@solana/kit": ^5.0
+    "@solana/sysvars": ^5.0
+  checksum: 20ee5d54d27e48e12c99f88be946a9647010023aae0a11035ee3227e1973f8e10c84b44a783c3fe6be8928ae2392d92deb3cac90808d530af6c105733ca5e82a
   languageName: node
   linkType: hard
 
@@ -6841,6 +6887,10 @@ __metadata:
     "@trivago/prettier-plugin-sort-imports": ^4.3.0
     "@types/node": ^24
     "@types/react": 19.2.18
+    "@x402/core": ^2.21.0
+    "@x402/evm": ^2.21.0
+    "@x402/extensions": ^2.21.0
+    "@x402/svm": ^2.21.0
     abitype: 1.0.6
     better-auth: 1.6.24
     bgipfs: ^0.0.12
@@ -8871,6 +8921,57 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@x402/core@npm:^2.21.0, @x402/core@npm:~2.21.0":
+  version: 2.21.0
+  resolution: "@x402/core@npm:2.21.0"
+  dependencies:
+    zod: ^3.24.2
+  checksum: 394908c5d9e26f5a720f93ff4971c29d9a54d0fd820052fc3aab110396082c3df7df78349c0df30c25389831717cdaf8a414fd614131c86df7efb8419177df98
+  languageName: node
+  linkType: hard
+
+"@x402/evm@npm:^2.21.0":
+  version: 2.21.0
+  resolution: "@x402/evm@npm:2.21.0"
+  dependencies:
+    "@x402/core": ~2.21.0
+    viem: ^2.48.11
+    zod: ^3.24.2
+  checksum: 4719011361e60e326623ebad8d5bc196e3952949d3ea6fb568471550fd23d4ff95a7f1206938ac59c769d409ec9e50004cbdb286d3872155ae5e90b201b73571
+  languageName: node
+  linkType: hard
+
+"@x402/extensions@npm:^2.21.0":
+  version: 2.21.0
+  resolution: "@x402/extensions@npm:2.21.0"
+  dependencies:
+    "@noble/curves": ^1.9.0
+    "@scure/base": ^1.2.6
+    "@signinwithethereum/siwe": ^4.1.0
+    "@x402/core": ~2.21.0
+    ajv: ^8.17.1
+    jose: ^5.9.6
+    tweetnacl: ^1.0.3
+    viem: ^2.48.11
+    zod: ^3.24.2
+  checksum: f2d63867e99f5d72fc065b152ea246eba1a33aa88f24a2d9d4d0f6aa61de2ee017b18ad830677408b38e377ee1fc5298ec14f3351c605d007c55d82e7182fb37
+  languageName: node
+  linkType: hard
+
+"@x402/svm@npm:^2.21.0":
+  version: 2.21.0
+  resolution: "@x402/svm@npm:2.21.0"
+  dependencies:
+    "@solana-program/compute-budget": ^0.11.0
+    "@solana-program/token": ^0.9.0
+    "@solana-program/token-2022": ^0.6.1
+    "@x402/core": ~2.21.0
+  peerDependencies:
+    "@solana/kit": ">=5.1.0"
+  checksum: 2753c1a0cd0033512ffc935dd0e3607f304f90478ca94022f484c3b845e8e284da919a4a5027cf4fb61af882eda9877baaf94b9cae7b7f06974b480691752ed1
+  languageName: node
+  linkType: hard
+
 "@yarnpkg/parsers@npm:^3.0.0":
   version: 3.1.0
   resolution: "@yarnpkg/parsers@npm:3.1.0"
@@ -9238,6 +9339,13 @@ __metadata:
     normalize-path: ^3.0.0
     picomatch: ^2.0.4
   checksum: 3e044fd6d1d26545f235a9fe4d7a534e2029d8e59fa7fd9f2a6eb21230f6b5380ea1eaf55136e60cbf8e613544b3b766e7a6fa2102e2a3a117505466e3025dc2
+  languageName: node
+  linkType: hard
+
+"apg-js@npm:^4.4.0":
+  version: 4.4.0
+  resolution: "apg-js@npm:4.4.0"
+  checksum: 81f9753ef8ec102d6ec7ceddd57a5aee2e7e238ac5877165f9ac6cb5cb8ec73ec5070e040d3af04822bc0de754699b0199c39159ed0d8453d6bb99812a326deb
   languageName: node
   linkType: hard
 
@@ -15430,6 +15538,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jose@npm:^5.9.6":
+  version: 5.10.0
+  resolution: "jose@npm:5.10.0"
+  checksum: e80965ef3ab47baafac3517f53fa9c74b948b57690de524f51320c314cd545ef51ec7b18761605d58fb5965b7c5e12b2bb6ddae87a6ccf55e3f4ad077347d8d7
+  languageName: node
+  linkType: hard
+
 "jose@npm:^6.1.0, jose@npm:^6.1.3, jose@npm:^6.2.0":
   version: 6.2.8
   resolution: "jose@npm:6.2.8"
@@ -21267,6 +21382,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tweetnacl@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "tweetnacl@npm:1.0.3"
+  checksum: e4a57cac188f0c53f24c7a33279e223618a2bfb5fea426231991652a13247bea06b081fd745d71291fcae0f4428d29beba1b984b1f1ce6f66b06a6d1ab90645c
+  languageName: node
+  linkType: hard
+
 "type-check@npm:^0.4.0, type-check@npm:~0.4.0":
   version: 0.4.0
   resolution: "type-check@npm:0.4.0"
@@ -22084,7 +22206,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:>=2.29.0, viem@npm:^2.1.1, viem@npm:^2.27.2, viem@npm:^2.31.7, viem@npm:^2.47.0":
+"viem@npm:>=2.29.0, viem@npm:^2.1.1, viem@npm:^2.27.2, viem@npm:^2.31.7, viem@npm:^2.47.0, viem@npm:^2.48.11":
   version: 2.55.11
   resolution: "viem@npm:2.55.11"
   dependencies:
@@ -22875,7 +22997,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^3.22.4, zod@npm:^3.24.1, zod@npm:^3.25.76":
+"zod@npm:^3.22.4, zod@npm:^3.24.1, zod@npm:^3.24.2, zod@npm:^3.25.76":
   version: 3.25.76
   resolution: "zod@npm:3.25.76"
   checksum: c9a403a62b329188a5f6bd24d5d935d2bba345f7ab8151d1baa1505b5da9f227fb139354b043711490c798e91f3df75991395e40142e6510a4b16409f302b849
