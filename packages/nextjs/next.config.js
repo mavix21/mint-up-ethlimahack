@@ -2,6 +2,7 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.PASSES_E2E_DIST_DIR ? ".next-e2e" : ".next",
   reactStrictMode: true,
   cacheComponents: true,
   partialPrefetching: true,

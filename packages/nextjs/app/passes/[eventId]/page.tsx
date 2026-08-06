@@ -11,9 +11,16 @@ import {
   Ticket,
 } from "lucide-react";
 
+import { EventPassPurchase } from "~~/components/passes/event-pass-purchase";
+import {
+  eventPassChainName,
+  eventPassEnvironment,
+} from "~~/contracts/eventPassEnvironment";
+import { isAuthenticated } from "~~/lib/auth-server";
 import { getEventPassOffer } from "~~/lib/event-pass-offer-data";
 import { formatUsdc } from "~~/lib/event-pass-offers";
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
+import { getMintUpWalletPageData } from "~~/lib/mint-up-wallet-server";
 
 type EventPassPageProps = { params: Promise<{ eventId: string }> };
 
@@ -37,8 +44,43 @@ export async function generateMetadata({
 
 async function EventPassDetails({ params }: EventPassPageProps) {
   const { eventId } = await params;
-  const offer = await getEventPassOffer(eventId);
+  const purchaseFixture =
+    process.env.NODE_ENV !== "production" &&
+    process.env.PASSES_E2E_PURCHASE_FIXTURE === "1";
+  const [offer, authenticated] = await Promise.all([
+    getEventPassOffer(eventId),
+    purchaseFixture ? Promise.resolve(true) : isAuthenticated(),
+  ]);
   if (!offer) notFound();
+  const wallet =
+    authenticated && offer.availability.kind === "available"
+      ? purchaseFixture
+        ? {
+            address:
+              "0xDD09b55496EaA3cFAe23137ABDeA52a9a979B70e" as `0x${string}`,
+          }
+        : await getMintUpWalletPageData()
+            .then(({ wallet: registeredWallet }) => registeredWallet)
+            .catch(() => null)
+      : null;
+  const publishableKey = process.env.NEXT_PUBLIC_OPENFORT_PUBLISHABLE_KEY;
+  const shieldPublishableKey =
+    process.env.NEXT_PUBLIC_OPENFORT_SHIELD_PUBLISHABLE_KEY;
+  const recoveryEndpoint = process.env.NEXT_PUBLIC_OPENFORT_RECOVERY_ENDPOINT;
+  const openfort = purchaseFixture
+    ? {
+        publishableKey: "pk_test_fixture",
+        shieldPublishableKey: "shield_fixture",
+        recoveryEndpoint: "/api/test/openfort-recovery",
+      }
+    : publishableKey && shieldPublishableKey && recoveryEndpoint
+      ? {
+          publishableKey,
+          shieldPublishableKey,
+          recoveryEndpoint,
+          feeSponsorshipId: process.env.NEXT_PUBLIC_OPENFORT_FEE_SPONSORSHIP_ID,
+        }
+      : null;
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
       <Link
@@ -125,13 +167,30 @@ async function EventPassDetails({ params }: EventPassPageProps) {
               : "Scheduled, not cancelled"}
           </p>
           {offer.availability.kind === "available" ? (
-            <button
-              type="button"
-              disabled
-              className="mt-6 w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground opacity-70"
-            >
-              Purchase coming next
-            </button>
+            wallet ? (
+              <EventPassPurchase
+                eventId={offer.eventId}
+                walletAddress={wallet.address}
+                chainId={eventPassEnvironment.chainId}
+                chainName={eventPassChainName}
+                contractAddress={eventPassEnvironment.eventPassAddress}
+                usdcAddress={eventPassEnvironment.usdcAddress}
+                priceAmountSubunits={offer.price.amountSubunits}
+                remaining={offer.remaining}
+                revenueRecipient={offer.revenueRecipient as `0x${string}`}
+                openfort={openfort}
+                fixtureMode={purchaseFixture}
+              />
+            ) : (
+              <Link
+                href={authenticated ? "/wallet" : "/login"}
+                className="mt-6 block w-full rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground"
+              >
+                {authenticated
+                  ? "Prepare your embedded wallet"
+                  : "Sign in to purchase"}
+              </Link>
+            )
           ) : (
             <div className="mt-6 rounded-xl bg-destructive/10 p-4 font-semibold text-destructive">
               {offer.availability.reason}

@@ -34,6 +34,7 @@ const OUTSIDE_SALE_WINDOW = 7;
 const NOT_PASS_OWNER = 10;
 const TRANSFERS_DISABLED = 11;
 const PASS_NOT_ACTIVE = 12;
+const PAYMENT_FAILED = 14;
 const PAUSED = 15;
 const chain = arbitrumNitro as Chain;
 
@@ -49,6 +50,7 @@ const eventPassAbi = parseAbi([
   "function cancelEvent(bytes32 event_id)",
   "function setPaused(bool paused)",
   "function purchase(bytes32 event_id) returns (uint64)",
+  "function eventInfo(bytes32 event_id) view returns (address, uint64, uint32, uint32, uint64, uint64, bool, bool, bool, address)",
   "function transferPass(uint64 pass_id, address to)",
   "function checkIn(bytes32 event_id, uint64 pass_id)",
   "function passInfo(uint64 pass_id) view returns (address, bytes32, uint8, bool)",
@@ -148,8 +150,15 @@ async function main() {
     transport: http(RPC_URL),
   });
 
-  assert.notEqual(await publicClient.getBytecode({ address: usdc }), "0x");
-  assert.notEqual(await publicClient.getBytecode({ address: eventPass }), "0x");
+  const usdcBytecode = await publicClient.getBytecode({ address: usdc });
+  const eventPassBytecode = await publicClient.getBytecode({
+    address: eventPass,
+  });
+  assert(usdcBytecode && usdcBytecode !== "0x", "Mock USDC is not deployed");
+  assert(
+    eventPassBytecode && eventPassBytecode !== "0x",
+    "Event Pass is not deployed",
+  );
 
   const eventId = keccak256(toHex(`mint-up-local-${Date.now()}`));
   const cancelledEventId = keccak256(
@@ -205,6 +214,24 @@ async function main() {
   });
   await publicClient.waitForTransactionReceipt({ hash });
 
+  await waitUntil(saleStart);
+  await expectMintUpError(
+    publicClient.simulateContract({
+      account: buyer,
+      address: eventPass,
+      abi: eventPassAbi as Abi,
+      functionName: "purchase",
+      args: [eventId],
+    }),
+    PAYMENT_FAILED,
+  );
+  const [, , , supplyWithoutAllowance] = await publicClient.readContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "eventInfo",
+    args: [eventId],
+  });
+  assert.equal(supplyWithoutAllowance, 0);
   hash = await buyerWallet.writeContract({
     address: usdc,
     abi: usdcAbi,
@@ -219,7 +246,6 @@ async function main() {
     functionName: "balanceOf",
     args: [ATTENDEE],
   });
-  await waitUntil(saleStart);
   hash = await buyerWallet.writeContract({
     address: eventPass,
     abi: eventPassAbi,
@@ -253,6 +279,13 @@ async function main() {
   assert.equal(purchased.args.event_id, eventId);
   assert.equal(purchased.args.buyer.toLowerCase(), buyer.address.toLowerCase());
   const passId = purchased.args.pass_id;
+  const [, , , issuedSupply] = await publicClient.readContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "eventInfo",
+    args: [eventId],
+  });
+  assert.equal(issuedSupply, 1);
 
   const recipientBalanceAfter = await publicClient.readContract({
     address: usdc,
