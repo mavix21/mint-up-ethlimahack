@@ -12,8 +12,6 @@ import * as fs from "fs";
 import { arbitrumNitro } from "../../nextjs/utils/scaffold-stylus/supportedChains";
 import { ensureLocalUsdc } from "./local/usdc";
 
-const EVENT_PASS_ADMINISTRATOR = "0x2b85e2bed0297c2f53f8a5a85448e86c309f26fb";
-
 function getEventPassUsdc(chainId: number): string {
   if (chainId === arbitrumNitro.id && process.env["EVENT_PASS_USDC_ADDRESS"]) {
     return process.env["EVENT_PASS_USDC_ADDRESS"]!;
@@ -34,6 +32,13 @@ if (fs.existsSync(envPath)) {
  */
 export default async function deployScript(deployOptions: DeployOptions) {
   const config = getDeploymentConfig(deployOptions);
+  const eventPassAdministrator = process.env["EVENT_PASS_ADMINISTRATOR"];
+
+  if (!eventPassAdministrator) {
+    throw new Error(
+      "EVENT_PASS_ADMINISTRATOR must be set to deploy the Event Pass contract",
+    );
+  }
 
   console.log(`📡 Using endpoint: ${getRpcUrlFromChain(config.chain)}`);
   if (config.chain) {
@@ -61,7 +66,7 @@ export default async function deployScript(deployOptions: DeployOptions) {
   //    so the Next.js frontend picks it up immediately.
   await deployStylusContract({
     contract: "mint-up-event-pass",
-    constructorArgs: [EVENT_PASS_ADMINISTRATOR, usdc, false],
+    constructorArgs: [eventPassAdministrator, usdc, false],
     ...deployOptions,
   });
   if (localUsdc) {
