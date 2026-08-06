@@ -364,7 +364,7 @@ export function EventPassPurchase(props: Props) {
         address: getAddress(prepared.contractAddress),
         abi: eventPassPurchaseAbi,
         functionName: "purchase",
-        args: [prepared.eventIdentifier],
+        args: [prepared.eventIdentifier as `0x${string}`],
       });
       localStorage.setItem(
         synchronizationKey,

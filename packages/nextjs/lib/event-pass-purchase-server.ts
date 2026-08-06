@@ -39,7 +39,7 @@ export async function verifyPreparedPurchaseAvailability(
       address: purchase.contractAddress,
       abi: availabilityAbi,
       functionName: "eventInfo",
-      args: [purchase.eventIdentifier],
+      args: [purchase.eventIdentifier as `0x${string}`],
     }),
     client.getBlock(),
   ]);
