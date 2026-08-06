@@ -2,20 +2,12 @@ import {
   type MintUpWalletDependencies,
   type WalletBalance,
 } from "~~/lib/mint-up-wallet";
-import { formatUnits, getAddress } from "viem";
-
-type ProviderWallet = { address: string; status: "ready" };
+import { formatUnits } from "viem";
 
 export type MintUpWalletProvider = {
-  provisionWallet: () => Promise<ProviderWallet>;
   getNativeBalance: (address: `0x${string}`) => Promise<bigint>;
   getUsdcBalance: (address: `0x${string}`) => Promise<bigint>;
   nativeCurrency: { decimals: number; symbol: string };
-};
-
-type ProviderOptions = {
-  wait?: (milliseconds: number) => Promise<void>;
-  provisioningAttempts?: number;
 };
 
 function displayBalance(
@@ -32,38 +24,10 @@ function displayBalance(
   };
 }
 
-function isProvisioningConflict(error: unknown) {
-  return (
-    error instanceof Error &&
-    error.message.includes("provisioning is already in progress")
-  );
-}
-
 export function createMintUpWalletDependencies(
   provider: MintUpWalletProvider,
-  {
-    wait = milliseconds =>
-      new Promise(resolve => setTimeout(resolve, milliseconds)),
-    provisioningAttempts = 5,
-  }: ProviderOptions = {},
 ): MintUpWalletDependencies {
   return {
-    provisionWallet: async () => {
-      for (let attempt = 0; attempt < provisioningAttempts; attempt += 1) {
-        try {
-          const wallet = await provider.provisionWallet();
-          return {
-            address: getAddress(wallet.address) as `0x${string}`,
-            status: "ready",
-          };
-        } catch (error) {
-          if (!isProvisioningConflict(error)) throw error;
-          if (attempt === provisioningAttempts - 1) break;
-          await wait(200 * 2 ** attempt);
-        }
-      }
-      return { status: "provisioning" };
-    },
     readBalances: async address => {
       const [nativeValue, usdcValue] = await Promise.all([
         provider.getNativeBalance(address),

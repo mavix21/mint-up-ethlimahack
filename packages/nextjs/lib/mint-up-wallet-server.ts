@@ -1,7 +1,7 @@
 import "server-only";
 
 import { eventPassEnvironment } from "~~/contracts/eventPassEnvironment";
-import { fetchAuthAction, fetchAuthQuery } from "~~/lib/auth-server";
+import { fetchAuthQuery } from "~~/lib/auth-server";
 import { loadMintUpWallet, type MintUpWallet } from "~~/lib/mint-up-wallet";
 import { createMintUpWalletDependencies } from "~~/lib/mint-up-wallet-provider";
 import { createWalletOptions } from "~~/lib/wallet-identities";
@@ -10,23 +10,19 @@ import {
   arbitrumSepolia,
 } from "~~/utils/scaffold-stylus/supportedChains";
 import { type FunctionReference, anyApi } from "convex/server";
-import { createPublicClient, erc20Abi, http } from "viem";
+import { createPublicClient, erc20Abi, getAddress, http } from "viem";
 
-type ProvisionWalletResult = { address: string; status: "ready" };
-
-const provisionEmbeddedWallet = anyApi.passesIdentityActions
-  .provisionEmbeddedWallet as FunctionReference<
-  "action",
-  "public",
-  Record<string, never>,
-  ProvisionWalletResult
->;
 const getSessionWallets = anyApi.passesIdentity
   .getSessionWallets as FunctionReference<
   "query",
   "public",
   Record<string, never>,
   {
+    embeddedWallet: {
+      address?: string;
+      provider?: string;
+      status: "provisioning" | "ready";
+    } | null;
     linkedWallets: Array<{ address: string; chainId: number }>;
   }
 >;
@@ -39,7 +35,6 @@ const chain =
 const client = createPublicClient({ chain, transport: http() });
 
 const dependencies = createMintUpWalletDependencies({
-  provisionWallet: () => fetchAuthAction(provisionEmbeddedWallet, {}),
   getNativeBalance: address => client.getBalance({ address }),
   getUsdcBalance: address =>
     client.readContract({
@@ -51,17 +46,26 @@ const dependencies = createMintUpWalletDependencies({
   nativeCurrency: chain.nativeCurrency,
 });
 
-export function getMintUpWallet(): Promise<MintUpWallet> {
-  return loadMintUpWallet(dependencies);
+export function getMintUpWallet(address: string): Promise<MintUpWallet> {
+  return loadMintUpWallet(getAddress(address) as `0x${string}`, dependencies);
 }
 
 export async function getMintUpWalletPageData() {
-  const wallet = await getMintUpWallet();
   const sessionWallets = await fetchAuthQuery(getSessionWallets, {});
+  const embedded = sessionWallets.embeddedWallet;
+  const registeredAddress =
+    embedded?.status === "ready" &&
+    embedded.provider === "openfort-client" &&
+    embedded.address
+      ? embedded.address
+      : undefined;
+  const wallet = registeredAddress
+    ? await getMintUpWallet(registeredAddress)
+    : null;
   return {
     wallet,
     walletOptions: createWalletOptions(
-      wallet.address,
+      wallet?.address,
       sessionWallets.linkedWallets,
     ),
   };

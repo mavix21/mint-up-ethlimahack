@@ -21,16 +21,22 @@ function verifiedAddress(address: string): `0x${string}` {
 }
 
 export function createWalletOptions(
-  embeddedAddress: string,
+  embeddedAddress: string | undefined,
   linkedWallets: LinkedWalletProjection[],
 ): WalletOption[] {
-  const embedded = verifiedAddress(embeddedAddress);
+  const embedded = embeddedAddress
+    ? verifiedAddress(embeddedAddress)
+    : undefined;
   return [
-    {
-      id: `embedded:${embedded}`,
-      kind: "embedded",
-      address: embedded,
-    },
+    ...(embedded
+      ? [
+          {
+            id: `embedded:${embedded}`,
+            kind: "embedded" as const,
+            address: embedded,
+          },
+        ]
+      : []),
     ...linkedWallets.map(wallet => {
       const address = verifiedAddress(wallet.address);
       if (!Number.isSafeInteger(wallet.chainId) || wallet.chainId <= 0) {
