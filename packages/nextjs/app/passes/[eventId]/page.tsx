@@ -12,15 +12,17 @@ import {
 } from "lucide-react";
 
 import { EventPassPurchase } from "~~/components/passes/event-pass-purchase";
+import { GaslessEventPassPurchase } from "~~/components/passes/gasless-event-pass-purchase";
 import {
   eventPassChainName,
   eventPassEnvironment,
 } from "~~/contracts/eventPassEnvironment";
-import { isAuthenticated } from "~~/lib/auth-server";
+import { fetchAuthQuery, isAuthenticated } from "~~/lib/auth-server";
 import { getEventPassOffer } from "~~/lib/event-pass-offer-data";
 import { formatUsdc } from "~~/lib/event-pass-offers";
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
 import { getMintUpWalletPageData } from "~~/lib/mint-up-wallet-server";
+import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
 import { resolveOpenfortBrowserConfig } from "~~/lib/openfort-browser-config";
 
 type EventPassPageProps = { params: Promise<{ eventId: string }> };
@@ -53,17 +55,29 @@ async function EventPassDetails({ params }: EventPassPageProps) {
     purchaseFixture ? Promise.resolve(true) : isAuthenticated(),
   ]);
   if (!offer) notFound();
-  const wallet =
-    authenticated && offer.availability.kind === "available"
-      ? purchaseFixture
-        ? {
-            address:
-              "0xDD09b55496EaA3cFAe23137ABDeA52a9a979B70e" as `0x${string}`,
-          }
-        : await getMintUpWalletPageData()
-            .then(({ wallet: registeredWallet }) => registeredWallet)
-            .catch(() => null)
-      : null;
+  const [wallet, passkeyAccount] = await (async () => {
+    if (!authenticated || offer.availability.kind !== "available")
+      return [null, null] as const;
+    if (purchaseFixture) {
+      return [
+        {
+          address:
+            "0xDD09b55496EaA3cFAe23137ABDeA52a9a979B70e" as `0x${string}`,
+        },
+        null,
+      ] as const;
+    }
+    const [embeddedWallet, kernelAccount] = await Promise.all([
+      getMintUpWalletPageData()
+        .then(({ wallet: registeredWallet }) => registeredWallet)
+        .catch(() => null),
+      fetchAuthQuery(getWalletPasskeyAccount, {})
+        .then(a => a)
+        .catch(() => null),
+    ]);
+    if (kernelAccount) return [null, kernelAccount] as const;
+    return [embeddedWallet, null] as const;
+  })();
   const publishableKey = process.env.NEXT_PUBLIC_OPENFORT_PUBLISHABLE_KEY;
   const shieldPublishableKey =
     process.env.NEXT_PUBLIC_OPENFORT_SHIELD_PUBLISHABLE_KEY;
@@ -166,7 +180,20 @@ async function EventPassDetails({ params }: EventPassPageProps) {
               : "Scheduled, not cancelled"}
           </p>
           {offer.availability.kind === "available" ? (
-            wallet ? (
+            passkeyAccount ? (
+              <GaslessEventPassPurchase
+                eventId={offer.eventId}
+                passkeyAccount={passkeyAccount}
+                chainId={eventPassEnvironment.chainId}
+                chainName={eventPassChainName}
+                contractAddress={eventPassEnvironment.eventPassAddress}
+                usdcAddress={eventPassEnvironment.usdcAddress}
+                priceAmountSubunits={offer.price.amountSubunits}
+                remaining={offer.remaining}
+                revenueRecipient={offer.revenueRecipient as `0x${string}`}
+                fixtureMode={purchaseFixture}
+              />
+            ) : wallet ? (
               <EventPassPurchase
                 eventId={offer.eventId}
                 walletAddress={wallet.address}
@@ -185,9 +212,7 @@ async function EventPassDetails({ params }: EventPassPageProps) {
                 href={authenticated ? "/wallet" : "/login"}
                 className="mt-6 block w-full rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground"
               >
-                {authenticated
-                  ? "Prepare your embedded wallet"
-                  : "Sign in to purchase"}
+                {authenticated ? "Secure Event Passes" : "Sign in to purchase"}
               </Link>
             )
           ) : (
