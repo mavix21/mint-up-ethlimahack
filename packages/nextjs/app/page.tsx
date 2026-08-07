@@ -64,9 +64,13 @@ function OffersFallback() {
 
 type HomePageProps = { searchParams: Promise<{ returnTo?: string }> };
 
-export default async function Home({ searchParams }: HomePageProps) {
+async function HomeOffers({ searchParams }: HomePageProps) {
   const { returnTo } = await searchParams;
   const validatedReturnTo = resolveMintUpReturnDestination(returnTo);
+  return <Offers returnTo={validatedReturnTo} />;
+}
+
+export default function Home({ searchParams }: HomePageProps) {
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-16">
       <header className="mb-10 grid gap-6 border-b pb-10 lg:grid-cols-[1fr_22rem] lg:items-end">
@@ -85,7 +89,7 @@ export default async function Home({ searchParams }: HomePageProps) {
       </header>
 
       <Suspense fallback={<OffersFallback />}>
-        <Offers returnTo={validatedReturnTo} />
+        <HomeOffers searchParams={searchParams} />
       </Suspense>
     </div>
   );
