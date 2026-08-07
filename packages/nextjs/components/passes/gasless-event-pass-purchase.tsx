@@ -3,7 +3,7 @@
 // Coverage anchor: NotAllowedError, AbortError, TimeoutError, InvalidStateError, NotSupportedError
 // These strings are intentionally retained for resilient-purchase-lifecycle and interruption-scenarios tests.
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   CircleAlert,
@@ -19,6 +19,7 @@ import {
   http,
 } from "viem";
 
+import { getEarlyBirdsRedirectUrl } from "~~/lib/early-birds-return";
 import { formatUsdc } from "~~/lib/event-pass-offers";
 import {
   preparedPurchaseSchema,
@@ -62,6 +63,7 @@ type Props = {
   revenueRecipient: `0x${string}`;
   initialUsdcBalance?: string | null;
   fixtureMode?: boolean;
+  mintUpReturnTo?: string | null;
 };
 
 type Stage =
@@ -247,6 +249,15 @@ export function GaslessEventPassPurchase(props: Props) {
     availabilityQuery.isSuccess || availabilityQuery.isError;
   const blocking = availability ? isAvailabilityBlocking(availability) : false;
   const availabilityMsg = availabilityBlockingMessage(availability);
+
+  useEffect(() => {
+    const destination = getEarlyBirdsRedirectUrl(
+      props.mintUpReturnTo,
+      stage === "confirmed" ? "confirmed" : undefined,
+      stage === "confirmed",
+    );
+    if (destination) window.location.replace(destination);
+  }, [props.mintUpReturnTo, stage]);
 
   function persist(next: Persisted) {
     try {

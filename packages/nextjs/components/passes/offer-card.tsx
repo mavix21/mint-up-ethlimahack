@@ -4,15 +4,20 @@ import { ArrowUpRight, MapPin, Ticket } from "lucide-react";
 
 import type { EventPassOffer } from "~~/lib/event-pass-offers";
 import { formatUsdc } from "~~/lib/event-pass-offers";
+import { getEventPassHref } from "~~/lib/early-birds-return";
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
 
-export function OfferCard({ offer }: { offer: EventPassOffer }) {
+export function OfferCard({
+  offer,
+  returnTo = null,
+}: {
+  offer: EventPassOffer;
+  returnTo?: string | null;
+}) {
+  const href = getEventPassHref(offer.eventId, returnTo);
   return (
     <article className="group overflow-hidden rounded-3xl border bg-card shadow-sm transition-shadow hover:shadow-xl">
-      <Link
-        href={`/passes/${encodeURIComponent(offer.eventId)}`}
-        className="block"
-      >
+      <Link href={href} className="block">
         <div className="relative aspect-16/10 overflow-hidden bg-neutral-900">
           {offer.imageUrl ? (
             <Image

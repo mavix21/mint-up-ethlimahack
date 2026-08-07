@@ -17,15 +17,20 @@ import {
   eventPassEnvironment,
 } from "~~/contracts/eventPassEnvironment";
 import { fetchAuthQuery, isAuthenticated } from "~~/lib/auth-server";
+import { getEventPassHref } from "~~/lib/early-birds-return";
 import { getEventPassOffer } from "~~/lib/event-pass-offer-data";
 import { formatUsdc } from "~~/lib/event-pass-offers";
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
-import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
 import { createEventPassPublicClient } from "~~/lib/event-pass-public-client";
+import { resolveMintUpReturnDestination } from "~~/lib/siwe-server";
+import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
 import type { WalletPasskeyAccount } from "~~/lib/kernel-account";
 import { erc20Abi } from "viem";
 
-type EventPassPageProps = { params: Promise<{ eventId: string }> };
+type EventPassPageProps = {
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
+};
 
 function dateTime(value: number, timezone: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -45,8 +50,10 @@ export async function generateMetadata({
     : { title: "Event Pass unavailable" };
 }
 
-async function EventPassDetails({ params }: EventPassPageProps) {
+async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
   const { eventId } = await params;
+  const { returnTo } = await searchParams;
+  const mintUpReturnTo = resolveMintUpReturnDestination(returnTo);
   const purchaseFixture =
     process.env.NODE_ENV !== "production" &&
     process.env.PASSES_E2E_PURCHASE_FIXTURE === "1";
@@ -184,10 +191,15 @@ async function EventPassDetails({ params }: EventPassPageProps) {
                 revenueRecipient={offer.revenueRecipient as `0x${string}`}
                 initialUsdcBalance={initialUsdcBalance}
                 fixtureMode={purchaseFixture}
+                mintUpReturnTo={mintUpReturnTo}
               />
             ) : (
               <Link
-                href={authenticated ? "/wallet" : "/login"}
+                href={
+                  authenticated
+                    ? "/wallet"
+                    : `/login?callbackUrl=${encodeURIComponent(getEventPassHref(offer.eventId, mintUpReturnTo))}`
+                }
                 className="mt-6 block w-full rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground"
               >
                 {authenticated ? "Secure Event Passes" : "Sign in to purchase"}

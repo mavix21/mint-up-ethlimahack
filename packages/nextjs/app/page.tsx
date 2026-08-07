@@ -10,8 +10,9 @@ import {
   EmptyTitle,
 } from "~~/components/ui/empty";
 import { listEventPassOffers } from "~~/lib/event-pass-offer-data";
+import { resolveMintUpReturnDestination } from "~~/lib/siwe-server";
 
-async function Offers() {
+async function Offers({ returnTo }: { returnTo: string | null }) {
   const offers = await listEventPassOffers();
 
   return offers.length > 0 ? (
@@ -26,7 +27,7 @@ async function Offers() {
       </div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {offers.map(offer => (
-          <OfferCard key={offer.eventId} offer={offer} />
+          <OfferCard key={offer.eventId} offer={offer} returnTo={returnTo} />
         ))}
       </div>
     </section>
@@ -61,7 +62,11 @@ function OffersFallback() {
   );
 }
 
-export default function Home() {
+type HomePageProps = { searchParams: Promise<{ returnTo?: string }> };
+
+export default async function Home({ searchParams }: HomePageProps) {
+  const { returnTo } = await searchParams;
+  const validatedReturnTo = resolveMintUpReturnDestination(returnTo);
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-16">
       <header className="mb-10 grid gap-6 border-b pb-10 lg:grid-cols-[1fr_22rem] lg:items-end">
@@ -80,7 +85,7 @@ export default function Home() {
       </header>
 
       <Suspense fallback={<OffersFallback />}>
-        <Offers />
+        <Offers returnTo={validatedReturnTo} />
       </Suspense>
     </div>
   );
