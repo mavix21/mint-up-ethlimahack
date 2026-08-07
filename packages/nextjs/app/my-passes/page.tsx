@@ -7,6 +7,7 @@ import { CalendarDays, MapPin, Ticket } from "lucide-react";
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
 
 import { Badge } from "~~/components/ui/badge";
+import { Card, CardContent } from "~~/components/ui/card";
 import {
   Empty,
   EmptyDescription,
@@ -78,85 +79,75 @@ function PassGroupSection({ group }: { group: PassGroup }) {
   const dateLabel = formatEventDate(group.startTime, group.timezone);
 
   return (
-    <section
+    <Card
       aria-labelledby={`event-${group.key}`}
-      className="overflow-hidden rounded-3xl border bg-card"
+      className="gap-0 overflow-hidden p-0"
     >
-      {group.imageUrl ? (
-        <div className="relative h-40 w-full overflow-hidden bg-neutral-900">
-          <Image
-            src={group.imageUrl}
-            alt=""
-            fill
-            unoptimized={!shouldOptimizeImage(group.imageUrl)}
-            className="object-cover opacity-90"
-          />
-          <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent" />
-          <h2
-            id={`event-${group.key}`}
-            className="absolute bottom-4 left-5 right-5 font-heading text-xl font-black leading-tight text-white drop-shadow sm:text-2xl"
-          >
-            {group.name}
-          </h2>
-        </div>
-      ) : null}
-      <div className="p-5 sm:p-7">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            {!group.imageUrl ? (
+      <div className="flex flex-col sm:flex-row">
+        {group.imageUrl ? (
+          <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-muted sm:w-52 md:w-64 lg:w-72">
+            <Image
+              src={group.imageUrl}
+              alt={group.name}
+              fill
+              unoptimized={!shouldOptimizeImage(group.imageUrl)}
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, 288px"
+            />
+          </div>
+        ) : null}
+        <CardContent className="flex min-w-0 flex-1 flex-col p-5 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
               <h2
                 id={`event-${group.key}`}
                 className="font-heading text-xl font-bold leading-tight sm:text-2xl"
               >
                 {group.name}
               </h2>
-            ) : (
-              <p className="font-heading text-lg font-bold leading-tight">
-                {group.name}
-              </p>
-            )}
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              {group.location ? (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                {group.location ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="size-4 shrink-0" />
+                    {group.location}
+                  </span>
+                ) : null}
+                {dateLabel ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarDays className="size-4 shrink-0" />
+                    {dateLabel}
+                  </span>
+                ) : null}
                 <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="size-4 shrink-0" />
-                  {group.location}
+                  <Ticket className="size-4 shrink-0" />
+                  {group.passes.length} pass
+                  {group.passes.length === 1 ? "" : "es"}
                 </span>
+              </div>
+              {group.eventId ? (
+                <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                  {group.eventId}
+                </p>
               ) : null}
-              {dateLabel ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarDays className="size-4 shrink-0" />
-                  {dateLabel}
-                </span>
-              ) : null}
-              <span className="inline-flex items-center gap-1.5">
-                <Ticket className="size-4 shrink-0" />
-                {group.passes.length} pass
-                {group.passes.length === 1 ? "" : "es"}
-              </span>
             </div>
             {group.eventId ? (
-              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
-                {group.eventId}
-              </p>
+              <Link
+                href={`/passes/${encodeURIComponent(group.eventId)}`}
+                className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+              >
+                View event
+              </Link>
             ) : null}
           </div>
-          {group.eventId ? (
-            <Link
-              href={`/passes/${encodeURIComponent(group.eventId)}`}
-              className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
-            >
-              View event
-            </Link>
-          ) : null}
-        </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {group.passes.map(pass => (
-            <PassCard key={pass.passId} pass={pass} />
-          ))}
-        </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+            {group.passes.map(pass => (
+              <PassCard key={pass.passId} pass={pass} />
+            ))}
+          </div>
+        </CardContent>
       </div>
-    </section>
+    </Card>
   );
 }
 
