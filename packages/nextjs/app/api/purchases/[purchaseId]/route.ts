@@ -12,7 +12,10 @@ import {
 } from "../../../../lib/event-pass-purchase-api";
 
 type PurchaseIdArgs = { purchaseId: string };
-type SubmitArgs = PurchaseIdArgs & { transactionHash: string };
+type SubmitArgs = PurchaseIdArgs & {
+  transactionHash?: string;
+  userOperationHash?: string;
+};
 
 const submitPurchase = anyApi.eventPassPurchases.submit as FunctionReference<
   "mutation",
@@ -28,6 +31,12 @@ const getPurchaseStatus = anyApi.eventPassPurchases
   PurchaseStatus
 >;
 const transactionHash = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
+const submission = z
+  .object({
+    transactionHash: transactionHash.optional(),
+    userOperationHash: transactionHash.optional(),
+  })
+  .refine(value => value.transactionHash || value.userOperationHash);
 
 type Context = { params: Promise<{ purchaseId: string }> };
 
@@ -71,14 +80,14 @@ export async function POST(request: Request, context: Context) {
   } catch {
     value = null;
   }
-  const body = z.object({ transactionHash }).safeParse(value);
+  const body = submission.safeParse(value);
   if (!purchaseId.success || !body.success) {
     return Response.json({ message: "Invalid transaction." }, { status: 400 });
   }
   try {
     await fetchAuthMutation(submitPurchase, {
       purchaseId: purchaseId.data,
-      transactionHash: body.data.transactionHash,
+      ...body.data,
     });
     return Response.json({ accepted: true });
   } catch {

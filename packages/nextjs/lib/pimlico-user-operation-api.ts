@@ -66,3 +66,16 @@ export const resumePimlicoUserOperation = anyApi.passkeySponsorshipActions
   Record<string, never>,
   ResumeUserOperationResult
 >;
+
+export const getLatestSponsoredOperation = anyApi.passkeySponsorshipPolicy
+  .getLatestIncluded as FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  {
+    userOperationHash: Hex;
+    transactionHash: Hex;
+    blockNumber: string;
+    includedAt: number;
+  } | null
+>;

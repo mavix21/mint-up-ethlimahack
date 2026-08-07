@@ -42,6 +42,26 @@ describe("purchase synchronization route", () => {
     });
   });
 
+  it("submits UserOperation and inclusion hashes as separate evidence", async () => {
+    const { POST } = await import("./route");
+    const userOperationHash = `0x${"b".repeat(64)}`;
+    const transactionHash = `0x${"c".repeat(64)}`;
+    const response = await POST(
+      new Request("https://passes.mint-up.xyz/api/purchases/purchase-1", {
+        method: "POST",
+        body: JSON.stringify({ userOperationHash, transactionHash }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchAuthMutation).toHaveBeenCalledWith(expect.anything(), {
+      purchaseId: "purchase-1",
+      userOperationHash,
+      transactionHash,
+    });
+  });
+
   it("returns chain synchronization separately from transaction submission", async () => {
     const { GET } = await import("./route");
     const response = await GET(

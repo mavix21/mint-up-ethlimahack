@@ -7,6 +7,7 @@ import { SponsoredAction } from "~~/components/wallet/sponsored-action";
 import { fetchAuthQuery } from "~~/lib/auth-server";
 import { reconstructKernelAccount } from "~~/lib/kernel-account";
 import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
+import { getLatestSponsoredOperation } from "~~/lib/pimlico-user-operation-api";
 
 export const metadata: Metadata = {
   title: "Secure Event Passes",
@@ -14,7 +15,10 @@ export const metadata: Metadata = {
 };
 
 async function WalletContent() {
-  const account = await fetchAuthQuery(getWalletPasskeyAccount, {});
+  const [account, latestOperation] = await Promise.all([
+    fetchAuthQuery(getWalletPasskeyAccount, {}),
+    fetchAuthQuery(getLatestSponsoredOperation, {}),
+  ]);
   if (account) await reconstructKernelAccount(account);
 
   return (
@@ -53,9 +57,29 @@ async function WalletContent() {
               {account.deploymentState === "counterfactual" ? (
                 <SponsoredAction account={account} />
               ) : (
-                <p className="mt-6 border-t border-neutral-content/10 pt-6 text-sm font-bold text-primary">
-                  Account deployed on Arbitrum Sepolia
-                </p>
+                <div className="mt-6 border-t border-neutral-content/10 pt-6">
+                  <p className="text-sm font-bold text-primary">
+                    Account deployed on Arbitrum Sepolia
+                  </p>
+                  {latestOperation ? (
+                    <div className="mt-4 space-y-3 text-xs">
+                      <p className="break-all font-mono">
+                        UserOperation: {latestOperation.userOperationHash}
+                      </p>
+                      <p className="break-all font-mono">
+                        Transaction: {latestOperation.transactionHash}
+                      </p>
+                      <a
+                        href={`https://sepolia.arbiscan.io/tx/${latestOperation.transactionHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex font-bold text-primary underline underline-offset-4"
+                      >
+                        View transaction on Arbiscan
+                      </a>
+                    </div>
+                  ) : null}
+                </div>
               )}
             </div>
           ) : (

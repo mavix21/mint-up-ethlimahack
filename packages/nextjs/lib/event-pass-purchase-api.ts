@@ -14,16 +14,21 @@ export const preparedPurchaseSchema = z.object({
   priceAmountSubunits: z.string().regex(/^\d+$/),
   remaining: z.number().int().positive(),
   expiresAt: z.number().finite(),
+  entryPointAddress: address.optional(),
 });
 
 export const purchaseStatusSchema = z.object({
   status: z.enum([
     "awaitingSubmission",
+    "submitted",
+    "included",
     "synchronizing",
     "confirmed",
     "rejected",
+    "expiredOrDropped",
   ]),
   transactionHash: hash.optional(),
+  userOperationHash: hash.optional(),
   failure: z.string().optional(),
   pass: z
     .object({
