@@ -13,6 +13,7 @@
 // Hash diagnostics: UserOperation: Transaction: data-testid="user-operation-hash" data-testid="transaction-hash"
 // retry preserves idempotency retry preserves idempotency
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, CircleAlert, LoaderCircle } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -187,6 +188,11 @@ export function GaslessEventPassPurchase(props: Props) {
 
   const initialPersisted = useMemo(() => readPersisted(syncKey), [syncKey]);
 
+  // Success celebration should ONLY fire when the user freshly confirms in this session.
+  // If the purchase was already confirmed before this mount (persisted or via resume),
+  // we must not auto-show the SuccessDialog nor auto-redirect.
+  const [shouldCelebrate, setShouldCelebrate] = useState(false);
+
   const [stage, setStage] = useState<Stage>(() => {
     const raw = initialPersisted?.stage;
     const mapped = normalizeStage(raw);
@@ -236,13 +242,15 @@ export function GaslessEventPassPurchase(props: Props) {
   const blocking = availability ? isAvailabilityBlocking(availability) : false;
 
   useEffect(() => {
+    // Only redirect for a fresh confirmation in this session, not for a resumed/persisted confirmed state on re-enter
+    if (!shouldCelebrate) return;
     const destination = getEarlyBirdsRedirectUrl(
       props.mintUpReturnTo,
       stage === "confirmed" ? "confirmed" : undefined,
       stage === "confirmed",
     );
     if (destination) window.location.replace(destination);
-  }, [props.mintUpReturnTo, stage]);
+  }, [props.mintUpReturnTo, stage, shouldCelebrate]);
 
   function persist(next: Persisted) {
     try {
@@ -729,6 +737,7 @@ export function GaslessEventPassPurchase(props: Props) {
         );
         setStage("confirmed");
         setPassId("42");
+        setShouldCelebrate(true);
         return;
       }
 
@@ -917,6 +926,7 @@ export function GaslessEventPassPurchase(props: Props) {
       );
       if (reconciled?.pass) setPassId(reconciled.pass.passId);
       setStage("confirmed");
+      setShouldCelebrate(true);
       persist({
         purchaseId: frozenSnapshot.purchaseId,
         userOperationHash: hash,
@@ -1051,6 +1061,7 @@ export function GaslessEventPassPurchase(props: Props) {
         const reconciled = await submitForReconciliation(pid, uop, tx);
         if (reconciled?.pass) setPassId(reconciled.pass.passId);
         setStage("confirmed");
+        setShouldCelebrate(true);
         persist({
           purchaseId: pid,
           userOperationHash: uop,
@@ -1083,6 +1094,14 @@ export function GaslessEventPassPurchase(props: Props) {
           const reconciled = await submitForReconciliation(pid, uop, txHash);
           if (reconciled?.pass) setPassId(reconciled.pass.passId);
           setStage("confirmed");
+          setShouldCelebrate(true);
+          persist({
+            purchaseId: pid,
+            userOperationHash: uop,
+            transactionHash: txHash,
+            stage: "confirmed",
+            passId: reconciled?.pass?.passId ?? passId ?? undefined,
+          });
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Retry failed";
@@ -1255,7 +1274,16 @@ export function GaslessEventPassPurchase(props: Props) {
           <p className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 p-4 font-bold text-emerald-700">
             <CheckCircle2 className="size-5" /> Confirmed
           </p>
-          <SuccessDialog passId={passId} eventName={props.eventName} />
+          {shouldCelebrate ? (
+            <SuccessDialog passId={passId} eventName={props.eventName} />
+          ) : (
+            <Link
+              href="/my-passes"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground"
+            >
+              View passes
+            </Link>
+          )}
         </>
       )}
 
