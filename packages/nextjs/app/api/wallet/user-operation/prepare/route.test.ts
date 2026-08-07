@@ -31,14 +31,28 @@ describe("prepare sponsored user operation API", () => {
     expect((await POST(request("x".repeat(16_385)))).status).toBe(413);
     expect(fetchAuthAction).not.toHaveBeenCalled();
   });
-  it("forwards the purpose-specific empty request", async () => {
+  it("forwards the purchaseId", async () => {
     fetchAuthAction.mockResolvedValue({ preparationId: "p" });
-    expect((await POST(request())).status).toBe(200);
-    expect(fetchAuthAction).toHaveBeenCalledWith(expect.anything(), {});
+    expect(
+      (
+        await POST(
+          request(
+            JSON.stringify({ purchaseId: "wn77amvf1xcsn49m9a8ttzhhq98c0cnf" }),
+          ),
+        )
+      ).status,
+    ).toBe(200);
+    expect(fetchAuthAction).toHaveBeenCalledWith(expect.anything(), {
+      purchaseId: "wn77amvf1xcsn49m9a8ttzhhq98c0cnf",
+    });
   });
   it("sanitizes backend failures", async () => {
     fetchAuthAction.mockRejectedValue(new Error("PIMLICO_API_KEY=secret"));
-    const response = await POST(request());
+    const response = await POST(
+      request(
+        JSON.stringify({ purchaseId: "wn77amvf1xcsn49m9a8ttzhhq98c0cnf" }),
+      ),
+    );
     expect(response.status).toBe(409);
     expect(JSON.stringify(await response.json())).not.toContain("secret");
   });

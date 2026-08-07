@@ -35,7 +35,7 @@ export const preparePimlicoUserOperation = anyApi.passkeySponsorshipActions
   .prepare as FunctionReference<
   "action",
   "public",
-  { purchaseId?: string },
+  { purchaseId: string },
   PrepareUserOperationResult
 >;
 
