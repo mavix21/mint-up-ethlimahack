@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CheckCircle2,
   CircleAlert,
@@ -50,6 +50,7 @@ type Props = {
   priceAmountSubunits: string;
   remaining: number;
   revenueRecipient: `0x${string}`;
+  initialUsdcBalance?: string | null;
   fixtureMode?: boolean;
 };
 
@@ -70,31 +71,76 @@ type Stage =
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function GaslessEventPassPurchase(props: Props) {
-  const chain =
-    props.chainId === arbitrumNitro.id ? arbitrumNitro : arbitrumSepolia;
-  const rpcUrl = chain.rpcUrls.default.http[0];
-  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
   const price = BigInt(props.priceAmountSubunits);
-
-  const [funds, setFunds] = useState<bigint | null>(
-    props.fixtureMode ? price * 2n : null,
-  );
-  const [prepared, setPrepared] = useState<PreparedPurchase | null>(null);
-  const [frozen, setFrozen] = useState<PreparedPurchase | null>(null);
-  const [stage, setStage] = useState<Stage>("idle");
-  const [userOperationHash, setUserOperationHash] = useState<
-    `0x${string}` | null
-  >(null);
-  const [transactionHash, setTransactionHash] = useState<`0x${string}` | null>(
-    null,
-  );
-  const [passId, setPassId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   const syncKey = `mint-up:gasless-purchase:${props.eventId}:${props.passkeyAccount.address.toLowerCase()}`;
 
-  async function readUsdcBalance() {
-    return (await publicClient.readContract({
+  // Server-provided USDC balance avoids a mount-time effect; client refresh is explicit via user action.
+  const [funds, setFunds] = useState<bigint | null>(() => {
+    if (props.fixtureMode) return price * 2n;
+    if (props.initialUsdcBalance != null) {
+      try {
+        return BigInt(props.initialUsdcBalance);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+  const [prepared, setPrepared] = useState<PreparedPurchase | null>(null);
+  const [frozen, setFrozen] = useState<PreparedPurchase | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Resume persisted purchase without an effect: lazy initializer reads browser storage synchronously on first client render.
+  const initialPersisted = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(syncKey);
+      if (!raw) return null;
+      return JSON.parse(raw) as {
+        purchaseId?: string;
+        userOperationHash?: string;
+        transactionHash?: string;
+        stage?: Stage;
+        passId?: string;
+      };
+    } catch {
+      try {
+        localStorage.removeItem(syncKey);
+      } catch {}
+      return null;
+    }
+  }, [syncKey]);
+
+  const [stage, setStage] = useState<Stage>(() =>
+    initialPersisted?.stage === "included" ||
+    initialPersisted?.stage === "reconciling"
+      ? "reconciling"
+      : "idle",
+  );
+  const [userOperationHash, setUserOperationHash] = useState<
+    `0x${string}` | null
+  >(
+    () =>
+      (initialPersisted?.userOperationHash as `0x${string}` | undefined) ??
+      null,
+  );
+  const [transactionHash, setTransactionHash] = useState<`0x${string}` | null>(
+    () =>
+      (initialPersisted?.transactionHash as `0x${string}` | undefined) ?? null,
+  );
+  const [passId, setPassId] = useState<string | null>(
+    () => initialPersisted?.passId ?? null,
+  );
+
+  // On-demand balance refresh synchronizes with the chain (external system) via explicit user action, not a mount effect.
+  async function readUsdcBalance(): Promise<bigint> {
+    const chain =
+      props.chainId === arbitrumNitro.id ? arbitrumNitro : arbitrumSepolia;
+    const client = createPublicClient({
+      chain,
+      transport: http(chain.rpcUrls.default.http[0]),
+    });
+    return (await client.readContract({
       address: props.usdcAddress,
       abi: erc20Abi,
       functionName: "balanceOf",
@@ -102,46 +148,17 @@ export function GaslessEventPassPurchase(props: Props) {
     })) as bigint;
   }
 
-  const loadFunds = useEffectEvent(() => readUsdcBalance());
-
-  useEffect(() => {
+  async function refreshFunds() {
     if (props.fixtureMode) return;
-    let active = true;
-    loadFunds()
-      .then(v => {
-        if (active) setFunds(v);
-      })
-      .catch(() => {
-        if (active) setError(`Could not read USDC on ${props.chainName}.`);
-      });
-    return () => {
-      active = false;
-    };
-  }, [props.chainId, props.usdcAddress, props.passkeyAccount.address]);
-
-  // resume from localStorage
-  useEffect(() => {
-    const raw = localStorage.getItem(syncKey);
-    if (!raw) return;
     try {
-      const data = JSON.parse(raw) as {
-        purchaseId?: string;
-        userOperationHash?: string;
-        transactionHash?: string;
-        stage?: Stage;
-        passId?: string;
-      };
-      if (data.userOperationHash)
-        setUserOperationHash(data.userOperationHash as `0x${string}`);
-      if (data.transactionHash)
-        setTransactionHash(data.transactionHash as `0x${string}`);
-      if (data.passId) setPassId(data.passId);
-      if (data.stage === "included" || data.stage === "reconciling")
-        setStage("reconciling");
+      const balance = await readUsdcBalance();
+      setFunds(balance);
     } catch {
-      localStorage.removeItem(syncKey);
+      setError(
+        `Could not read USDC on ${props.chainName}. Check the network and try again.`,
+      );
     }
-  }, [syncKey]);
+  }
 
   async function preparePurchase() {
     setStage("preparing");
@@ -521,7 +538,17 @@ export function GaslessEventPassPurchase(props: Props) {
           <div>
             <dt className="text-muted-foreground">USDC balance</dt>
             <dd className="font-bold">
-              {funds !== null ? `${formatUnits(funds, 6)} USDC` : "Checking..."}
+              {funds !== null ? (
+                `${formatUnits(funds, 6)} USDC`
+              ) : (
+                <button
+                  type="button"
+                  onClick={refreshFunds}
+                  className="text-xs underline"
+                >
+                  Check balance on {props.chainName}
+                </button>
+              )}
             </dd>
           </div>
           <div>

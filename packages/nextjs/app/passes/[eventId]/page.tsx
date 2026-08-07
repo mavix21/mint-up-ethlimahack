@@ -24,6 +24,8 @@ import { shouldOptimizeImage } from "~~/lib/image-optimization";
 import { getMintUpWalletPageData } from "~~/lib/mint-up-wallet-server";
 import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
 import { resolveOpenfortBrowserConfig } from "~~/lib/openfort-browser-config";
+import { createEventPassPublicClient } from "~~/lib/event-pass-public-client";
+import { erc20Abi } from "viem";
 
 type EventPassPageProps = { params: Promise<{ eventId: string }> };
 
@@ -78,6 +80,17 @@ async function EventPassDetails({ params }: EventPassPageProps) {
     if (kernelAccount) return [null, kernelAccount] as const;
     return [embeddedWallet, null] as const;
   })();
+  const initialUsdcBalance = passkeyAccount
+    ? await createEventPassPublicClient(eventPassEnvironment.chainId)
+        .readContract({
+          address: eventPassEnvironment.usdcAddress,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [passkeyAccount.address as `0x${string}`],
+        })
+        .then(value => (value as bigint).toString())
+        .catch(() => null)
+    : null;
   const publishableKey = process.env.NEXT_PUBLIC_OPENFORT_PUBLISHABLE_KEY;
   const shieldPublishableKey =
     process.env.NEXT_PUBLIC_OPENFORT_SHIELD_PUBLISHABLE_KEY;
@@ -191,6 +204,7 @@ async function EventPassDetails({ params }: EventPassPageProps) {
                 priceAmountSubunits={offer.price.amountSubunits}
                 remaining={offer.remaining}
                 revenueRecipient={offer.revenueRecipient as `0x${string}`}
+                initialUsdcBalance={initialUsdcBalance}
                 fixtureMode={purchaseFixture}
               />
             ) : wallet ? (
