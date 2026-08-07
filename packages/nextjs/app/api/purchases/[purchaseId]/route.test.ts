@@ -24,7 +24,7 @@ const context = { params: Promise.resolve({ purchaseId: "purchase-1" }) };
 describe("purchase synchronization route", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("submits only a transaction hash for independent verification", async () => {
+  it("rejects submission without ERC-4337 evidence", async () => {
     const { POST } = await import("./route");
     const transactionHash = `0x${"a".repeat(64)}`;
     const response = await POST(
@@ -35,11 +35,8 @@ describe("purchase synchronization route", () => {
       context,
     );
 
-    expect(response.status).toBe(200);
-    expect(fetchAuthMutation).toHaveBeenCalledWith(expect.anything(), {
-      purchaseId: "purchase-1",
-      transactionHash,
-    });
+    expect(response.status).toBe(400);
+    expect(fetchAuthMutation).not.toHaveBeenCalled();
   });
 
   it("submits UserOperation and inclusion hashes as separate evidence", async () => {

@@ -22,7 +22,7 @@ const entryPointAbi = parseAbi([
 
 export type EventPassPurchaseSnapshot = PreparedPurchase & {
   transactionHash: Hex;
-  userOperationHash?: Hex;
+  userOperationHash: Hex;
 };
 
 export type EventPassPurchaseVerification = {
@@ -90,10 +90,7 @@ export async function verifyEventPassPurchase(
 ): Promise<EventPassPurchaseVerification> {
   const client = createEventPassPublicClient(snapshot.chainId);
   const hash = snapshot.transactionHash as Hex;
-  const [receipt, transaction] = await Promise.all([
-    client.getTransactionReceipt({ hash }),
-    client.getTransaction({ hash }),
-  ]);
+  const receipt = await client.getTransactionReceipt({ hash });
   const block = await client.getBlock({ blockNumber: receipt.blockNumber });
   const contractAddress = getAddress(snapshot.contractAddress);
   const buyerAddress = getAddress(snapshot.buyerAddress);
@@ -104,47 +101,41 @@ export async function verifyEventPassPurchase(
     throw new Error("Purchase transaction failed");
   }
 
-  // Direct EOA path still requires outer sender/destination; ERC-4337 bypasses it.
-  if (
-    !snapshot.userOperationHash &&
-    (transaction.from.toLowerCase() !== buyerAddress.toLowerCase() ||
-      transaction.to?.toLowerCase() !== contractAddress.toLowerCase())
-  ) {
-    throw new Error("Purchase transaction sender or destination is invalid");
+  if (!snapshot.userOperationHash) {
+    throw new Error(
+      "ERC-4337 UserOperation is required for purchase verification",
+    );
   }
-
-  if (snapshot.userOperationHash) {
-    if (!snapshot.entryPointAddress) {
-      throw new Error("Prepared EntryPoint is missing");
+  if (!snapshot.entryPointAddress) {
+    throw new Error("Prepared EntryPoint is missing");
+  }
+  const entryPointAddress = getAddress(snapshot.entryPointAddress);
+  const matchingOperations = receipt.logs.flatMap(log => {
+    if (log.address.toLowerCase() !== entryPointAddress.toLowerCase())
+      return [];
+    try {
+      const decoded = decodeEventLog({
+        abi: entryPointAbi,
+        eventName: "UserOperationEvent",
+        data: log.data,
+        topics: log.topics,
+        strict: true,
+      });
+      return decoded.args.userOpHash.toLowerCase() ===
+        snapshot.userOperationHash?.toLowerCase()
+        ? [decoded.args]
+        : [];
+    } catch {
+      return [];
     }
-    const entryPointAddress = getAddress(snapshot.entryPointAddress);
-    const matchingOperations = receipt.logs.flatMap(log => {
-      if (log.address.toLowerCase() !== entryPointAddress.toLowerCase())
-        return [];
-      try {
-        const decoded = decodeEventLog({
-          abi: entryPointAbi,
-          eventName: "UserOperationEvent",
-          data: log.data,
-          topics: log.topics,
-          strict: true,
-        });
-        return decoded.args.userOpHash.toLowerCase() ===
-          snapshot.userOperationHash?.toLowerCase()
-          ? [decoded.args]
-          : [];
-      } catch {
-        return [];
-      }
-    });
-    if (
-      matchingOperations.length !== 1 ||
-      matchingOperations[0]?.sender.toLowerCase() !==
-        buyerAddress.toLowerCase() ||
-      matchingOperations[0]?.success !== true
-    ) {
-      throw new Error("EntryPoint UserOperationEvent is invalid");
-    }
+  });
+  if (
+    matchingOperations.length !== 1 ||
+    matchingOperations[0]?.sender.toLowerCase() !==
+      buyerAddress.toLowerCase() ||
+    matchingOperations[0]?.success !== true
+  ) {
+    throw new Error("EntryPoint UserOperationEvent is invalid");
   }
 
   if (block.timestamp * BigInt(1_000) >= BigInt(snapshot.expiresAt)) {

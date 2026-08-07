@@ -11,7 +11,6 @@ import {
   Ticket,
 } from "lucide-react";
 
-import { EventPassPurchase } from "~~/components/passes/event-pass-purchase";
 import { GaslessEventPassPurchase } from "~~/components/passes/gasless-event-pass-purchase";
 import {
   eventPassChainName,
@@ -21,10 +20,9 @@ import { fetchAuthQuery, isAuthenticated } from "~~/lib/auth-server";
 import { getEventPassOffer } from "~~/lib/event-pass-offer-data";
 import { formatUsdc } from "~~/lib/event-pass-offers";
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
-import { getMintUpWalletPageData } from "~~/lib/mint-up-wallet-server";
 import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
-import { resolveOpenfortBrowserConfig } from "~~/lib/openfort-browser-config";
 import { createEventPassPublicClient } from "~~/lib/event-pass-public-client";
+import type { WalletPasskeyAccount } from "~~/lib/kernel-account";
 import { erc20Abi } from "viem";
 
 type EventPassPageProps = { params: Promise<{ eventId: string }> };
@@ -57,28 +55,24 @@ async function EventPassDetails({ params }: EventPassPageProps) {
     purchaseFixture ? Promise.resolve(true) : isAuthenticated(),
   ]);
   if (!offer) notFound();
-  const [wallet, passkeyAccount] = await (async () => {
-    if (!authenticated || offer.availability.kind !== "available")
-      return [null, null] as const;
+  const passkeyAccount = await (async () => {
+    if (!authenticated || offer.availability.kind !== "available") return null;
     if (purchaseFixture) {
-      return [
-        {
-          address:
-            "0xDD09b55496EaA3cFAe23137ABDeA52a9a979B70e" as `0x${string}`,
-        },
-        null,
-      ] as const;
+      return {
+        address: "0xDD09b55496EaA3cFAe23137ABDeA52a9a979B70e" as `0x${string}`,
+        credentialId: "fixture-credential",
+        publicKey: `0x${"0".repeat(130)}` as `0x${string}`,
+        algorithm: -7 as const,
+        rpId: "localhost",
+        chainId: eventPassEnvironment.chainId,
+        entryPointAddress:
+          "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as `0x${string}`,
+        deploymentState: "counterfactual" as const,
+      } as unknown as WalletPasskeyAccount;
     }
-    const [embeddedWallet, kernelAccount] = await Promise.all([
-      getMintUpWalletPageData()
-        .then(({ wallet: registeredWallet }) => registeredWallet)
-        .catch(() => null),
-      fetchAuthQuery(getWalletPasskeyAccount, {})
-        .then(a => a)
-        .catch(() => null),
-    ]);
-    if (kernelAccount) return [null, kernelAccount] as const;
-    return [embeddedWallet, null] as const;
+    return fetchAuthQuery(getWalletPasskeyAccount, {})
+      .then(a => a)
+      .catch(() => null);
   })();
   const initialUsdcBalance = passkeyAccount
     ? await createEventPassPublicClient(eventPassEnvironment.chainId)
@@ -91,22 +85,6 @@ async function EventPassDetails({ params }: EventPassPageProps) {
         .then(value => (value as bigint).toString())
         .catch(() => null)
     : null;
-  const publishableKey = process.env.NEXT_PUBLIC_OPENFORT_PUBLISHABLE_KEY;
-  const shieldPublishableKey =
-    process.env.NEXT_PUBLIC_OPENFORT_SHIELD_PUBLISHABLE_KEY;
-  const recoveryEndpoint = process.env.NEXT_PUBLIC_OPENFORT_RECOVERY_ENDPOINT;
-  const openfort = purchaseFixture
-    ? {
-        publishableKey: "pk_test_fixture",
-        shieldPublishableKey: "shield_fixture",
-        recoveryEndpoint: "/api/test/openfort-recovery",
-      }
-    : resolveOpenfortBrowserConfig({
-        publishableKey,
-        shieldPublishableKey,
-        recoveryEndpoint,
-        feeSponsorshipId: process.env.NEXT_PUBLIC_OPENFORT_FEE_SPONSORSHIP_ID,
-      });
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
       <Link
@@ -205,20 +183,6 @@ async function EventPassDetails({ params }: EventPassPageProps) {
                 remaining={offer.remaining}
                 revenueRecipient={offer.revenueRecipient as `0x${string}`}
                 initialUsdcBalance={initialUsdcBalance}
-                fixtureMode={purchaseFixture}
-              />
-            ) : wallet ? (
-              <EventPassPurchase
-                eventId={offer.eventId}
-                walletAddress={wallet.address}
-                chainId={eventPassEnvironment.chainId}
-                chainName={eventPassChainName}
-                contractAddress={eventPassEnvironment.eventPassAddress}
-                usdcAddress={eventPassEnvironment.usdcAddress}
-                priceAmountSubunits={offer.price.amountSubunits}
-                remaining={offer.remaining}
-                revenueRecipient={offer.revenueRecipient as `0x${string}`}
-                openfort={openfort}
                 fixtureMode={purchaseFixture}
               />
             ) : (

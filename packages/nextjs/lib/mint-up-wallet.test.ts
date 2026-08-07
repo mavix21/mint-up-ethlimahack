@@ -20,7 +20,7 @@ function dependencies(
 }
 
 describe("Mint Up Wallet provider boundary", () => {
-  it("recovers the same embedded wallet across repeated and concurrent sessions", async () => {
+  it("recovers the same smart account across repeated and concurrent sessions", async () => {
     const deps = dependencies();
 
     const wallets = await Promise.all([
@@ -48,8 +48,8 @@ describe("Mint Up Wallet provider boundary", () => {
         usdc: { amount: "42.50", symbol: "USDC" },
       },
       recovery: {
-        provider: "Openfort",
-        method: "better-auth",
+        provider: "SmartAccount",
+        method: "passkey",
         requiresIdentityProof: true,
       },
     });

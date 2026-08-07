@@ -101,6 +101,8 @@ describe("Event Pass purchase reconciliation", () => {
     ...purchase,
     transactionHash: `0x${"a".repeat(64)}` as `0x${string}`,
     expiresAt: Date.now() + 60_000,
+    userOperationHash: `0x${"c".repeat(64)}` as `0x${string}`,
+    entryPointAddress: ENTRY_POINT as `0x${string}`,
   };
 
   function passLog(buyer = purchase.buyerAddress) {
@@ -259,42 +261,42 @@ describe("Event Pass purchase reconciliation", () => {
     vi.clearAllMocks();
   });
 
-  it("accepts a valid direct EOA purchase", async () => {
-    setupMocks();
+  it("accepts a valid ERC-4337 purchase without requiring outer sender/destination", async () => {
+    setupMocks({
+      entryPointHash: snapshotBase.userOperationHash,
+    });
     await expect(verifyEventPassPurchase(snapshotBase)).resolves.toMatchObject({
       passId: "42",
     });
   });
 
-  it("rejects a direct purchase with wrong sender or destination", async () => {
-    setupMocks({ from: BUNDLER });
-    await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
-      "sender or destination",
+  it("rejects a purchase without ERC-4337 UserOperation", async () => {
+    const {
+      userOperationHash: _unusedUop,
+      entryPointAddress: _unusedEp,
+      ...withoutOp
+    } = snapshotBase as any;
+    void _unusedUop;
+    void _unusedEp;
+    setupMocks();
+    await expect(verifyEventPassPurchase(withoutOp as any)).rejects.toThrow(
+      "ERC-4337",
     );
-    setupMocks({ to: BUNDLER });
-    await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
-      "sender or destination",
-    );
-  });
-
-  it("accepts a valid ERC-4337 purchase without requiring outer sender/destination", async () => {
-    const snapshots = {
+    const missingEntryPoint = {
       ...snapshotBase,
-      userOperationHash: `0x${"c".repeat(64)}` as `0x${string}`,
-      entryPointAddress: ENTRY_POINT,
+      entryPointAddress: undefined as any,
     };
-    setupMocks({
-      from: BUNDLER,
-      to: BUNDLER,
-      entryPointHash: snapshots.userOperationHash,
-    });
-    await expect(verifyEventPassPurchase(snapshots)).resolves.toMatchObject({
-      passId: "42",
-    });
+    setupMocks();
+    await expect(
+      verifyEventPassPurchase(missingEntryPoint as any),
+    ).rejects.toThrow("EntryPoint");
   });
 
   it("rejects a reverted transaction", async () => {
-    setupMocks({ receiptStatus: "reverted" });
+    setupMocks({
+      receiptStatus: "reverted",
+      entryPointHash: snapshotBase.userOperationHash,
+    });
     await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
       "failed",
     );
@@ -303,6 +305,7 @@ describe("Event Pass purchase reconciliation", () => {
   it("rejects expired preparation", async () => {
     setupMocks({
       blockTimestamp: BigInt(Math.floor(snapshotBase.expiresAt / 1000) + 10),
+      entryPointHash: snapshotBase.userOperationHash,
     });
     await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
       "expired",
@@ -362,18 +365,27 @@ describe("Event Pass purchase reconciliation", () => {
   });
 
   it("rejects duplicate purchase events and wrong purchase event data", async () => {
-    setupMocks({ passCount: 2 });
+    setupMocks({
+      passCount: 2,
+      entryPointHash: snapshotBase.userOperationHash,
+    });
     await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
       "exactly one",
     );
-    setupMocks({ passCount: 0 });
+    setupMocks({
+      passCount: 0,
+      entryPointHash: snapshotBase.userOperationHash,
+    });
     await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
       "exactly one",
     );
   });
 
   it("rejects wrong USDC payment and invalid final state", async () => {
-    setupMocks({ transferValue: 1n });
+    setupMocks({
+      transferValue: 1n,
+      entryPointHash: snapshotBase.userOperationHash,
+    });
     await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
       "USDC payment",
     );
@@ -384,12 +396,14 @@ describe("Event Pass purchase reconciliation", () => {
         0,
         true,
       ] as any,
+      entryPointHash: snapshotBase.userOperationHash,
     });
     await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
       "ownership",
     );
     setupMocks({
       passInfo: [BUNDLER, purchase.eventIdentifier, 1, true] as any,
+      entryPointHash: snapshotBase.userOperationHash,
     });
     await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
       "ownership",
@@ -401,6 +415,7 @@ describe("Event Pass purchase reconciliation", () => {
         1,
         false,
       ] as any,
+      entryPointHash: snapshotBase.userOperationHash,
     });
     await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
       "ownership",

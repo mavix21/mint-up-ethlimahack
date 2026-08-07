@@ -14,7 +14,7 @@ type WalletIdentitySelectorProps = {
 };
 
 function walletLabel(wallet: WalletOption) {
-  return wallet.kind === "embedded" ? "Mint Up embedded" : "Linked external";
+  return wallet.kind === "smart-account" ? "Smart account" : "Linked external";
 }
 
 function shortAddress(address: string) {
@@ -64,7 +64,7 @@ export function WalletIdentitySelector({
                 }`}
               >
                 <span className="flex items-center gap-2 text-sm font-semibold">
-                  {wallet.kind === "embedded" ? (
+                  {wallet.kind === "smart-account" ? (
                     <WalletCards className="size-4" />
                   ) : (
                     <Link2 className="size-4" />

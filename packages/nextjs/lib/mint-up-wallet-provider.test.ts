@@ -19,8 +19,8 @@ function provider(
   };
 }
 
-describe("Openfort wallet provider boundary", () => {
-  it("retrieves and formats native and USDC balances for the embedded address", async () => {
+describe("Smart-account wallet provider boundary", () => {
+  it("retrieves and formats native and USDC balances for the smart account address", async () => {
     const gateway = provider();
     const wallet = await loadMintUpWallet(
       address,
@@ -34,8 +34,8 @@ describe("Openfort wallet provider boundary", () => {
       usdc: { amount: "42.5", symbol: "USDC" },
     });
     expect(wallet.recovery).toEqual({
-      provider: "Openfort",
-      method: "better-auth",
+      provider: "SmartAccount",
+      method: "passkey",
       requiresIdentityProof: true,
     });
   });

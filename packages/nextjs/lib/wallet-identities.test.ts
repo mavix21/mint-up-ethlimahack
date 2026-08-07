@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createWalletOptions } from "./wallet-identities";
 
 describe("verified wallet selector", () => {
-  it("keeps the embedded wallet and every verified external wallet distinct", () => {
+  it("keeps the smart account and every verified external wallet distinct", () => {
     expect(
       createWalletOptions("0x1111111111111111111111111111111111111111", [
         {
@@ -17,8 +17,8 @@ describe("verified wallet selector", () => {
       ]),
     ).toEqual([
       {
-        id: "embedded:0x1111111111111111111111111111111111111111",
-        kind: "embedded",
+        id: "smart-account:0x1111111111111111111111111111111111111111",
+        kind: "smart-account",
         address: "0x1111111111111111111111111111111111111111",
       },
       {

@@ -31,12 +31,10 @@ const getPurchaseStatus = anyApi.eventPassPurchases
   PurchaseStatus
 >;
 const transactionHash = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
-const submission = z
-  .object({
-    transactionHash: transactionHash.optional(),
-    userOperationHash: transactionHash.optional(),
-  })
-  .refine(value => value.transactionHash || value.userOperationHash);
+const submission = z.object({
+  transactionHash,
+  userOperationHash: transactionHash,
+});
 
 type Context = { params: Promise<{ purchaseId: string }> };
 

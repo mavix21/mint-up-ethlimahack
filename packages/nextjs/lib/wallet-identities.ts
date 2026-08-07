@@ -1,7 +1,7 @@
 export type WalletOption =
   | {
       id: string;
-      kind: "embedded";
+      kind: "smart-account";
       address: `0x${string}`;
     }
   | {
@@ -21,19 +21,19 @@ function verifiedAddress(address: string): `0x${string}` {
 }
 
 export function createWalletOptions(
-  embeddedAddress: string | undefined,
+  smartAccountAddress: string | undefined,
   linkedWallets: LinkedWalletProjection[],
 ): WalletOption[] {
-  const embedded = embeddedAddress
-    ? verifiedAddress(embeddedAddress)
+  const smartAccount = smartAccountAddress
+    ? verifiedAddress(smartAccountAddress)
     : undefined;
   return [
-    ...(embedded
+    ...(smartAccount
       ? [
           {
-            id: `embedded:${embedded}`,
-            kind: "embedded" as const,
-            address: embedded,
+            id: `smart-account:${smartAccount}`,
+            kind: "smart-account" as const,
+            address: smartAccount,
           },
         ]
       : []),

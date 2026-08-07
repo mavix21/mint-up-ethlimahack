@@ -4,8 +4,7 @@ export type WalletBalance = {
 };
 
 export type WalletBalances =
-  | { native: WalletBalance; usdc: WalletBalance }
-  | { error: string };
+  { native: WalletBalance; usdc: WalletBalance } | { error: string };
 
 export type MintUpWalletDependencies = {
   readBalances: (address: `0x${string}`) => Promise<{
@@ -18,8 +17,8 @@ export type MintUpWallet = {
   address: `0x${string}`;
   balances: WalletBalances;
   recovery: {
-    provider: "Openfort";
-    method: "better-auth";
+    provider: "SmartAccount";
+    method: "passkey";
     requiresIdentityProof: true;
   };
 };
@@ -42,8 +41,8 @@ export async function loadMintUpWallet(
     address,
     balances,
     recovery: {
-      provider: "Openfort",
-      method: "better-auth",
+      provider: "SmartAccount",
+      method: "passkey",
       requiresIdentityProof: true,
     },
   };
