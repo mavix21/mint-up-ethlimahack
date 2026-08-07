@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 import { abortableWait } from "~~/lib/abortable-wait";
 import type { WalletPasskeyAccount } from "~~/lib/kernel-account";
 import { reconstructKernelAccount } from "~~/lib/kernel-account";
+import {
+  getPasskeyAvailability,
+  isAvailabilityBlocking,
+  type PasskeyAvailability,
+} from "~~/lib/passkey-availability";
+import { classifyPasskeyError } from "~~/lib/passkey-errors";
 import type {
   PrepareUserOperationResult,
   UserOperationStatusResult,
@@ -48,10 +54,28 @@ export function SponsoredAction({
   const [message, setMessage] = useState<string>();
   const [userOperationHash, setUserOperationHash] = useState<string>();
   const [transactionHash, setTransactionHash] = useState<string>();
+  const [availability, setAvailability] = useState<PasskeyAvailability | null>(
+    null,
+  );
+  const [availabilityChecked, setAvailabilityChecked] = useState(false);
   const controller = useRef<AbortController>(null);
   const router = useRouter();
 
   useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => {
+    let cancelled = false;
+    void getPasskeyAvailability().then(a => {
+      if (!cancelled) {
+        setAvailability(a);
+        setAvailabilityChecked(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const blocking = availability ? isAvailabilityBlocking(availability) : false;
 
   async function send() {
     controller.current?.abort();
@@ -128,16 +152,25 @@ export function SponsoredAction({
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
-      const cancelled =
-        error instanceof Error && error.name === "NotAllowedError";
-      setState(cancelled ? "cancelled" : "failure");
-      setMessage(
-        cancelled
-          ? "Passkey confirmation was cancelled. Nothing was submitted."
-          : error instanceof Error
-            ? error.message
-            : "The sponsored action failed.",
-      );
+      const classified = classifyPasskeyError(error);
+      const isCancellationLike =
+        classified.kind === "cancelled" ||
+        classified.kind === "timeout" ||
+        classified.kind === "locked" ||
+        classified.kind === "missing_credential" ||
+        classified.kind === "unavailable_transport";
+      if (isCancellationLike) {
+        setState("cancelled");
+        setMessage(`${classified.message} Nothing was submitted.`);
+      } else {
+        setState(classified.kind === "unsupported" ? "failure" : "failure");
+        setMessage(
+          classified.message ??
+            (error instanceof Error
+              ? error.message
+              : "The sponsored action failed."),
+        );
+      }
     }
   }
 
@@ -162,13 +195,26 @@ export function SponsoredAction({
       <p className="mt-2 text-sm">
         EntryPoint.balanceOf(account) · 0 ETH · Arbitrum Sepolia
       </p>
+      {availabilityChecked && blocking && (
+        <div
+          role="alert"
+          className="mt-3 rounded-xl bg-amber-500/10 p-3 text-sm"
+        >
+          <p className="font-bold">Passkey not available</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            WebAuthn capability unavailable. Purchase and sponsored controls are
+            disabled until a supported browser/authenticator is available. No
+            account change was made.
+          </p>
+        </div>
+      )}
       <button
         type="button"
         onClick={send}
-        disabled={busy}
+        disabled={busy || blocking}
         className="mt-4 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:cursor-wait disabled:opacity-65"
       >
-        {labels[state]}
+        {blocking ? "Passkey unavailable" : labels[state]}
       </button>
       {message ? (
         <p role="alert" className="mt-3 text-sm">

@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { Fingerprint, KeyRound, ShieldCheck, Smartphone } from "lucide-react";
 
 import { CopyAddressButton } from "~~/components/wallet/copy-address-button";
+import {
+  PasskeyLifecycleGuard,
+  RotationGateBanner,
+  SyncedVsDeviceBoundNotice,
+} from "~~/components/wallet/passkey-lifecycle-guard";
 import { SecureEventPasses } from "~~/components/wallet/secure-event-passes";
 import { SponsoredAction } from "~~/components/wallet/sponsored-action";
 import { fetchAuthQuery } from "~~/lib/auth-server";
@@ -40,51 +45,67 @@ async function WalletContent() {
           </p>
 
           {account ? (
-            <div className="mt-10 rounded-3xl border border-neutral-content/10 bg-neutral-content/5 p-5 sm:p-7">
-              <div className="flex items-center gap-3 text-primary">
-                <ShieldCheck className="size-5" />
-                <p className="font-bold">Event Passes are secured</p>
-              </div>
-              <p className="mt-5 text-xs uppercase tracking-[0.18em] text-neutral-content/50">
-                Your account on Arbitrum Sepolia
-              </p>
-              <p className="mt-2 break-all font-mono text-sm sm:text-base">
-                {account.address}
-              </p>
-              <div className="mt-5">
-                <CopyAddressButton address={account.address} />
-              </div>
-              {account.deploymentState === "counterfactual" ? (
-                <SponsoredAction account={account} />
-              ) : (
-                <div className="mt-6 border-t border-neutral-content/10 pt-6">
-                  <p className="text-sm font-bold text-primary">
-                    Account deployed on Arbitrum Sepolia
-                  </p>
-                  {latestOperation ? (
-                    <div className="mt-4 space-y-3 text-xs">
-                      <p className="break-all font-mono">
-                        UserOperation: {latestOperation.userOperationHash}
-                      </p>
-                      <p className="break-all font-mono">
-                        Transaction: {latestOperation.transactionHash}
-                      </p>
-                      <a
-                        href={`https://sepolia.arbiscan.io/tx/${latestOperation.transactionHash}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex font-bold text-primary underline underline-offset-4"
-                      >
-                        View transaction on Arbiscan
-                      </a>
-                    </div>
-                  ) : null}
+            <div className="mt-10 space-y-4">
+              <div className="rounded-3xl border border-neutral-content/10 bg-neutral-content/5 p-5 sm:p-7">
+                <div className="flex items-center gap-3 text-primary">
+                  <ShieldCheck className="size-5" />
+                  <p className="font-bold">Event Passes are secured</p>
                 </div>
-              )}
+                <p className="mt-5 text-xs uppercase tracking-[0.18em] text-neutral-content/50">
+                  Your account on Arbitrum Sepolia
+                </p>
+                <p className="mt-2 break-all font-mono text-sm sm:text-base">
+                  {account.address}
+                </p>
+                <div className="mt-5">
+                  <CopyAddressButton address={account.address} />
+                </div>
+                {account.deploymentState === "counterfactual" ? (
+                  <SponsoredAction account={account} />
+                ) : (
+                  <div className="mt-6 border-t border-neutral-content/10 pt-6">
+                    <p className="text-sm font-bold text-primary">
+                      Account deployed on Arbitrum Sepolia
+                    </p>
+                    {latestOperation ? (
+                      <div className="mt-4 space-y-3 text-xs">
+                        <p className="break-all font-mono">
+                          UserOperation: {latestOperation.userOperationHash}
+                        </p>
+                        <p className="break-all font-mono">
+                          Transaction: {latestOperation.transactionHash}
+                        </p>
+                        <a
+                          href={`https://sepolia.arbiscan.io/tx/${latestOperation.transactionHash}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex font-bold text-primary underline underline-offset-4"
+                        >
+                          View transaction on Arbiscan
+                        </a>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+                <div className="mt-6 rounded-xl bg-amber-500/10 p-3 text-xs leading-5">
+                  <p className="font-bold">
+                    New passkey ≠ recovery of this account
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    Registering a new credential will derive a different Kernel
+                    address and does not control funds at {account.address}.
+                    Replacement is blocked while this account may hold assets
+                    until an approved onchain signer rotation exists.
+                  </p>
+                </div>
+              </div>
+              <PasskeyLifecycleGuard accountExists />
+              <RotationGateBanner />
             </div>
           ) : (
-            <div className="mt-10">
+            <div className="mt-10 space-y-4">
               <SecureEventPasses />
+              <RotationGateBanner />
             </div>
           )}
         </section>
@@ -110,11 +131,15 @@ async function WalletContent() {
               required. Your authenticator keeps control.
             </p>
           </article>
-          <aside className="rounded-3xl bg-primary/10 p-6 text-sm leading-6 sm:col-span-2 sm:p-7 lg:col-span-1">
-            <strong>Returning on another device?</strong> Synced passkeys may be
-            available there. Device-bound credentials do not automatically move,
-            and creating a replacement does not recover an existing account.
-          </aside>
+          <SyncedVsDeviceBoundNotice />
+          <div className="rounded-3xl border bg-card p-6 text-sm leading-6 sm:col-span-2 lg:col-span-1 sm:p-7">
+            <p className="font-bold">Returning sessions</p>
+            <p className="mt-2 text-muted-foreground">
+              The same Kernel address is reconstructed from stored public
+              credential data without another registration where the platform
+              makes the synced credential available. No private key is stored.
+            </p>
+          </div>
         </section>
       </div>
     </main>

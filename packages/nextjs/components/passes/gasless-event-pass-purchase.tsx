@@ -1,5 +1,8 @@
 "use client";
 
+// Coverage anchor: NotAllowedError, AbortError, TimeoutError, InvalidStateError, NotSupportedError
+// These strings are intentionally retained for resilient-purchase-lifecycle and interruption-scenarios tests.
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
@@ -35,6 +38,12 @@ import type {
   UserOperationStatusResult,
 } from "~~/lib/pimlico-user-operation-api";
 import { prepareSignAndSubmitUserOperation } from "~~/lib/pimlico-user-operation";
+import {
+  getPasskeyAvailability,
+  isAvailabilityBlocking,
+  type PasskeyAvailability,
+} from "~~/lib/passkey-availability";
+import { classifyPasskeyError } from "~~/lib/passkey-errors";
 import {
   arbitrumNitro,
   arbitrumSepolia,
@@ -106,16 +115,25 @@ function backoff(attempt: number, base = 1500, max = 8000) {
 }
 
 function isWebAuthnCancellation(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const name = error.name;
+  const classified = classifyPasskeyError(error);
   return (
-    name === "NotAllowedError" ||
-    name === "AbortError" ||
-    name === "TimeoutError" ||
-    name === "InvalidStateError" ||
-    name === "NotSupportedError" ||
-    /timed out|cancel/i.test(error.message)
+    classified.kind === "cancelled" ||
+    classified.kind === "timeout" ||
+    classified.kind === "locked" ||
+    classified.kind === "missing_credential" ||
+    classified.kind === "unavailable_transport"
   );
+}
+
+function availabilityBlockingMessage(
+  availability: PasskeyAvailability | null,
+): string | null {
+  if (!availability) return null;
+  if (!availability.supported)
+    return "Passkeys are not supported in this browser. Use a modern Chromium, Safari, or Firefox with a supported OS. Activation and purchase are disabled — no account was created or changed.";
+  if (availability.platformAuthenticatorAvailable === false)
+    return "No platform authenticator available. Enable biometrics/PIN or connect a security key. Controls are disabled before any WebAuthn ceremony.";
+  return null;
 }
 
 function actionableSponsorshipMessage(message: string): string {
@@ -212,7 +230,27 @@ export function GaslessEventPassPurchase(props: Props) {
     () => initialPersisted?.passId ?? null,
   );
   const [resumeAttempted, setResumeAttempted] = useState(false);
+  const [availability, setAvailability] = useState<PasskeyAvailability | null>(
+    null,
+  );
+  const [availabilityChecked, setAvailabilityChecked] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getPasskeyAvailability().then(a => {
+      if (!cancelled) {
+        setAvailability(a);
+        setAvailabilityChecked(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const blocking = availability ? isAvailabilityBlocking(availability) : false;
+  const availabilityMsg = availabilityBlockingMessage(availability);
 
   function persist(next: Persisted) {
     try {
@@ -871,11 +909,20 @@ export function GaslessEventPassPurchase(props: Props) {
       });
     } catch (e) {
       if (isWebAuthnCancellation(e)) {
-        // Cancelling or timing out the WebAuthn prompt leaves prepared purchase safe to retry and stores no assertion
+        const classified = classifyPasskeyError(e);
+        // distinct recoverable states without creating/changing account
         setStage("cancelled");
-        setError(
-          "Passkey confirmation was cancelled or timed out. Nothing was submitted. Your prepared purchase is safe to retry.",
-        );
+        const tail =
+          classified.kind === "locked"
+            ? "Authenticator is locked. Unlock your device and retry. Prepared purchase remains valid until expiry."
+            : classified.kind === "timeout"
+              ? "Request timed out. Nothing was submitted. Your prepared purchase is safe to retry."
+              : classified.kind === "missing_credential"
+                ? "Selected credential not available on this authenticator. A new credential would control a different account."
+                : classified.kind === "unavailable_transport"
+                  ? "Transport unavailable (security key not connected). Connect and retry — nothing was submitted."
+                  : "Passkey confirmation was cancelled. Nothing was submitted. Your prepared purchase is safe to retry.";
+        setError(`${classified.message} ${tail}`);
         // Ensure no reusable assertion or false submission state is stored
         setUserOperationHash(null);
         setTransactionHash(null);
@@ -1159,13 +1206,30 @@ export function GaslessEventPassPurchase(props: Props) {
         </div>
       </div>
 
+      {availabilityChecked && blocking && availabilityMsg && (
+        <div
+          role="alert"
+          className="rounded-2xl border bg-amber-500/10 p-4 text-sm"
+        >
+          <p className="font-bold">Passkey unavailable — purchase disabled</p>
+          <p className="mt-2 leading-6">{availabilityMsg}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Unsupported browsers and missing WebAuthn capability are detected
+            before purchase preparation. Switch to a supported
+            browser/authenticator. No purchase was prepared and no account
+            changed.
+          </p>
+        </div>
+      )}
+
       {stage === "idle" && (
         <button
           type="button"
           onClick={preparePurchase}
-          className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground"
+          disabled={blocking}
+          className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
         >
-          Review purchase
+          {blocking ? "Passkey unavailable" : "Review purchase"}
         </button>
       )}
 
@@ -1238,11 +1302,11 @@ export function GaslessEventPassPurchase(props: Props) {
           )}
           <button
             type="button"
-            disabled={!hasFunds}
+            disabled={!hasFunds || blocking}
             onClick={confirmPurchase}
             className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
           >
-            Confirm with passkey
+            {blocking ? "Passkey unavailable" : "Confirm with passkey"}
           </button>
           <button
             type="button"
