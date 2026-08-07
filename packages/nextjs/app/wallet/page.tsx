@@ -50,7 +50,13 @@ async function WalletContent() {
               <div className="mt-5">
                 <CopyAddressButton address={account.address} />
               </div>
-              <SponsoredAction account={account} />
+              {account.deploymentState === "counterfactual" ? (
+                <SponsoredAction account={account} />
+              ) : (
+                <p className="mt-6 border-t border-neutral-content/10 pt-6 text-sm font-bold text-primary">
+                  Account deployed on Arbitrum Sepolia
+                </p>
+              )}
             </div>
           ) : (
             <div className="mt-10">

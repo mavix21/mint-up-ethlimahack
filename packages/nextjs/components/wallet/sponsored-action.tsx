@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { abortableWait } from "~~/lib/abortable-wait";
 import type { WalletPasskeyAccount } from "~~/lib/kernel-account";
@@ -10,6 +11,7 @@ import type {
   UserOperationStatusResult,
 } from "~~/lib/pimlico-user-operation-api";
 import { prepareSignAndSubmitUserOperation } from "~~/lib/pimlico-user-operation";
+import { resumeOrCreateSponsoredOperation } from "~~/lib/sponsored-operation-flow";
 import {
   pollUserOperationStatus,
   StatusRequestError,
@@ -47,6 +49,7 @@ export function SponsoredAction({
   const [userOperationHash, setUserOperationHash] = useState<string>();
   const [transactionHash, setTransactionHash] = useState<string>();
   const controller = useRef<AbortController>(null);
+  const router = useRouter();
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -59,51 +62,66 @@ export function SponsoredAction({
     setUserOperationHash(undefined);
     setTransactionHash(undefined);
     try {
-      const kernel = await reconstructKernelAccount(account);
-      const submitted = await prepareSignAndSubmitUserOperation({
-        prepare: async () => {
-          const prepared = await json<PrepareUserOperationResult>(
-            await fetch("/api/wallet/user-operation/prepare", {
+      const started = await resumeOrCreateSponsoredOperation({
+        resume: async () =>
+          json(
+            await fetch("/api/wallet/user-operation/resume", {
               method: "POST",
               signal,
             }),
-          );
-          setState("biometric");
-          return prepared;
+          ),
+        create: async () => {
+          const kernel = await reconstructKernelAccount(account);
+          return await prepareSignAndSubmitUserOperation({
+            prepare: async () => {
+              const prepared = await json<PrepareUserOperationResult>(
+                await fetch("/api/wallet/user-operation/prepare", {
+                  method: "POST",
+                  signal,
+                }),
+              );
+              setState("biometric");
+              return prepared;
+            },
+            signUserOperation: operation =>
+              kernel.signUserOperation(operation as never),
+            submit: async payload =>
+              json<{ userOperationHash: `0x${string}` }>(
+                await fetch("/api/wallet/user-operation/submit", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify(payload),
+                  signal,
+                }),
+              ),
+          });
         },
-        signUserOperation: operation =>
-          kernel.signUserOperation(operation as never),
-        submit: async payload =>
-          json<{ userOperationHash: `0x${string}` }>(
-            await fetch("/api/wallet/user-operation/submit", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify(payload),
-              signal,
-            }),
-          ),
       });
-      setUserOperationHash(submitted.userOperationHash);
-      setState("submitted");
+      setUserOperationHash(started.userOperationHash);
 
-      const result = await pollUserOperationStatus({
-        maxAttempts: MAX_STATUS_ATTEMPTS,
-        wait: () => abortableWait(2_000, signal),
-        fetchStatus: async () =>
-          json<UserOperationStatusResult>(
-            await fetch("/api/wallet/user-operation/status", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({
-                userOperationHash: submitted.userOperationHash,
+      let result = started.result;
+      if (result.status === "pending") {
+        setState("submitted");
+        result = await pollUserOperationStatus({
+          maxAttempts: MAX_STATUS_ATTEMPTS,
+          wait: () => abortableWait(2_000, signal),
+          fetchStatus: async () =>
+            json<UserOperationStatusResult>(
+              await fetch("/api/wallet/user-operation/status", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  userOperationHash: started.userOperationHash,
+                }),
+                signal,
               }),
-              signal,
-            }),
-          ),
-      });
+            ),
+        });
+      }
       if (result.status === "included") {
         setTransactionHash(result.transactionHash);
         setState("included");
+        router.refresh();
       } else {
         setState(result.status === "rejected" ? "rejected" : "failure");
         setMessage(result.message);

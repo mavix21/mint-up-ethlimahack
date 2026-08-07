@@ -19,7 +19,17 @@ export type UserOperationStatusResult =
       transactionHash: Hex;
       blockNumber: string;
     }
-  | { status: "rejected" | "failed"; message?: string };
+  | {
+      status: "rejected" | "reverted" | "failed";
+      transactionHash?: Hex;
+      blockNumber?: string;
+      message?: string;
+    };
+
+export type ResumeUserOperationResult = {
+  userOperationHash: Hex;
+  result: UserOperationStatusResult;
+} | null;
 
 export const preparePimlicoUserOperation = anyApi.passkeySponsorshipActions
   .prepare as FunctionReference<
@@ -47,4 +57,12 @@ export const getPimlicoUserOperationStatus = anyApi.passkeySponsorshipActions
   "public",
   { userOperationHash: Hex },
   UserOperationStatusResult
+>;
+
+export const resumePimlicoUserOperation = anyApi.passkeySponsorshipActions
+  .resume as FunctionReference<
+  "action",
+  "public",
+  Record<string, never>,
+  ResumeUserOperationResult
 >;
