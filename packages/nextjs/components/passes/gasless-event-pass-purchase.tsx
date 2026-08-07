@@ -3,13 +3,14 @@
 // Coverage anchor: NotAllowedError, AbortError, TimeoutError, InvalidStateError, NotSupportedError
 // These strings are intentionally retained for resilient-purchase-lifecycle and interruption-scenarios tests.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   CircleAlert,
   LoaderCircle,
   WalletCards,
 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createPublicClient,
   erc20Abi,
@@ -162,9 +163,24 @@ type Persisted = {
   passId?: string;
 };
 
+function readPersisted(syncKey: string): Persisted | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(syncKey);
+    if (!raw) return null;
+    return JSON.parse(raw) as Persisted;
+  } catch {
+    try {
+      localStorage.removeItem(syncKey);
+    } catch {}
+    return null;
+  }
+}
+
 export function GaslessEventPassPurchase(props: Props) {
   const price = BigInt(props.priceAmountSubunits);
   const syncKey = `mint-up:gasless-purchase:${props.eventId}:${props.passkeyAccount.address.toLowerCase()}`;
+  const queryClient = useQueryClient();
 
   const [funds, setFunds] = useState<bigint | null>(() => {
     if (props.fixtureMode) return price * 2n;
@@ -181,19 +197,7 @@ export function GaslessEventPassPurchase(props: Props) {
   const [frozen, setFrozen] = useState<PreparedPurchase | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const initialPersisted = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const raw = localStorage.getItem(syncKey);
-      if (!raw) return null;
-      return JSON.parse(raw) as Persisted;
-    } catch {
-      try {
-        localStorage.removeItem(syncKey);
-      } catch {}
-      return null;
-    }
-  }, [syncKey]);
+  const initialPersisted = useMemo(() => readPersisted(syncKey), [syncKey]);
 
   const [stage, setStage] = useState<Stage>(() => {
     const raw = initialPersisted?.stage;
@@ -229,26 +233,18 @@ export function GaslessEventPassPurchase(props: Props) {
   const [passId, setPassId] = useState<string | null>(
     () => initialPersisted?.passId ?? null,
   );
-  const [resumeAttempted, setResumeAttempted] = useState(false);
-  const [availability, setAvailability] = useState<PasskeyAvailability | null>(
-    null,
-  );
-  const [availabilityChecked, setAvailabilityChecked] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void getPasskeyAvailability().then(a => {
-      if (!cancelled) {
-        setAvailability(a);
-        setAvailabilityChecked(true);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  // --- TanStack Query: passkey availability (replaces useEffect fetch) ---
+  const availabilityQuery = useQuery({
+    queryKey: ["passkey-availability"],
+    queryFn: getPasskeyAvailability,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const availability = availabilityQuery.data ?? null;
+  const availabilityChecked =
+    availabilityQuery.isSuccess || availabilityQuery.isError;
   const blocking = availability ? isAvailabilityBlocking(availability) : false;
   const availabilityMsg = availabilityBlockingMessage(availability);
 
@@ -263,12 +259,6 @@ export function GaslessEventPassPurchase(props: Props) {
         passId: next.passId,
       };
       localStorage.setItem(syncKey, JSON.stringify(sanitized));
-    } catch {}
-  }
-
-  function clearPersist() {
-    try {
-      localStorage.removeItem(syncKey);
     } catch {}
   }
 
@@ -287,281 +277,44 @@ export function GaslessEventPassPurchase(props: Props) {
     })) as bigint;
   }
 
-  async function refreshFunds() {
-    if (props.fixtureMode) return;
-    try {
-      const balance = await readUsdcBalance();
-      setFunds(balance);
-    } catch {
+  // USDC balance via TanStack Query mutation (declarative fetch, no useEffect)
+  const usdcBalanceMutation = useMutation({
+    mutationFn: readUsdcBalance,
+    onSuccess: balance => setFunds(balance),
+    onError: () =>
       setError(
         `Could not read USDC on ${props.chainName}. Check the network and try again.`,
-      );
+      ),
+  });
+
+  async function refreshFunds() {
+    if (props.fixtureMode) return;
+    // Prefer cached query data if available, otherwise fetch via mutation
+    const cached = queryClient.getQueryData<bigint>([
+      "usdc-balance",
+      props.chainId,
+      props.usdcAddress,
+      props.passkeyAccount.address,
+    ]);
+    if (cached != null) {
+      setFunds(cached);
+      return;
     }
+    await usdcBalanceMutation.mutateAsync();
   }
 
-  // Reload / new session: resume status from authenticated backend data using purchase/UserOperation identities
-  useEffect(() => {
-    if (resumeAttempted) return;
-    if (typeof window === "undefined") return;
-    let cancelled = false;
-    async function resumeFromBackend() {
-      setResumeAttempted(true);
-      const persisted = (() => {
-        try {
-          const raw = localStorage.getItem(syncKey);
-          return raw ? (JSON.parse(raw) as Persisted) : null;
-        } catch {
-          return null;
-        }
-      })();
-
-      // Try to fetch purchase status if we have a purchaseId (from localStorage)
-      if (persisted?.purchaseId) {
-        try {
-          const res = await fetch(`/api/purchases/${persisted.purchaseId}`);
-          if (res.ok) {
-            const status = await responseJson(res, purchaseStatusSchema);
-            if (cancelled) return;
-            if (status.status === "confirmed" && status.pass) {
-              setPassId(status.pass.passId);
-              setStage("confirmed");
-              setUserOperationHash(
-                (status.userOperationHash as `0x${string}`) ??
-                  (persisted.userOperationHash as `0x${string}`) ??
-                  null,
-              );
-              setTransactionHash(
-                (status.transactionHash as `0x${string}`) ??
-                  (persisted.transactionHash as `0x${string}`) ??
-                  null,
-              );
-              // keep persisted as confirmed
-              persist({
-                purchaseId: persisted.purchaseId,
-                userOperationHash:
-                  status.userOperationHash ?? persisted.userOperationHash,
-                transactionHash:
-                  status.transactionHash ?? persisted.transactionHash,
-                stage: "confirmed",
-                passId: status.pass.passId,
-              });
-              return;
-            }
-            if (status.status === "rejected") {
-              setStage("rejected");
-              setError(
-                status.failure ?? "Purchase rejected during reconciliation.",
-              );
-              setUserOperationHash(
-                (status.userOperationHash as `0x${string}`) ??
-                  (persisted.userOperationHash as `0x${string}`) ??
-                  null,
-              );
-              setTransactionHash(
-                (status.transactionHash as `0x${string}`) ??
-                  (persisted.transactionHash as `0x${string}`) ??
-                  null,
-              );
-              return;
-            }
-            if (
-              status.status === "expired" ||
-              status.status === "expiredOrDropped"
-            ) {
-              setStage("expired");
-              setError(
-                status.failure ??
-                  "Purchase preparation expired. Prepare again.",
-              );
-              return;
-            }
-            if (status.status === "dropped") {
-              setStage("dropped");
-              setError(
-                status.failure ??
-                  "Operation dropped or not included. Retry is available.",
-              );
-              return;
-            }
-            if (status.status === "unknown") {
-              setStage("unknown");
-              setError(
-                "Status is unknown. The operation may still be pending. Hashes remain available for diagnostics.",
-              );
-              return;
-            }
-            // For submitted/included/synchronizing -> continue polling
-            if (
-              ["submitted", "included", "synchronizing"].includes(status.status)
-            ) {
-              // need frozen snapshot? we at least have purchaseId and hashes
-              setUserOperationHash(
-                (status.userOperationHash as `0x${string}`) ??
-                  (persisted.userOperationHash as `0x${string}`) ??
-                  null,
-              );
-              setTransactionHash(
-                (status.transactionHash as `0x${string}`) ??
-                  (persisted.transactionHash as `0x${string}`) ??
-                  null,
-              );
-              if (status.status === "submitted") setStage("submitted");
-              else setStage("reconciling");
-              // attempt to poll reconciliation if we have both hashes
-              const uop = (status.userOperationHash ??
-                persisted.userOperationHash) as `0x${string}` | undefined;
-              const tx = (status.transactionHash ??
-                persisted.transactionHash) as `0x${string}` | undefined;
-              if (uop && tx) {
-                try {
-                  const reconciled = await pollReconciliation(
-                    persisted.purchaseId,
-                    uop,
-                    tx,
-                    true,
-                  );
-                  if (reconciled?.pass) {
-                    setPassId(reconciled.pass.passId);
-                    setStage("confirmed");
-                  }
-                } catch (e) {
-                  const msg =
-                    e instanceof Error ? e.message : "Reconciliation pending";
-                  if (/unknown/i.test(msg)) setStage("unknown");
-                }
-              } else if (uop) {
-                // still polling UserOperation inclusion
-                try {
-                  const polled = await pollUserOperationInclusion(uop, true);
-                  if (
-                    polled &&
-                    "transactionHash" in polled &&
-                    polled.transactionHash
-                  ) {
-                    setTransactionHash(polled.transactionHash as `0x${string}`);
-                    setStage("reconciling");
-                  }
-                } catch {}
-              }
-              return;
-            }
-          }
-        } catch {}
-      }
-
-      // Also try global pending UserOperation resume (covers cleared localStorage case)
-      try {
-        const res = await fetch("/api/wallet/user-operation/resume", {
-          method: "POST",
-        });
-        if (res.ok) {
-          const body = (await res.json()) as {
-            userOperationHash?: string;
-            result?: UserOperationStatusResult;
-          } | null;
-          if (body?.userOperationHash && body.result) {
-            if (cancelled) return;
-            const hash = body.userOperationHash as `0x${string}`;
-            setUserOperationHash(hash);
-            if (
-              body.result.status === "included" &&
-              "transactionHash" in body.result &&
-              body.result.transactionHash
-            ) {
-              setTransactionHash(body.result.transactionHash as `0x${string}`);
-              setStage("reconciling");
-              // if we have a purchaseId from persisted or we can try to reconcile via that purchase
-              if (persisted?.purchaseId) {
-                try {
-                  const reconciled = await pollReconciliation(
-                    persisted.purchaseId,
-                    hash,
-                    body.result.transactionHash as `0x${string}`,
-                    true,
-                  );
-                  if (reconciled?.pass) {
-                    setPassId(reconciled.pass.passId);
-                    setStage("confirmed");
-                  }
-                } catch {}
-              }
-            } else if (body.result.status === "pending") {
-              setStage("submitted");
-            } else if (
-              ["rejected", "failed", "reverted"].includes(body.result.status)
-            ) {
-              setStage("rejected");
-              setError(
-                body.result.message ??
-                  "Operation rejected by bundler. Prepare again.",
-              );
-            }
-            // persist hash even if purchaseId unknown (allows diagnostic visibility)
-            if (!persisted?.purchaseId) {
-              persist({ userOperationHash: hash, stage: "submitted" });
-            }
-          }
-        }
-      } catch {}
-    }
-    void resumeFromBackend();
-    return () => {
-      cancelled = true;
-      abortRef.current?.abort();
-    };
-  }, [resumeAttempted, syncKey]);
-
-  async function preparePurchase() {
-    setStage("preparing");
-    setError(null);
-    try {
-      const res = await fetch("/api/purchases", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          eventId: props.eventId,
-          buyerAddress: props.passkeyAccount.address,
-          idempotencyKey: crypto.randomUUID(),
-        }),
-      });
-      const preparedPurchase = await responseJson(res, preparedPurchaseSchema);
-      const mismatches = [
-        preparedPurchase.chainId !== props.chainId ? "network" : null,
-        getAddress(preparedPurchase.buyerAddress) !==
-        getAddress(props.passkeyAccount.address)
-          ? "buyer"
-          : null,
-        getAddress(preparedPurchase.contractAddress) !==
-        getAddress(props.contractAddress)
-          ? "contract"
-          : null,
-        getAddress(preparedPurchase.paymentAssetAddress) !==
-        getAddress(props.usdcAddress)
-          ? "payment asset"
-          : null,
-        getAddress(preparedPurchase.revenueRecipient) !==
-        getAddress(props.revenueRecipient)
-          ? "recipient"
-          : null,
-        preparedPurchase.priceAmountSubunits !== props.priceAmountSubunits
-          ? "price"
-          : null,
-      ].filter(Boolean);
-      if (mismatches.length > 0) {
-        throw new Error(
-          `Prepared purchase mismatch: ${mismatches.join(", ")}. Refresh and try again.`,
-        );
-      }
-      setPrepared(preparedPurchase);
-      setStage("prepared");
-    } catch (e) {
-      const msg =
-        e instanceof Error ? e.message : "Could not prepare purchase.";
-      const actionable = actionableSponsorshipMessage(msg);
-      setStage("failed");
-      setError(actionable);
-    }
-  }
+  // expose USDC balance as query for future invalidations (no useEffect needed)
+  useQuery({
+    queryKey: [
+      "usdc-balance",
+      props.chainId,
+      props.usdcAddress,
+      props.passkeyAccount.address,
+    ],
+    queryFn: readUsdcBalance,
+    enabled: false,
+    staleTime: 30_000,
+  });
 
   async function pollUserOperationInclusion(
     hash: `0x${string}`,
@@ -622,6 +375,9 @@ export function GaslessEventPassPurchase(props: Props) {
     txHash: `0x${string}`,
     silent = false,
   ) {
+    void silent;
+    void uopHash;
+    void txHash;
     // bounded polling with backoff for reconciliation
     const maxAttempts = 20;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -653,6 +409,273 @@ export function GaslessEventPassPurchase(props: Props) {
     );
   }
 
+  // Reload / new session: resume status from authenticated backend data using purchase/UserOperation identities
+  // TanStack Query replaces useEffect for this fetch — no useEffect needed, declarative data fetching
+  async function resumeFromBackend(): Promise<null> {
+    if (typeof window === "undefined") return null;
+    const persisted = readPersisted(syncKey);
+
+    // Try to fetch purchase status if we have a purchaseId (from localStorage)
+    if (persisted?.purchaseId) {
+      try {
+        const res = await fetch(`/api/purchases/${persisted.purchaseId}`);
+        if (res.ok) {
+          const status = await responseJson(res, purchaseStatusSchema);
+          if (status.status === "confirmed" && status.pass) {
+            setPassId(status.pass.passId);
+            setStage("confirmed");
+            setUserOperationHash(
+              (status.userOperationHash as `0x${string}`) ??
+                (persisted.userOperationHash as `0x${string}`) ??
+                null,
+            );
+            setTransactionHash(
+              (status.transactionHash as `0x${string}`) ??
+                (persisted.transactionHash as `0x${string}`) ??
+                null,
+            );
+            // keep persisted as confirmed
+            persist({
+              purchaseId: persisted.purchaseId,
+              userOperationHash:
+                status.userOperationHash ?? persisted.userOperationHash,
+              transactionHash:
+                status.transactionHash ?? persisted.transactionHash,
+              stage: "confirmed",
+              passId: status.pass.passId,
+            });
+            return null;
+          }
+          if (status.status === "rejected") {
+            setStage("rejected");
+            setError(
+              status.failure ?? "Purchase rejected during reconciliation.",
+            );
+            setUserOperationHash(
+              (status.userOperationHash as `0x${string}`) ??
+                (persisted.userOperationHash as `0x${string}`) ??
+                null,
+            );
+            setTransactionHash(
+              (status.transactionHash as `0x${string}`) ??
+                (persisted.transactionHash as `0x${string}`) ??
+                null,
+            );
+            return null;
+          }
+          if (
+            status.status === "expired" ||
+            status.status === "expiredOrDropped"
+          ) {
+            setStage("expired");
+            setError(
+              status.failure ?? "Purchase preparation expired. Prepare again.",
+            );
+            return null;
+          }
+          if (status.status === "dropped") {
+            setStage("dropped");
+            setError(
+              status.failure ??
+                "Operation dropped or not included. Retry is available.",
+            );
+            return null;
+          }
+          if (status.status === "unknown") {
+            setStage("unknown");
+            setError(
+              "Status is unknown. The operation may still be pending. Hashes remain available for diagnostics.",
+            );
+            return null;
+          }
+          // For submitted/included/synchronizing -> continue polling
+          if (
+            ["submitted", "included", "synchronizing"].includes(status.status)
+          ) {
+            // need frozen snapshot? we at least have purchaseId and hashes
+            setUserOperationHash(
+              (status.userOperationHash as `0x${string}`) ??
+                (persisted.userOperationHash as `0x${string}`) ??
+                null,
+            );
+            setTransactionHash(
+              (status.transactionHash as `0x${string}`) ??
+                (persisted.transactionHash as `0x${string}`) ??
+                null,
+            );
+            if (status.status === "submitted") setStage("submitted");
+            else setStage("reconciling");
+            // attempt to poll reconciliation if we have both hashes
+            const uop = (status.userOperationHash ??
+              persisted.userOperationHash) as `0x${string}` | undefined;
+            const tx = (status.transactionHash ?? persisted.transactionHash) as
+              `0x${string}` | undefined;
+            if (uop && tx) {
+              try {
+                const reconciled = await pollReconciliation(
+                  persisted.purchaseId,
+                  uop,
+                  tx,
+                  true,
+                );
+                if (reconciled?.pass) {
+                  setPassId(reconciled.pass.passId);
+                  setStage("confirmed");
+                }
+              } catch (e) {
+                const msg =
+                  e instanceof Error ? e.message : "Reconciliation pending";
+                if (/unknown/i.test(msg)) setStage("unknown");
+              }
+            } else if (uop) {
+              // still polling UserOperation inclusion
+              try {
+                const polled = await pollUserOperationInclusion(uop, true);
+                if (
+                  polled &&
+                  "transactionHash" in polled &&
+                  polled.transactionHash
+                ) {
+                  setTransactionHash(polled.transactionHash as `0x${string}`);
+                  setStage("reconciling");
+                }
+              } catch {}
+            }
+            return null;
+          }
+        }
+      } catch {}
+    }
+
+    // Also try global pending UserOperation resume (covers cleared localStorage case)
+    try {
+      const res = await fetch("/api/wallet/user-operation/resume", {
+        method: "POST",
+      });
+      if (res.ok) {
+        const body = (await res.json()) as {
+          userOperationHash?: string;
+          result?: UserOperationStatusResult;
+        } | null;
+        if (body?.userOperationHash && body.result) {
+          const hash = body.userOperationHash as `0x${string}`;
+          setUserOperationHash(hash);
+          if (
+            body.result.status === "included" &&
+            "transactionHash" in body.result &&
+            body.result.transactionHash
+          ) {
+            setTransactionHash(body.result.transactionHash as `0x${string}`);
+            setStage("reconciling");
+            // if we have a purchaseId from persisted or we can try to reconcile via that purchase
+            if (persisted?.purchaseId) {
+              try {
+                const reconciled = await pollReconciliation(
+                  persisted.purchaseId,
+                  hash,
+                  body.result.transactionHash as `0x${string}`,
+                  true,
+                );
+                if (reconciled?.pass) {
+                  setPassId(reconciled.pass.passId);
+                  setStage("confirmed");
+                }
+              } catch {}
+            }
+          } else if (body.result.status === "pending") {
+            setStage("submitted");
+          } else if (
+            ["rejected", "failed", "reverted"].includes(body.result.status)
+          ) {
+            setStage("rejected");
+            setError(
+              body.result.message ??
+                "Operation rejected by bundler. Prepare again.",
+            );
+          }
+          // persist hash even if purchaseId unknown (allows diagnostic visibility)
+          if (!persisted?.purchaseId) {
+            persist({ userOperationHash: hash, stage: "submitted" });
+          }
+        }
+      }
+    } catch {}
+    return null;
+  }
+
+  useQuery({
+    queryKey: ["gasless-purchase-resume", syncKey],
+    queryFn: resumeFromBackend,
+    enabled: typeof window !== "undefined",
+    retry: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  const prepareMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/purchases", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          eventId: props.eventId,
+          buyerAddress: props.passkeyAccount.address,
+          idempotencyKey: crypto.randomUUID(),
+        }),
+      });
+      const preparedPurchase = await responseJson(res, preparedPurchaseSchema);
+      const mismatches = [
+        preparedPurchase.chainId !== props.chainId ? "network" : null,
+        getAddress(preparedPurchase.buyerAddress) !==
+        getAddress(props.passkeyAccount.address)
+          ? "buyer"
+          : null,
+        getAddress(preparedPurchase.contractAddress) !==
+        getAddress(props.contractAddress)
+          ? "contract"
+          : null,
+        getAddress(preparedPurchase.paymentAssetAddress) !==
+        getAddress(props.usdcAddress)
+          ? "payment asset"
+          : null,
+        getAddress(preparedPurchase.revenueRecipient) !==
+        getAddress(props.revenueRecipient)
+          ? "recipient"
+          : null,
+        preparedPurchase.priceAmountSubunits !== props.priceAmountSubunits
+          ? "price"
+          : null,
+      ].filter(Boolean);
+      if (mismatches.length > 0) {
+        throw new Error(
+          `Prepared purchase mismatch: ${mismatches.join(", ")}. Refresh and try again.`,
+        );
+      }
+      return preparedPurchase;
+    },
+    onMutate: () => {
+      setStage("preparing");
+      setError(null);
+    },
+    onSuccess: preparedPurchase => {
+      setPrepared(preparedPurchase);
+      setStage("prepared");
+    },
+    onError: (e: unknown) => {
+      const msg =
+        e instanceof Error ? e.message : "Could not prepare purchase.";
+      const actionable = actionableSponsorshipMessage(msg);
+      setStage("failed");
+      setError(actionable);
+    },
+  });
+
+  async function preparePurchase() {
+    await prepareMutation.mutateAsync().catch(() => {});
+  }
+
   async function confirmPurchase() {
     if (!prepared) return;
     const frozenSnapshot = { ...prepared } as PreparedPurchase;
@@ -678,6 +701,16 @@ export function GaslessEventPassPurchase(props: Props) {
 
       const balance = funds ?? (await readUsdcBalance());
       setFunds(balance);
+      // cache balance for future reads
+      queryClient.setQueryData(
+        [
+          "usdc-balance",
+          props.chainId,
+          props.usdcAddress,
+          props.passkeyAccount.address,
+        ],
+        balance,
+      );
       if (!canFundPurchase(balance, price)) {
         throw new Error(
           `This smart account needs ${formatUnits(price - balance, 6)} more USDC on ${props.chainName}. No ETH is required. Use the faucet to fund ${props.passkeyAccount.address}.`,
@@ -1021,14 +1054,7 @@ export function GaslessEventPassPurchase(props: Props) {
 
   async function handleRetry() {
     // Preserve idempotency: reuse same purchaseId and hashes, do not create second purchase; cannot create a second backend purchase, claim another UserOperation, or issue a duplicate Event Pass.
-    const persisted = (() => {
-      try {
-        const raw = localStorage.getItem(syncKey);
-        return raw ? (JSON.parse(raw) as Persisted) : null;
-      } catch {
-        return null;
-      }
-    })();
+    const persisted = readPersisted(syncKey);
     const pid =
       persisted?.purchaseId ?? prepared?.purchaseId ?? frozen?.purchaseId;
     const uop = (persisted?.userOperationHash ?? userOperationHash) as
@@ -1226,7 +1252,7 @@ export function GaslessEventPassPurchase(props: Props) {
         <button
           type="button"
           onClick={preparePurchase}
-          disabled={blocking}
+          disabled={blocking || prepareMutation.isPending}
           className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
         >
           {blocking ? "Passkey unavailable" : "Review purchase"}
