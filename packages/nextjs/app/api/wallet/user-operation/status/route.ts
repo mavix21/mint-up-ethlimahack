@@ -27,10 +27,17 @@ export async function POST(request: Request) {
         userOperationHash: parsed.data.userOperationHash as Hex,
       }),
     );
-  } catch {
+  } catch (error) {
+    const retryable =
+      error instanceof Error &&
+      error.message.includes("Sponsorship provider temporarily unavailable");
     return Response.json(
-      { message: "Operation status is unavailable." },
-      { status: 503 },
+      {
+        message: retryable
+          ? "Operation status is temporarily unavailable."
+          : "Operation inclusion could not be verified.",
+      },
+      { status: retryable ? 503 : 409 },
     );
   }
 }

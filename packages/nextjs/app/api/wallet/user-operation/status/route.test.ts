@@ -37,7 +37,16 @@ describe("sponsored user operation status API", () => {
     const response = await POST(
       request(JSON.stringify({ userOperationHash: "0x1234" })),
     );
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(409);
     expect(JSON.stringify(await response.json())).not.toContain("secret");
+  });
+  it("keeps temporary provider failures retryable", async () => {
+    fetchAuthAction.mockRejectedValue(
+      new Error("Sponsorship provider temporarily unavailable"),
+    );
+    const response = await POST(
+      request(JSON.stringify({ userOperationHash: "0x1234" })),
+    );
+    expect(response.status).toBe(503);
   });
 });
