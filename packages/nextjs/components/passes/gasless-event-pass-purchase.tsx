@@ -322,6 +322,8 @@ export function GaslessEventPassPurchase(props: Props) {
           prepare: async () => {
             const res = await fetch("/api/wallet/user-operation/prepare", {
               method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ purchaseId: frozenSnapshot.purchaseId }),
             });
             if (!res.ok) {
               const body = (await res.json().catch(() => ({}))) as {
@@ -330,11 +332,9 @@ export function GaslessEventPassPurchase(props: Props) {
               throw new Error(body.message ?? "Sponsorship rejected.");
             }
             const preparedOp = (await res.json()) as PrepareUserOperationResult;
-            // sponsorship must happen before signing: freeze intent and validate returned operation
             const opCallData = (preparedOp.operation.callData ??
               preparedOp.operation.calldata) as string | undefined;
             if (opCallData) {
-              // ensure sponsored operation matches frozen intent
               validateSponsoredPurchaseBatch({
                 callData: opCallData as `0x${string}`,
                 snapshot: {

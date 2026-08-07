@@ -1,10 +1,12 @@
 import {
+  decodeAbiParameters,
   decodeFunctionData,
-  encodeAbiParameters,
   encodeFunctionData,
   erc20Abi,
   getAddress,
   parseAbi,
+  size,
+  slice,
   type Address,
   type Hex,
 } from "viem";
@@ -64,8 +66,7 @@ export function buildPurchaseBatchCalls(
 }
 
 export function encodePurchaseBatch(calls: readonly PurchaseBatchCall[]): Hex {
-  // Kernel 0.3.1 encodes as ERC-7579 but for deterministic tests we use executeBatch when >1
-  // Use KernelExecuteAbi executeBatch for stable encoding; sponsorship validation accepts both.
+  // Keep deterministic KernelExecuteAbi encoding for tests; on-chain 7579 is handled in decode fallback
   if (calls.length === 1) {
     return encodeFunctionData({
       abi: kernelExecuteAbi,
@@ -80,7 +81,62 @@ export function encodePurchaseBatch(calls: readonly PurchaseBatchCall[]): Hex {
   });
 }
 
+function decode7579Batch(callData: Hex): PurchaseBatchCall[] | null {
+  try {
+    const executeAbi = [
+      {
+        type: "function",
+        name: "execute",
+        inputs: [
+          { name: "execMode", type: "bytes32", internalType: "ExecMode" },
+          { name: "executionCalldata", type: "bytes", internalType: "bytes" },
+        ],
+        outputs: [],
+        stateMutability: "payable",
+      },
+    ] as const;
+    const decoded = decodeFunctionData({ abi: executeAbi, data: callData });
+    const mode = decoded.args[0] as Hex;
+    const executionCalldata = decoded.args[1] as Hex;
+    const callType = slice(mode, 0, 1);
+    if (BigInt(callType) === BigInt(0x01)) {
+      const [calls] = decodeAbiParameters(
+        [
+          {
+            name: "executionBatch",
+            type: "tuple[]",
+            components: [
+              { name: "target", type: "address" },
+              { name: "value", type: "uint256" },
+              { name: "callData", type: "bytes" },
+            ],
+          },
+        ],
+        executionCalldata,
+      ) as unknown as Array<
+        Array<{ target: Address; value: bigint; callData: Hex }>
+      >;
+      return calls.map(c => ({
+        to: getAddress(c.target),
+        value: c.value,
+        data: c.callData,
+      }));
+    }
+    if (BigInt(callType) === BigInt(0x00)) {
+      const to = getAddress(slice(executionCalldata, 0, 20));
+      const value = BigInt(slice(executionCalldata, 20, 52));
+      const data =
+        size(executionCalldata) > 52
+          ? slice(executionCalldata, 52)
+          : ("0x" as Hex);
+      return [{ to, value, data }];
+    }
+  } catch {}
+  return null;
+}
+
 export function decodePurchaseBatch(callData: Hex): PurchaseBatchCall[] {
+  // Try legacy Kernel 0.2 executeBatch first (used by tests), then ERC-7579 (used on-chain by Kernel 0.3.1 via account.encodeCalls)
   try {
     const decoded = decodeFunctionData({
       abi: kernelExecuteAbi,
@@ -97,11 +153,9 @@ export function decodePurchaseBatch(callData: Hex): PurchaseBatchCall[] {
       const [to, value, data] = decoded.args;
       return [{ to: getAddress(to), value, data: data as Hex }];
     }
-  } catch {
-    // try 7579 path
-  }
-  // fallback: try decode7579Calls for Kernel 0.3.1 (ERC-7579)
-  // Lazy import to avoid circular; use viem's decode not available, so throw
+  } catch {}
+  const decoded7579 = decode7579Batch(callData);
+  if (decoded7579) return decoded7579;
   throw new Error("Unable to decode Kernel batch callData");
 }
 

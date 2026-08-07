@@ -11,14 +11,27 @@ export async function POST(request: Request) {
   const body = await readBoundedJson(request);
   if ("oversized" in body)
     return Response.json({ message: "Request is too large." }, { status: 413 });
-  if (body.value !== null)
-    return Response.json(
-      { message: "Invalid preparation request." },
-      { status: 400 },
-    );
+  let purchaseId: string | undefined;
+  if (body.value !== null) {
+    if (
+      typeof body.value !== "object" ||
+      body.value === null ||
+      !("purchaseId" in (body.value as Record<string, unknown>)) ||
+      typeof (body.value as Record<string, unknown>).purchaseId !== "string"
+    ) {
+      return Response.json(
+        { message: "Invalid preparation request." },
+        { status: 400 },
+      );
+    }
+    purchaseId = (body.value as Record<string, unknown>).purchaseId as string;
+  }
   try {
     return Response.json(
-      await fetchAuthAction(preparePimlicoUserOperation, {}),
+      await fetchAuthAction(
+        preparePimlicoUserOperation,
+        purchaseId ? { purchaseId } : {},
+      ),
     );
   } catch {
     return Response.json(
