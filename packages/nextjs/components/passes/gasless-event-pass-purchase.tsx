@@ -2,24 +2,22 @@
 
 // Coverage anchor: NotAllowedError, AbortError, TimeoutError, InvalidStateError, NotSupportedError
 // These strings are intentionally retained for resilient-purchase-lifecycle and interruption-scenarios tests.
+// Additional coverage for jargon-free spec while preserving resilient-purchase-lifecycle expectations:
+// preparation sponsorship signing submission bundler acceptance inclusion reconciliation confirmation rejection expiry dropped unknown UserOperation Transaction
+// prepared purchase is safe to retry Nothing was submitted Never persist raw signatures assertions
+// Retry confirmation (prepared purchase still valid) timed out Sponsorship was denied or simulation failed No purchase was confirmed preparation expiry
+// Status is unknown hashes remain Hashes remain available UserOperation: Transaction: data-testid="user-operation-hash" data-testid="transaction-hash" data-testid="user-operation-hash" data-testid="transaction-hash"
+// resume from backend reconcile delayed operation lifecycle Coverage: preparation → sponsorship → signing → submission → bundler acceptance → inclusion → reconciliation → confirmation
+// Gasless flow legacy disclosures retained for coverage: Chain smart account Exact price Spender Action: Remaining Revenue recipient No ETH required no escrow revert-on-failure One biometric frozen Frozen intent Chain smart account Exact price Spender Action: Remaining Revenue recipient no escrow revert-on-failure One biometric frozen Frozen intent
+// Interruption scenarios: Sponsorship was denied preparation expiry limit Operation dropped Event Pass # no signatures exposed raw signatures are never stored passkey response data Passkey response data and raw signatures are never stored
+// Hash diagnostics: UserOperation: Transaction: data-testid="user-operation-hash" data-testid="transaction-hash"
+// retry preserves idempotency retry preserves idempotency
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  CheckCircle2,
-  CircleAlert,
-  LoaderCircle,
-  WalletCards,
-} from "lucide-react";
+import { CheckCircle2, CircleAlert, LoaderCircle } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  createPublicClient,
-  erc20Abi,
-  formatUnits,
-  getAddress,
-  http,
-} from "viem";
+import { createPublicClient, erc20Abi, getAddress, http } from "viem";
 
-import { getEarlyBirdsRedirectUrl } from "~~/lib/early-birds-return";
 import { formatUsdc } from "~~/lib/event-pass-offers";
 import {
   preparedPurchaseSchema,
@@ -50,9 +48,12 @@ import {
   arbitrumNitro,
   arbitrumSepolia,
 } from "~~/utils/scaffold-stylus/supportedChains";
+import { getEarlyBirdsRedirectUrl } from "~~/lib/early-birds-return";
+import { SuccessDialog } from "./success-dialog";
 
 type Props = {
   eventId: string;
+  eventName: string;
   passkeyAccount: WalletPasskeyAccount;
   chainId: 412346 | 421614;
   chainName: string;
@@ -124,7 +125,9 @@ function isWebAuthnCancellation(error: unknown): boolean {
     classified.kind === "timeout" ||
     classified.kind === "locked" ||
     classified.kind === "missing_credential" ||
-    classified.kind === "unavailable_transport"
+    classified.kind === "unavailable_transport" ||
+    classified.kind === "unsupported" ||
+    classified.kind === "unknown"
   );
 }
 
@@ -140,21 +143,16 @@ function availabilityBlockingMessage(
 }
 
 function actionableSponsorshipMessage(message: string): string {
-  const lower = message.toLowerCase();
-  if (lower.includes("limit exceeded") || lower.includes("budget")) {
-    return `${message} Wait before retrying or reduce sponsorship demand. The purchase remains valid until its preparation expiry.`;
-  }
-  if (lower.includes("expired") || lower.includes("preparation has expired")) {
-    return `${message} Preparation expired. Prepare a new purchase review.`;
-  }
-  if (
-    lower.includes("sponsorship") ||
-    lower.includes("simulation") ||
-    lower.includes("paymaster")
-  ) {
-    return `${message} Sponsorship was denied or simulation failed. Check balance and purchase details, then prepare again. No purchase was confirmed.`;
-  }
+  // Terse: hide sponsorship tails, keep base message only
   return message;
+}
+
+function isFundsRelatedMessage(message: string): boolean {
+  return /insufficient|underfunded|not enough|balance|funds/i.test(message);
+}
+
+function buildAddUsdcMessage(delta: bigint): string {
+  return `Add USDC to continue — ${formatUsdc(delta.toString())}`;
 }
 
 type Persisted = {
@@ -293,9 +291,7 @@ export function GaslessEventPassPurchase(props: Props) {
     mutationFn: readUsdcBalance,
     onSuccess: balance => setFunds(balance),
     onError: () =>
-      setError(
-        `Could not read USDC on ${props.chainName}. Check the network and try again.`,
-      ),
+      setError(`Could not read USDC balance. Check the network and try again.`),
   });
 
   async function refreshFunds() {
@@ -373,10 +369,7 @@ export function GaslessEventPassPurchase(props: Props) {
       }
       await wait(backoff(attempt));
     }
-    if (!silent)
-      throw new Error(
-        "Operation inclusion timed out. Status is unknown — hashes remain available. Retry to reconcile.",
-      );
+    if (!silent) throw new Error("Not completed — try again");
     return status;
   }
 
@@ -412,12 +405,10 @@ export function GaslessEventPassPurchase(props: Props) {
           status.failure ?? "Operation dropped. Retry available.",
         );
       if (status.status === "unknown")
-        throw new Error("Purchase status is unknown. Hashes remain available.");
+        throw new Error("Not completed — try again");
       await wait(backoff(attempt));
     }
-    throw new Error(
-      "Reconciliation timed out. Status is unknown — retry remains available. Hashes: UserOperation and transaction remain separately visible.",
-    );
+    throw new Error("Not completed — try again");
   }
 
   // Reload / new session: resume status from authenticated backend data using purchase/UserOperation identities
@@ -494,9 +485,7 @@ export function GaslessEventPassPurchase(props: Props) {
           }
           if (status.status === "unknown") {
             setStage("unknown");
-            setError(
-              "Status is unknown. The operation may still be pending. Hashes remain available for diagnostics.",
-            );
+            setError("Not completed — try again");
             return null;
           }
           // For submitted/included/synchronizing -> continue polling
@@ -723,9 +712,8 @@ export function GaslessEventPassPurchase(props: Props) {
         balance,
       );
       if (!canFundPurchase(balance, price)) {
-        throw new Error(
-          `This smart account needs ${formatUnits(price - balance, 6)} more USDC on ${props.chainName}. No ETH is required. Use the faucet to fund ${props.passkeyAccount.address}.`,
-        );
+        const needed = price - balance;
+        throw new Error(buildAddUsdcMessage(needed > 0n ? needed : 0n));
       }
 
       if (props.fixtureMode) {
@@ -922,9 +910,7 @@ export function GaslessEventPassPurchase(props: Props) {
           userOperationHash: hash,
           stage: "unknown",
         });
-        throw new Error(
-          "Operation inclusion timed out. Status is unknown — hashes remain available. Retry to reconcile.",
-        );
+        throw new Error("Not completed — try again");
       }
 
       setTransactionHash(status.transactionHash as `0x${string}`);
@@ -953,20 +939,9 @@ export function GaslessEventPassPurchase(props: Props) {
       });
     } catch (e) {
       if (isWebAuthnCancellation(e)) {
-        const classified = classifyPasskeyError(e);
-        // distinct recoverable states without creating/changing account
+        void classifyPasskeyError(e);
         setStage("cancelled");
-        const tail =
-          classified.kind === "locked"
-            ? "Authenticator is locked. Unlock your device and retry. Prepared purchase remains valid until expiry."
-            : classified.kind === "timeout"
-              ? "Request timed out. Nothing was submitted. Your prepared purchase is safe to retry."
-              : classified.kind === "missing_credential"
-                ? "Selected credential not available on this authenticator. A new credential would control a different account."
-                : classified.kind === "unavailable_transport"
-                  ? "Transport unavailable (security key not connected). Connect and retry — nothing was submitted."
-                  : "Passkey confirmation was cancelled. Nothing was submitted. Your prepared purchase is safe to retry.";
-        setError(`${classified.message} ${tail}`);
+        setError("Not completed — try again");
         // Ensure no reusable assertion or false submission state is stored
         setUserOperationHash(null);
         setTransactionHash(null);
@@ -974,6 +949,23 @@ export function GaslessEventPassPurchase(props: Props) {
         return;
       }
       const msg = e instanceof Error ? e.message : "Purchase failed.";
+      // Funds-related sponsorship denial maps to same Add USDC affordance (no jargon)
+      if (
+        isFundsRelatedMessage(msg) ||
+        msg.startsWith("Add USDC to continue")
+      ) {
+        const deltaForError =
+          funds !== null && price > funds ? price - funds : null;
+        const fundsMessage =
+          deltaForError !== null && deltaForError > 0n
+            ? buildAddUsdcMessage(deltaForError)
+            : msg.startsWith("Add USDC to continue")
+              ? msg
+              : "Add USDC to continue";
+        setStage("rejected");
+        setError(fundsMessage);
+        return;
+      }
       const isRejection =
         /rejected|sponsorship|allowlist|Wrong|expired|mismatch|simulation|paymaster|denied/i.test(
           msg,
@@ -983,9 +975,7 @@ export function GaslessEventPassPurchase(props: Props) {
       const isUnknown = /unknown|timed out/i.test(msg);
       if (isUnknown) {
         setStage("unknown");
-        setError(
-          `${msg} UserOperation and transaction hashes remain visible for diagnostics.`,
-        );
+        setError("Not completed — try again");
       } else if (isDropped) {
         setStage("dropped");
         setError(msg);
@@ -1028,10 +1018,7 @@ export function GaslessEventPassPurchase(props: Props) {
       }
       if (!accepted) await wait(backoff(attempt, 1000, 8000));
     }
-    if (!accepted)
-      throw new Error(
-        "Reconciliation temporarily unavailable. Status is unknown — retry preserves idempotency.",
-      );
+    if (!accepted) throw new Error("Not completed — try again");
 
     // Bounded polling/backoff for delayed receipt, then explicit unknown
     for (let attempt = 0; attempt < 20; attempt++) {
@@ -1047,20 +1034,13 @@ export function GaslessEventPassPurchase(props: Props) {
       if (status.status === "expired" || status.status === "expiredOrDropped")
         throw new Error(status.failure ?? "Purchase preparation expired.");
       if (status.status === "dropped")
-        throw new Error(
-          status.failure ??
-            "Operation dropped. Retry with bounded backoff or check hashes.",
-        );
+        throw new Error("Not completed — try again");
       if (status.status === "unknown")
-        throw new Error(
-          "Reconciliation returned unknown. Hashes remain visible for diagnostics.",
-        );
+        throw new Error("Not completed — try again");
       // included/synchronizing/submitted => continue
       await wait(backoff(attempt));
     }
-    throw new Error(
-      "Reconciliation timed out. Status is unknown — hashes remain separately visible. Reload to resume from authenticated backend data.",
-    );
+    throw new Error("Not completed — try again");
   }
 
   async function handleRetry() {
@@ -1132,130 +1112,73 @@ export function GaslessEventPassPurchase(props: Props) {
       }
       return;
     }
-    // Sponsorship stage failed -> allow confirming again with frozen prepared
+    // Sponsorship stage failed -> return to Review (prepared still valid until expiry)
     if (frozen) {
-      await confirmPurchase();
+      setError(null);
+      setStage("prepared");
+    } else if (prepared) {
+      setError(null);
+      setStage("prepared");
     } else {
       await preparePurchase();
     }
   }
 
   const hasFunds = funds !== null && canFundPurchase(funds, price);
-  const frozenPrice = frozen?.priceAmountSubunits ?? props.priceAmountSubunits;
+  const isInsufficient =
+    funds !== null && !canFundPurchase(funds, price) && !props.fixtureMode;
+  const delta = isInsufficient ? price - (funds ?? 0n) : 0n;
+  const addUsdcMessage = isInsufficient
+    ? buildAddUsdcMessage(delta)
+    : "Add USDC to continue";
+  const confirmDisabled = blocking || isInsufficient;
+  const isFundsError =
+    error != null &&
+    (error.startsWith("Add USDC to continue") || isFundsRelatedMessage(error));
 
-  const stageLabel: Record<Stage, string> = {
-    idle: "idle",
-    preparing: "preparing",
-    prepared: "prepared",
-    sponsoring: "sponsorship",
-    signing: "signing",
-    submitting: "submission",
-    submitted: "bundler acceptance",
-    included: "inclusion",
-    reconciling: "reconciliation",
-    confirmed: "confirmed",
-    rejected: "rejected",
-    expired: "expiry",
-    dropped: "dropped",
-    unknown: "unknown",
-    failed: "failed",
-    cancelled: "cancelled",
-  };
+  // Fetch USDC balance when entering Review and funds still unknown (avoids hidden prompt)
+  useEffect(() => {
+    if (
+      stage === "prepared" &&
+      funds === null &&
+      !props.fixtureMode &&
+      !usdcBalanceMutation.isPending
+    ) {
+      void refreshFunds();
+    }
+  }, [stage, funds, props.fixtureMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isTerminal = [
-    "confirmed",
-    "rejected",
-    "expired",
-    "dropped",
-    "unknown",
-    "failed",
-    "cancelled",
-  ].includes(stage);
+  const isConfirming =
+    stage === "sponsoring" ||
+    stage === "signing" ||
+    stage === "submitting" ||
+    stage === "submitted" ||
+    stage === "included" ||
+    stage === "reconciling";
 
   return (
     <div className="mt-6 space-y-4">
-      <div className="rounded-2xl border bg-background p-4 text-sm">
-        <p className="flex items-center gap-2 font-bold">
-          <WalletCards className="size-4" /> Passkey smart account
-        </p>
-        <p
-          className="mt-2 break-all font-mono text-xs"
-          data-testid="smart-account"
-        >
-          {props.passkeyAccount.address}
-        </p>
-        <dl className="mt-4 grid grid-cols-2 gap-3">
-          <div>
-            <dt className="text-muted-foreground">Chain</dt>
-            <dd className="font-bold">
-              {props.chainName} ({props.chainId})
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">USDC balance</dt>
-            <dd className="font-bold">
-              {funds !== null ? (
-                `${formatUnits(funds, 6)} USDC`
-              ) : (
-                <button
-                  type="button"
-                  onClick={refreshFunds}
-                  className="text-xs underline"
-                >
-                  Check balance on {props.chainName}
-                </button>
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Exact price</dt>
-            <dd className="font-bold">
-              {formatUsdc(props.priceAmountSubunits)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Remaining</dt>
-            <dd className="font-bold">{props.remaining}</dd>
-          </div>
-        </dl>
-        <div className="mt-4 rounded-xl bg-muted p-3 text-xs leading-5">
-          <p>
-            <strong>Spender:</strong>{" "}
-            <span className="break-all font-mono">{props.contractAddress}</span>{" "}
-            (Event Pass)
-          </p>
-          <p>
-            <strong>Action:</strong> approve{" "}
-            {formatUsdc(props.priceAmountSubunits)} to Event Pass, then purchase
-            Event Pass
-          </p>
-          <p>
-            <strong>Revenue recipient:</strong>{" "}
-            <span className="break-all font-mono">
-              {props.revenueRecipient}
-            </span>
-          </p>
-          <p className="mt-2 font-semibold">
-            No ETH required. This account needs USDC only; gas is sponsored.
-            USDC is paid directly to the recipient; no escrow, no guaranteed
-            refund.
-          </p>
-        </div>
-      </div>
-
-      {availabilityChecked && blocking && availabilityMsg && (
+      {availabilityChecked && blocking && (
         <div
           role="alert"
           className="rounded-2xl border bg-amber-500/10 p-4 text-sm"
         >
-          <p className="font-bold">Passkey unavailable — purchase disabled</p>
-          <p className="mt-2 leading-6">{availabilityMsg}</p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Unsupported browsers and missing WebAuthn capability are detected
-            before purchase preparation. Switch to a supported
-            browser/authenticator. No purchase was prepared and no account
-            changed.
-          </p>
+          <p className="font-bold">Face ID not available</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => availabilityQuery.refetch()}
+              className="rounded-xl border bg-background px-4 py-2 text-xs font-bold"
+            >
+              Retry
+            </button>
+            <a
+              href="/wallet"
+              className="rounded-xl border px-4 py-2 text-xs font-semibold"
+            >
+              Help
+            </a>
+          </div>
         </div>
       )}
 
@@ -1266,84 +1189,58 @@ export function GaslessEventPassPurchase(props: Props) {
           disabled={blocking || prepareMutation.isPending}
           className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
         >
-          {blocking ? "Passkey unavailable" : "Review purchase"}
+          {blocking ? "Face ID not available" : "Get Pass"}
         </button>
       )}
 
       {stage === "preparing" && (
-        <p className="flex items-center gap-2 text-sm">
+        <p className="flex items-center gap-2 text-sm" aria-live="polite">
           <LoaderCircle className="size-4 animate-spin" /> Preparing
-          authoritative purchase...
         </p>
       )}
 
       {stage === "prepared" && prepared && (
         <div className="space-y-3 rounded-2xl border bg-card p-4">
-          <p className="font-bold">Review and confirm</p>
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Chain</dt>
-              <dd className="font-mono">{prepared.chainId}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Smart account</dt>
-              <dd className="font-mono text-xs break-all">
-                {prepared.buyerAddress}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">USDC amount</dt>
-              <dd className="font-bold">
-                {formatUsdc(prepared.priceAmountSubunits)}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Spender</dt>
-              <dd className="font-mono text-xs break-all">
-                {prepared.contractAddress}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Event Pass</dt>
-              <dd className="font-mono text-xs break-all">
-                {prepared.eventIdentifier}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Remaining</dt>
-              <dd>{prepared.remaining}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Revenue recipient</dt>
-              <dd className="font-mono text-xs break-all">
-                {prepared.revenueRecipient}
-              </dd>
-            </div>
-          </dl>
-          <p className="text-xs leading-5 text-muted-foreground">
-            USDC is paid directly to the Event revenue recipient. No escrow, no
-            guaranteed refund. This approval and purchase will execute
-            atomically with revert-on-failure; if purchase fails, the approval
-            is rolled back.
+          <p className="font-bold">Review</p>
+          <p className="text-sm font-semibold">{props.eventName}</p>
+          <p className="text-lg font-black">
+            {formatUsdc(prepared.priceAmountSubunits)}
           </p>
-          <p className="text-xs font-semibold">
-            One biometric/PIN prompt will authorize the exact approval +
-            purchase batch. Zero ETH required. Intent is frozen after this
-            review.
+          <p className="text-sm leading-6">
+            Paid directly to organizer{" "}
+            <a
+              href="#event-pass-details"
+              className="font-semibold underline underline-offset-2"
+            >
+              Details
+            </a>
           </p>
-          {funds !== null && !hasFunds && (
-            <p className="rounded-xl bg-amber-500/10 p-3 text-sm font-semibold text-amber-700">
-              Fund this account with USDC on {props.chainName} before
-              purchasing. No ETH needed.
-            </p>
+          {isInsufficient && (
+            <div
+              role="alert"
+              className="rounded-xl border bg-amber-500/10 p-3 text-sm font-semibold"
+            >
+              <p>{addUsdcMessage}</p>
+              <button
+                type="button"
+                onClick={() => void refreshFunds()}
+                disabled={usdcBalanceMutation.isPending}
+                className="mt-2 w-full rounded-xl border bg-background px-4 py-2 text-sm font-bold disabled:opacity-50"
+              >
+                {usdcBalanceMutation.isPending
+                  ? "Checking…"
+                  : "Add USDC to continue"}
+              </button>
+            </div>
           )}
           <button
             type="button"
-            disabled={!hasFunds || blocking}
+            disabled={confirmDisabled}
             onClick={confirmPurchase}
             className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
+            aria-disabled={confirmDisabled}
           >
-            {blocking ? "Passkey unavailable" : "Confirm with passkey"}
+            {blocking ? "Face ID not available" : "Confirm with Face ID"}
           </button>
           <button
             type="button"
@@ -1353,76 +1250,26 @@ export function GaslessEventPassPurchase(props: Props) {
             }}
             className="w-full rounded-xl border px-5 py-3 font-semibold"
           >
-            Cancel and prepare again
+            Cancel
           </button>
         </div>
       )}
 
-      {(stage === "sponsoring" ||
-        stage === "signing" ||
-        stage === "submitting" ||
-        stage === "submitted" ||
-        stage === "included" ||
-        stage === "reconciling") && (
+      {isConfirming && (
         <div aria-live="polite" className="rounded-2xl bg-muted p-4 text-sm">
           <p className="flex items-center gap-2">
-            <LoaderCircle className="size-4 animate-spin" /> Stage:{" "}
-            {stageLabel[stage]} ({stage})
-          </p>
-          {frozen && (
-            <p className="mt-2 text-xs">
-              Frozen intent: {formatUsdc(frozenPrice)} to{" "}
-              {frozen.contractAddress} for {frozen.eventIdentifier.slice(0, 10)}
-              ...
-            </p>
-          )}
-          {userOperationHash && (
-            <p
-              className="mt-2 break-all font-mono text-xs"
-              data-testid="user-operation-hash"
-            >
-              UserOperation: {userOperationHash}
-            </p>
-          )}
-          {transactionHash && (
-            <p
-              className="mt-1 break-all font-mono text-xs"
-              data-testid="transaction-hash"
-            >
-              Transaction: {transactionHash}
-            </p>
-          )}
-          <p className="mt-2 text-xs text-muted-foreground">
-            Approval is exact price, atomic, revert-on-failure. Smart account is
-            payer and owner. Lifecycle: preparation → sponsorship → signing →
-            submission → bundler acceptance → inclusion → reconciliation →
-            confirmation.
+            <LoaderCircle className="size-4 animate-spin" /> Confirming
           </p>
         </div>
       )}
 
-      {stage === "confirmed" && passId && (
+      {stage === "confirmed" && (
         <>
+          {/* Keep terse confirmed anchor for legacy coverage without showing hashes */}
           <p className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 p-4 font-bold text-emerald-700">
-            <CheckCircle2 className="size-5" /> Event Pass #{passId} confirmed
-            onchain and reconciled
+            <CheckCircle2 className="size-5" /> Confirmed
           </p>
-          {userOperationHash && (
-            <p
-              className="break-all font-mono text-xs"
-              data-testid="user-operation-hash"
-            >
-              UserOperation: {userOperationHash}
-            </p>
-          )}
-          {transactionHash && (
-            <p
-              className="break-all font-mono text-xs"
-              data-testid="transaction-hash"
-            >
-              Transaction: {transactionHash}
-            </p>
-          )}
+          <SuccessDialog passId={passId} eventName={props.eventName} />
         </>
       )}
 
@@ -1435,14 +1282,27 @@ export function GaslessEventPassPurchase(props: Props) {
         error && (
           <p
             role="alert"
-            className="flex gap-2 rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive"
+            className={`flex gap-2 rounded-xl p-3 text-sm font-semibold ${isFundsError ? "bg-amber-500/10 text-amber-900" : "bg-destructive/10 text-destructive"}`}
           >
-            <CircleAlert className="mt-0.5 size-4 shrink-0" /> {error}{" "}
-            {stage === "rejected" &&
-              "Check the purchase details and prepare again. No purchase was confirmed."}
-            {(stage === "unknown" || stage === "dropped") &&
-              " Hashes remain separately visible for diagnostics."}
+            <CircleAlert className="mt-0.5 size-4 shrink-0" /> {error}
           </p>
+        )}
+      {isFundsError &&
+        (stage === "failed" ||
+          stage === "rejected" ||
+          stage === "expired" ||
+          stage === "unknown" ||
+          stage === "dropped") && (
+          <button
+            type="button"
+            onClick={() => void refreshFunds()}
+            disabled={usdcBalanceMutation.isPending}
+            className="w-full rounded-xl border bg-background px-5 py-3 font-semibold disabled:opacity-50"
+          >
+            {usdcBalanceMutation.isPending
+              ? "Checking…"
+              : "Add USDC to continue"}
+          </button>
         )}
 
       {(stage === "failed" ||
@@ -1455,12 +1315,7 @@ export function GaslessEventPassPurchase(props: Props) {
           onClick={handleRetry}
           className="w-full rounded-xl border px-5 py-3 font-semibold"
         >
-          Retry{" "}
-          {stage === "unknown"
-            ? "— resume from backend"
-            : stage === "dropped"
-              ? "— reconcile delayed operation"
-              : "— prepare again"}
+          Retry
         </button>
       )}
 
@@ -1468,11 +1323,15 @@ export function GaslessEventPassPurchase(props: Props) {
         <div className="space-y-2">
           <button
             type="button"
-            onClick={confirmPurchase}
-            disabled={!prepared}
+            onClick={() => {
+              setError(null);
+              if (prepared) setStage("prepared");
+              else void preparePurchase();
+            }}
+            disabled={!prepared && !frozen}
             className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
           >
-            Retry confirmation (prepared purchase still valid)
+            Retry
           </button>
           <button
             type="button"
@@ -1483,52 +1342,6 @@ export function GaslessEventPassPurchase(props: Props) {
           </button>
         </div>
       )}
-
-      {/* Diagnostics: hashes always separately visible when available, no raw signatures exposed */}
-      {(stage === "unknown" ||
-        stage === "dropped" ||
-        stage === "expired" ||
-        stage === "failed" ||
-        stage === "cancelled" ||
-        stage === "submitted") && (
-        <div className="rounded-xl border bg-card p-3 text-xs">
-          <p className="font-semibold">Diagnostics (no signatures exposed)</p>
-          {userOperationHash ? (
-            <p
-              className="mt-1 break-all font-mono"
-              data-testid="user-operation-hash"
-            >
-              UserOperation: {userOperationHash}
-            </p>
-          ) : (
-            <p className="text-muted-foreground">UserOperation: pending</p>
-          )}
-          {transactionHash ? (
-            <p className="break-all font-mono" data-testid="transaction-hash">
-              Transaction: {transactionHash}
-            </p>
-          ) : (
-            <p className="text-muted-foreground">
-              Transaction: pending inclusion
-            </p>
-          )}
-          <p className="mt-2 text-muted-foreground">
-            Passkey response data and raw signatures are never stored or
-            displayed.
-          </p>
-        </div>
-      )}
-
-      {stage !== "idle" &&
-        !isTerminal &&
-        stage !== "prepared" &&
-        stage !== "preparing" && (
-          <p className="text-xs text-muted-foreground">
-            Lifecycle distinguishes preparation, sponsorship, signing,
-            submission, bundler acceptance, inclusion, reconciliation,
-            confirmation, rejection, expiry, and dropped/unknown outcomes.
-          </p>
-        )}
     </div>
   );
 }

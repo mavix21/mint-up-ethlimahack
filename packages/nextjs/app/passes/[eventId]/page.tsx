@@ -2,16 +2,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  CalendarDays,
-  CircleDollarSign,
-  MapPin,
-  ShieldAlert,
-  Ticket,
-} from "lucide-react";
+import { ArrowLeft, CalendarDays, MapPin } from "lucide-react";
+import { Suspense } from "react";
 
-import { GaslessEventPassPurchase } from "~~/components/passes/gasless-event-pass-purchase";
+import { EventPassDetailsDisclosure } from "~~/components/passes/event-pass-details-disclosure";
+import { InlinePurchaseGate } from "~~/components/passes/inline-purchase-gate";
 import {
   eventPassChainName,
   eventPassEnvironment,
@@ -140,22 +135,6 @@ async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
               </dt>
               <dd className="mt-2 font-semibold">{offer.location}</dd>
             </div>
-            <div>
-              <dt className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Ticket className="size-4" /> Availability
-              </dt>
-              <dd className="mt-2 font-semibold">
-                {offer.remaining} of {offer.capacity} remaining
-              </dd>
-            </div>
-            <div>
-              <dt className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CircleDollarSign className="size-4" /> Exact price
-              </dt>
-              <dd className="mt-2 font-semibold">
-                {formatUsdc(offer.price.amountSubunits)}
-              </dd>
-            </div>
           </dl>
         </article>
         <aside className="h-fit rounded-3xl border bg-card p-6 shadow-xl lg:sticky lg:top-6">
@@ -163,66 +142,37 @@ async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
           <p className="mt-2 font-heading text-4xl font-black">
             {formatUsdc(offer.price.amountSubunits)}
           </p>
-          <div className="my-6 border-t" />
-          <p className="text-sm leading-6">
-            <strong>Sales window:</strong>
-            <br />
-            Starts {dateTime(offer.saleStartsAt, offer.timezone)} (inclusive)
-            <br />
-            Ends {dateTime(offer.saleEndsAt, offer.timezone)} (exclusive)
-          </p>
-          <p className="mt-4 text-sm font-semibold">
-            Event status:{" "}
-            {offer.lifecycle === "cancelled"
-              ? "Cancelled"
-              : "Scheduled, not cancelled"}
-          </p>
-          {offer.availability.kind === "available" ? (
-            passkeyAccount ? (
-              <GaslessEventPassPurchase
-                eventId={offer.eventId}
-                passkeyAccount={passkeyAccount}
-                chainId={eventPassEnvironment.chainId}
-                chainName={eventPassChainName}
-                contractAddress={eventPassEnvironment.eventPassAddress}
-                usdcAddress={eventPassEnvironment.usdcAddress}
-                priceAmountSubunits={offer.price.amountSubunits}
-                remaining={offer.remaining}
-                revenueRecipient={offer.revenueRecipient as `0x${string}`}
-                initialUsdcBalance={initialUsdcBalance}
-                fixtureMode={purchaseFixture}
-                mintUpReturnTo={mintUpReturnTo}
-              />
-            ) : (
-              <Link
-                href={
-                  authenticated
-                    ? "/wallet"
-                    : `/login?callbackUrl=${encodeURIComponent(getEventPassHref(offer.eventId, mintUpReturnTo))}`
-                }
-                className="mt-6 block w-full rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground"
-              >
-                {authenticated ? "Secure Event Passes" : "Sign in to purchase"}
-              </Link>
-            )
-          ) : (
-            <div className="mt-6 rounded-xl bg-destructive/10 p-4 font-semibold text-destructive">
-              {offer.availability.reason}
-            </div>
-          )}
-          <div className="mt-6 rounded-2xl bg-muted p-4 text-sm leading-6">
-            <p className="flex items-center gap-2 font-bold">
-              <ShieldAlert className="size-4" /> Before you continue
-            </p>
-            <p className="mt-2">
-              USDC is paid directly to the Event revenue recipient at{" "}
-              <span className="break-all font-mono text-xs">
-                {offer.revenueRecipient}
-              </span>
-              . Mint Up Passes does not escrow funds or provide a guaranteed
-              refund. Cancellation does not automatically return USDC.
-            </p>
-          </div>
+          <InlinePurchaseGate
+            eventId={offer.eventId}
+            eventName={offer.name}
+            passkeyAccount={passkeyAccount}
+            authenticated={authenticated}
+            chainId={eventPassEnvironment.chainId}
+            chainName={eventPassChainName}
+            contractAddress={eventPassEnvironment.eventPassAddress}
+            usdcAddress={eventPassEnvironment.usdcAddress}
+            priceAmountSubunits={offer.price.amountSubunits}
+            remaining={offer.remaining}
+            revenueRecipient={offer.revenueRecipient as `0x${string}`}
+            initialUsdcBalance={initialUsdcBalance}
+            fixtureMode={purchaseFixture}
+            availabilityKind={offer.availability.kind}
+            mintUpReturnTo={mintUpReturnTo}
+          />
+          <EventPassDetailsDisclosure
+            saleStartsAt={offer.saleStartsAt}
+            saleEndsAt={offer.saleEndsAt}
+            timezone={offer.timezone}
+            remaining={offer.remaining}
+            capacity={offer.capacity}
+            lifecycle={offer.lifecycle}
+            availabilityReason={
+              offer.availability.kind === "unavailable"
+                ? offer.availability.reason
+                : null
+            }
+            revenueRecipient={offer.revenueRecipient}
+          />
         </aside>
       </div>
     </div>
@@ -248,4 +198,3 @@ export default function EventPassPage(props: EventPassPageProps) {
     </Suspense>
   );
 }
-import { Suspense } from "react";

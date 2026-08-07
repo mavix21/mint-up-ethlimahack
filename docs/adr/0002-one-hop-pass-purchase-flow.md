@@ -1,0 +1,4 @@
+# One-hop Event Pass purchase with inline Review and modal success
+
+The funnel required hops between mint-up-corp Event Page, passes/[eventId], /login, and /wallet, plus a verbose Review showing chain, spender, and atomic revert language. We decided the prod Event Page shows Get Pass — $X that deep-links to passes/[eventId] with shared auth (one hop); auth and Face ID creation happen in a sheet over the pass detail with no page navigation, Review shows only Event name, price, and one terse Paid directly to organizer line → Face ID prompt, insufficient funds shows inline Add USDC, errors collapse to one line + Retry, success shows a shadcn Dialog You're in! for ~2s then redirects to /my-passes, and /wallet is trimmed to Secure status + Manage Face ID only. This removes 2 page hops while keeping a jargon-free confirmation.
+

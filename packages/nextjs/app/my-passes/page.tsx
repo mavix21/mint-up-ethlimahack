@@ -68,11 +68,7 @@ function PassCard({ pass }: { pass: PassGroup["passes"][number] }) {
         <Badge variant={isTransferred ? "outline" : "secondary"}>
           {isTransferred ? "Transferred" : "Transferable"}
         </Badge>
-        {pass.transfer.transactionHash ? (
-          <Badge variant="outline" className="max-w-48 truncate">
-            tx {pass.transfer.transactionHash.slice(0, 10)}…
-          </Badge>
-        ) : null}
+        {/* hashes hidden per spec: no transaction/UserOperation hash or explorer link in My Passes */}
       </div>
     </div>
   );
