@@ -32,6 +32,10 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/",
   },
   {
+    label: "My Passes",
+    href: "/my-passes",
+  },
+  {
     label: "Wallet",
     href: "/wallet",
   },

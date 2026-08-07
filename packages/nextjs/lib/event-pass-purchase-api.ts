@@ -25,6 +25,9 @@ export const purchaseStatusSchema = z.object({
     "synchronizing",
     "confirmed",
     "rejected",
+    "expired",
+    "dropped",
+    "unknown",
     "expiredOrDropped",
   ]),
   transactionHash: hash.optional(),
@@ -39,6 +42,57 @@ export const purchaseStatusSchema = z.object({
     })
     .optional(),
 });
+
+// Distinct lifecycle for the sponsored purchase UI (prevents collapsing into ordinary tx state)
+export const purchaseLifecycleStage = z.enum([
+  "idle",
+  "preparing",
+  "prepared",
+  "sponsoring",
+  "signing",
+  "submitting",
+  "submitted",
+  "included",
+  "reconciling",
+  "confirmed",
+  "rejected",
+  "expired",
+  "dropped",
+  "unknown",
+  "cancelled",
+  "failed",
+]);
+
+export type PurchaseLifecycleStage = z.infer<typeof purchaseLifecycleStage>;
+
+export function mapBackendStatusToLifecycle(
+  status: z.infer<typeof purchaseStatusSchema>["status"],
+): PurchaseLifecycleStage {
+  switch (status) {
+    case "awaitingSubmission":
+      return "prepared";
+    case "submitted":
+      return "submitted"; // bundler acceptance
+    case "included":
+      return "included";
+    case "synchronizing":
+      return "reconciling";
+    case "confirmed":
+      return "confirmed";
+    case "rejected":
+      return "rejected";
+    case "expired":
+      return "expired";
+    case "expiredOrDropped":
+      return "expired";
+    case "dropped":
+      return "dropped";
+    case "unknown":
+      return "unknown";
+    default:
+      return "unknown";
+  }
+}
 
 export type PreparedPurchase = z.infer<typeof preparedPurchaseSchema>;
 export type PurchaseStatus = z.infer<typeof purchaseStatusSchema>;

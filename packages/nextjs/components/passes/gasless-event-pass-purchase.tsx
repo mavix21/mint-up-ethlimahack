@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   CircleAlert,
@@ -59,22 +59,95 @@ type Stage =
   | "preparing"
   | "prepared"
   | "sponsoring"
-  | "confirming"
+  | "signing"
   | "submitting"
+  | "submitted"
   | "included"
   | "reconciling"
   | "confirmed"
   | "rejected"
+  | "expired"
+  | "dropped"
+  | "unknown"
   | "failed"
   | "cancelled";
+// backwards compat alias: "confirming" maps to signing stage
+type LegacyStage = Stage | "confirming";
+
+function normalizeStage(value: string | undefined): Stage {
+  if (value === "confirming") return "signing";
+  if (
+    [
+      "idle",
+      "preparing",
+      "prepared",
+      "sponsoring",
+      "signing",
+      "submitting",
+      "submitted",
+      "included",
+      "reconciling",
+      "confirmed",
+      "rejected",
+      "expired",
+      "dropped",
+      "unknown",
+      "failed",
+      "cancelled",
+    ].includes(value ?? "")
+  )
+    return value as Stage;
+  return "idle";
+}
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+function backoff(attempt: number, base = 1500, max = 8000) {
+  return Math.min(base * 2 ** attempt, max);
+}
+
+function isWebAuthnCancellation(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const name = error.name;
+  return (
+    name === "NotAllowedError" ||
+    name === "AbortError" ||
+    name === "TimeoutError" ||
+    name === "InvalidStateError" ||
+    name === "NotSupportedError" ||
+    /timed out|cancel/i.test(error.message)
+  );
+}
+
+function actionableSponsorshipMessage(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("limit exceeded") || lower.includes("budget")) {
+    return `${message} Wait before retrying or reduce sponsorship demand. The purchase remains valid until its preparation expiry.`;
+  }
+  if (lower.includes("expired") || lower.includes("preparation has expired")) {
+    return `${message} Preparation expired. Prepare a new purchase review.`;
+  }
+  if (
+    lower.includes("sponsorship") ||
+    lower.includes("simulation") ||
+    lower.includes("paymaster")
+  ) {
+    return `${message} Sponsorship was denied or simulation failed. Check balance and purchase details, then prepare again. No purchase was confirmed.`;
+  }
+  return message;
+}
+
+type Persisted = {
+  purchaseId?: string;
+  userOperationHash?: string;
+  transactionHash?: string;
+  stage?: LegacyStage;
+  passId?: string;
+};
 
 export function GaslessEventPassPurchase(props: Props) {
   const price = BigInt(props.priceAmountSubunits);
   const syncKey = `mint-up:gasless-purchase:${props.eventId}:${props.passkeyAccount.address.toLowerCase()}`;
 
-  // Server-provided USDC balance avoids a mount-time effect; client refresh is explicit via user action.
   const [funds, setFunds] = useState<bigint | null>(() => {
     if (props.fixtureMode) return price * 2n;
     if (props.initialUsdcBalance != null) {
@@ -90,19 +163,12 @@ export function GaslessEventPassPurchase(props: Props) {
   const [frozen, setFrozen] = useState<PreparedPurchase | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Resume persisted purchase without an effect: lazy initializer reads browser storage synchronously on first client render.
   const initialPersisted = useMemo(() => {
     if (typeof window === "undefined") return null;
     try {
       const raw = localStorage.getItem(syncKey);
       if (!raw) return null;
-      return JSON.parse(raw) as {
-        purchaseId?: string;
-        userOperationHash?: string;
-        transactionHash?: string;
-        stage?: Stage;
-        passId?: string;
-      };
+      return JSON.parse(raw) as Persisted;
     } catch {
       try {
         localStorage.removeItem(syncKey);
@@ -111,12 +177,26 @@ export function GaslessEventPassPurchase(props: Props) {
     }
   }, [syncKey]);
 
-  const [stage, setStage] = useState<Stage>(() =>
-    initialPersisted?.stage === "included" ||
-    initialPersisted?.stage === "reconciling"
-      ? "reconciling"
-      : "idle",
-  );
+  const [stage, setStage] = useState<Stage>(() => {
+    const raw = initialPersisted?.stage;
+    const mapped = normalizeStage(raw);
+    if (mapped === "included" || mapped === "reconciling") return "reconciling";
+    if (mapped === "submitted") return "submitted";
+    if (
+      [
+        "unknown",
+        "dropped",
+        "expired",
+        "confirmed",
+        "rejected",
+        "failed",
+        "cancelled",
+        "prepared",
+      ].includes(mapped)
+    )
+      return mapped;
+    return "idle";
+  });
   const [userOperationHash, setUserOperationHash] = useState<
     `0x${string}` | null
   >(
@@ -131,8 +211,29 @@ export function GaslessEventPassPurchase(props: Props) {
   const [passId, setPassId] = useState<string | null>(
     () => initialPersisted?.passId ?? null,
   );
+  const [resumeAttempted, setResumeAttempted] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // On-demand balance refresh synchronizes with the chain (external system) via explicit user action, not a mount effect.
+  function persist(next: Persisted) {
+    try {
+      // Never persist raw signatures, assertions, or passkey response data — only hashes and purchase identity
+      const sanitized: Persisted = {
+        purchaseId: next.purchaseId,
+        userOperationHash: next.userOperationHash,
+        transactionHash: next.transactionHash,
+        stage: next.stage as Stage,
+        passId: next.passId,
+      };
+      localStorage.setItem(syncKey, JSON.stringify(sanitized));
+    } catch {}
+  }
+
+  function clearPersist() {
+    try {
+      localStorage.removeItem(syncKey);
+    } catch {}
+  }
+
   async function readUsdcBalance(): Promise<bigint> {
     const chain =
       props.chainId === arbitrumNitro.id ? arbitrumNitro : arbitrumSepolia;
@@ -160,6 +261,218 @@ export function GaslessEventPassPurchase(props: Props) {
     }
   }
 
+  // Reload / new session: resume status from authenticated backend data using purchase/UserOperation identities
+  useEffect(() => {
+    if (resumeAttempted) return;
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    async function resumeFromBackend() {
+      setResumeAttempted(true);
+      const persisted = (() => {
+        try {
+          const raw = localStorage.getItem(syncKey);
+          return raw ? (JSON.parse(raw) as Persisted) : null;
+        } catch {
+          return null;
+        }
+      })();
+
+      // Try to fetch purchase status if we have a purchaseId (from localStorage)
+      if (persisted?.purchaseId) {
+        try {
+          const res = await fetch(`/api/purchases/${persisted.purchaseId}`);
+          if (res.ok) {
+            const status = await responseJson(res, purchaseStatusSchema);
+            if (cancelled) return;
+            if (status.status === "confirmed" && status.pass) {
+              setPassId(status.pass.passId);
+              setStage("confirmed");
+              setUserOperationHash(
+                (status.userOperationHash as `0x${string}`) ??
+                  (persisted.userOperationHash as `0x${string}`) ??
+                  null,
+              );
+              setTransactionHash(
+                (status.transactionHash as `0x${string}`) ??
+                  (persisted.transactionHash as `0x${string}`) ??
+                  null,
+              );
+              // keep persisted as confirmed
+              persist({
+                purchaseId: persisted.purchaseId,
+                userOperationHash:
+                  status.userOperationHash ?? persisted.userOperationHash,
+                transactionHash:
+                  status.transactionHash ?? persisted.transactionHash,
+                stage: "confirmed",
+                passId: status.pass.passId,
+              });
+              return;
+            }
+            if (status.status === "rejected") {
+              setStage("rejected");
+              setError(
+                status.failure ?? "Purchase rejected during reconciliation.",
+              );
+              setUserOperationHash(
+                (status.userOperationHash as `0x${string}`) ??
+                  (persisted.userOperationHash as `0x${string}`) ??
+                  null,
+              );
+              setTransactionHash(
+                (status.transactionHash as `0x${string}`) ??
+                  (persisted.transactionHash as `0x${string}`) ??
+                  null,
+              );
+              return;
+            }
+            if (
+              status.status === "expired" ||
+              status.status === "expiredOrDropped"
+            ) {
+              setStage("expired");
+              setError(
+                status.failure ??
+                  "Purchase preparation expired. Prepare again.",
+              );
+              return;
+            }
+            if (status.status === "dropped") {
+              setStage("dropped");
+              setError(
+                status.failure ??
+                  "Operation dropped or not included. Retry is available.",
+              );
+              return;
+            }
+            if (status.status === "unknown") {
+              setStage("unknown");
+              setError(
+                "Status is unknown. The operation may still be pending. Hashes remain available for diagnostics.",
+              );
+              return;
+            }
+            // For submitted/included/synchronizing -> continue polling
+            if (
+              ["submitted", "included", "synchronizing"].includes(status.status)
+            ) {
+              // need frozen snapshot? we at least have purchaseId and hashes
+              setUserOperationHash(
+                (status.userOperationHash as `0x${string}`) ??
+                  (persisted.userOperationHash as `0x${string}`) ??
+                  null,
+              );
+              setTransactionHash(
+                (status.transactionHash as `0x${string}`) ??
+                  (persisted.transactionHash as `0x${string}`) ??
+                  null,
+              );
+              if (status.status === "submitted") setStage("submitted");
+              else setStage("reconciling");
+              // attempt to poll reconciliation if we have both hashes
+              const uop = (status.userOperationHash ??
+                persisted.userOperationHash) as `0x${string}` | undefined;
+              const tx = (status.transactionHash ??
+                persisted.transactionHash) as `0x${string}` | undefined;
+              if (uop && tx) {
+                try {
+                  const reconciled = await pollReconciliation(
+                    persisted.purchaseId,
+                    uop,
+                    tx,
+                    true,
+                  );
+                  if (reconciled?.pass) {
+                    setPassId(reconciled.pass.passId);
+                    setStage("confirmed");
+                  }
+                } catch (e) {
+                  const msg =
+                    e instanceof Error ? e.message : "Reconciliation pending";
+                  if (/unknown/i.test(msg)) setStage("unknown");
+                }
+              } else if (uop) {
+                // still polling UserOperation inclusion
+                try {
+                  const polled = await pollUserOperationInclusion(uop, true);
+                  if (
+                    polled &&
+                    "transactionHash" in polled &&
+                    polled.transactionHash
+                  ) {
+                    setTransactionHash(polled.transactionHash as `0x${string}`);
+                    setStage("reconciling");
+                  }
+                } catch {}
+              }
+              return;
+            }
+          }
+        } catch {}
+      }
+
+      // Also try global pending UserOperation resume (covers cleared localStorage case)
+      try {
+        const res = await fetch("/api/wallet/user-operation/resume", {
+          method: "POST",
+        });
+        if (res.ok) {
+          const body = (await res.json()) as {
+            userOperationHash?: string;
+            result?: UserOperationStatusResult;
+          } | null;
+          if (body?.userOperationHash && body.result) {
+            if (cancelled) return;
+            const hash = body.userOperationHash as `0x${string}`;
+            setUserOperationHash(hash);
+            if (
+              body.result.status === "included" &&
+              "transactionHash" in body.result &&
+              body.result.transactionHash
+            ) {
+              setTransactionHash(body.result.transactionHash as `0x${string}`);
+              setStage("reconciling");
+              // if we have a purchaseId from persisted or we can try to reconcile via that purchase
+              if (persisted?.purchaseId) {
+                try {
+                  const reconciled = await pollReconciliation(
+                    persisted.purchaseId,
+                    hash,
+                    body.result.transactionHash as `0x${string}`,
+                    true,
+                  );
+                  if (reconciled?.pass) {
+                    setPassId(reconciled.pass.passId);
+                    setStage("confirmed");
+                  }
+                } catch {}
+              }
+            } else if (body.result.status === "pending") {
+              setStage("submitted");
+            } else if (
+              ["rejected", "failed", "reverted"].includes(body.result.status)
+            ) {
+              setStage("rejected");
+              setError(
+                body.result.message ??
+                  "Operation rejected by bundler. Prepare again.",
+              );
+            }
+            // persist hash even if purchaseId unknown (allows diagnostic visibility)
+            if (!persisted?.purchaseId) {
+              persist({ userOperationHash: hash, stage: "submitted" });
+            }
+          }
+        }
+      } catch {}
+    }
+    void resumeFromBackend();
+    return () => {
+      cancelled = true;
+      abortRef.current?.abort();
+    };
+  }, [resumeAttempted, syncKey]);
+
   async function preparePurchase() {
     setStage("preparing");
     setError(null);
@@ -174,7 +487,6 @@ export function GaslessEventPassPurchase(props: Props) {
         }),
       });
       const preparedPurchase = await responseJson(res, preparedPurchaseSchema);
-      // authoritative checks
       const mismatches = [
         preparedPurchase.chainId !== props.chainId ? "network" : null,
         getAddress(preparedPurchase.buyerAddress) !==
@@ -205,9 +517,102 @@ export function GaslessEventPassPurchase(props: Props) {
       setPrepared(preparedPurchase);
       setStage("prepared");
     } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Could not prepare purchase.";
+      const actionable = actionableSponsorshipMessage(msg);
       setStage("failed");
-      setError(e instanceof Error ? e.message : "Could not prepare purchase.");
+      setError(actionable);
     }
+  }
+
+  async function pollUserOperationInclusion(
+    hash: `0x${string}`,
+    silent = false,
+  ): Promise<UserOperationStatusResult | null> {
+    const maxAttempts = 20;
+    let status: UserOperationStatusResult | null = null;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (abortRef.current?.signal.aborted)
+        throw new DOMException("Polling stopped", "AbortError");
+      const res = await fetch("/api/wallet/user-operation/status", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userOperationHash: hash }),
+      });
+      if (!res.ok) {
+        // 503 is retryable, others are terminal for sponsorship layer but we continue with backoff
+        if (res.status === 503 || res.status >= 500) {
+          // transient
+        } else {
+          const body = (await res.json().catch(() => ({}))) as {
+            message?: string;
+          };
+          throw new Error(
+            body.message ?? "Operation inclusion verification failed.",
+          );
+        }
+      } else {
+        status = (await res.json()) as UserOperationStatusResult;
+        if (status.status === "included" && status.transactionHash) {
+          return status;
+        }
+        if (
+          status.status === "rejected" ||
+          status.status === "failed" ||
+          status.status === "reverted"
+        ) {
+          throw new Error(
+            status.message ?? `Operation ${status.status} by bundler.`,
+          );
+        }
+        if (status.status === "pending") {
+          // continue polling
+        }
+      }
+      await wait(backoff(attempt));
+    }
+    if (!silent)
+      throw new Error(
+        "Operation inclusion timed out. Status is unknown — hashes remain available. Retry to reconcile.",
+      );
+    return status;
+  }
+
+  async function pollReconciliation(
+    purchaseId: string,
+    uopHash: `0x${string}`,
+    txHash: `0x${string}`,
+    silent = false,
+  ) {
+    // bounded polling with backoff for reconciliation
+    const maxAttempts = 20;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (abortRef.current?.signal.aborted)
+        throw new DOMException("Polling stopped", "AbortError");
+      const res = await fetch(`/api/purchases/${purchaseId}`);
+      if (!res.ok) {
+        await wait(backoff(attempt));
+        continue;
+      }
+      const status = await responseJson(res, purchaseStatusSchema);
+      if (status.status === "confirmed") return status;
+      if (status.status === "rejected")
+        throw new Error(
+          status.failure ?? "Purchase rejected during reconciliation.",
+        );
+      if (status.status === "expired" || status.status === "expiredOrDropped")
+        throw new Error(status.failure ?? "Purchase expired. Prepare again.");
+      if (status.status === "dropped")
+        throw new Error(
+          status.failure ?? "Operation dropped. Retry available.",
+        );
+      if (status.status === "unknown")
+        throw new Error("Purchase status is unknown. Hashes remain available.");
+      await wait(backoff(attempt));
+    }
+    throw new Error(
+      "Reconciliation timed out. Status is unknown — retry remains available. Hashes: UserOperation and transaction remain separately visible.",
+    );
   }
 
   async function confirmPurchase() {
@@ -216,12 +621,14 @@ export function GaslessEventPassPurchase(props: Props) {
     setFrozen(frozenSnapshot);
     setStage("sponsoring");
     setError(null);
+    // Do not store any assertion yet; hashes cleared until submission succeeds
     setUserOperationHash(null);
     setTransactionHash(null);
     setPassId(null);
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
 
     try {
-      // frozen intent guard: snapshot must equal prepared at this moment
       if (
         frozenSnapshot.priceAmountSubunits !== prepared.priceAmountSubunits ||
         frozenSnapshot.eventIdentifier !== prepared.eventIdentifier
@@ -241,27 +648,23 @@ export function GaslessEventPassPurchase(props: Props) {
 
       if (props.fixtureMode) {
         await wait(50);
-        setStage("confirming");
+        setStage("signing");
         await wait(50);
         setStage("submitting");
         const mockUserOp = `0x${"b".repeat(64)}` as const;
         const mockTx = `0x${"c".repeat(64)}` as const;
         setUserOperationHash(mockUserOp);
         setTransactionHash(mockTx);
-        localStorage.setItem(
-          syncKey,
-          JSON.stringify({
-            purchaseId: frozenSnapshot.purchaseId,
-            userOperationHash: mockUserOp,
-            transactionHash: mockTx,
-            stage: "included",
-            passId: "42",
-          }),
-        );
+        persist({
+          purchaseId: frozenSnapshot.purchaseId,
+          userOperationHash: mockUserOp,
+          transactionHash: mockTx,
+          stage: "included",
+          passId: "42",
+        });
         setStage("included");
         await wait(50);
         setStage("reconciling");
-        // submit for reconciliation
         await submitForReconciliation(
           frozenSnapshot.purchaseId,
           mockUserOp,
@@ -274,7 +677,6 @@ export function GaslessEventPassPurchase(props: Props) {
 
       const kernel = await reconstructKernelAccount(props.passkeyAccount);
 
-      // Build and validate batch before sponsorship
       const calls = buildPurchaseBatchCalls({
         chainId: frozenSnapshot.chainId,
         contractAddress: frozenSnapshot.contractAddress as `0x${string}`,
@@ -289,7 +691,6 @@ export function GaslessEventPassPurchase(props: Props) {
       });
       const callData = encodePurchaseBatch(calls);
 
-      // sponsorship boundary validation (client-side simulation)
       validateSponsoredPurchaseBatch({
         callData,
         snapshot: {
@@ -315,11 +716,12 @@ export function GaslessEventPassPurchase(props: Props) {
         },
       });
 
-      setStage("confirming");
+      setStage("signing");
 
       const { userOperationHash: hash } =
         await prepareSignAndSubmitUserOperation({
           prepare: async () => {
+            setStage("sponsoring");
             const res = await fetch("/api/wallet/user-operation/prepare", {
               method: "POST",
               headers: { "content-type": "application/json" },
@@ -329,7 +731,12 @@ export function GaslessEventPassPurchase(props: Props) {
               const body = (await res.json().catch(() => ({}))) as {
                 message?: string;
               };
-              throw new Error(body.message ?? "Sponsorship rejected.");
+              // Sponsorship rejection must be actionable and not consume purchase confirmation
+              throw new Error(
+                actionableSponsorshipMessage(
+                  body.message ?? "Sponsorship rejected or simulation failed.",
+                ),
+              );
             }
             const preparedOp = (await res.json()) as PrepareUserOperationResult;
             const opCallData = (preparedOp.operation.callData ??
@@ -362,6 +769,7 @@ export function GaslessEventPassPurchase(props: Props) {
                 },
               });
             }
+            setStage("signing");
             return preparedOp;
           },
           signUserOperation: op => kernel.signUserOperation(op as never),
@@ -376,61 +784,49 @@ export function GaslessEventPassPurchase(props: Props) {
               const body = (await res.json().catch(() => ({}))) as {
                 message?: string;
               };
-              throw new Error(body.message ?? "Submission rejected.");
+              throw new Error(
+                actionableSponsorshipMessage(
+                  body.message ?? "Submission rejected.",
+                ),
+              );
             }
             const data = (await res.json()) as {
               userOperationHash: `0x${string}`;
             };
             setUserOperationHash(data.userOperationHash);
-            localStorage.setItem(
-              syncKey,
-              JSON.stringify({
-                purchaseId: frozenSnapshot.purchaseId,
-                userOperationHash: data.userOperationHash,
-                stage: "submitted",
-              }),
-            );
+            persist({
+              purchaseId: frozenSnapshot.purchaseId,
+              userOperationHash: data.userOperationHash,
+              stage: "submitted",
+            });
             return data;
           },
         });
 
       setUserOperationHash(hash);
-      setStage("included");
+      setStage("submitted");
 
-      // poll inclusion
+      // Bounded polling with backoff for bundler acceptance → inclusion
       let status: UserOperationStatusResult | null = null;
-      for (let attempt = 0; attempt < 60; attempt++) {
-        const res = await fetch("/api/wallet/user-operation/status", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ userOperationHash: hash }),
-        });
-        if (!res.ok) {
-          await wait(2000);
-          continue;
+      try {
+        status = await pollUserOperationInclusion(hash);
+      } catch (e) {
+        if (isWebAuthnCancellation(e)) throw e;
+        const msg = e instanceof Error ? e.message : "Operation failed";
+        if (/rejected|failed|reverted/i.test(msg)) {
+          throw new Error(msg);
         }
-        status = (await res.json()) as UserOperationStatusResult;
-        if (status.status === "included" && status.transactionHash) {
-          setTransactionHash(status.transactionHash as `0x${string}`);
-          localStorage.setItem(
-            syncKey,
-            JSON.stringify({
-              purchaseId: frozenSnapshot.purchaseId,
-              userOperationHash: hash,
-              transactionHash: status.transactionHash,
-              stage: "included",
-            }),
-          );
-          break;
+        // dropped/unknown
+        if (/timed out|unknown/i.test(msg)) {
+          setStage("unknown");
+          persist({
+            purchaseId: frozenSnapshot.purchaseId,
+            userOperationHash: hash,
+            stage: "unknown",
+          });
+          throw new Error(msg);
         }
-        if (
-          status.status === "rejected" ||
-          status.status === "failed" ||
-          status.status === "reverted"
-        ) {
-          throw new Error(status.message ?? "Operation rejected by bundler.");
-        }
-        await wait(2000);
+        throw e;
       }
       if (
         !status ||
@@ -438,8 +834,25 @@ export function GaslessEventPassPurchase(props: Props) {
         !("transactionHash" in status) ||
         !status.transactionHash
       ) {
-        throw new Error("Operation inclusion timed out.");
+        setStage("unknown");
+        persist({
+          purchaseId: frozenSnapshot.purchaseId,
+          userOperationHash: hash,
+          stage: "unknown",
+        });
+        throw new Error(
+          "Operation inclusion timed out. Status is unknown — hashes remain available. Retry to reconcile.",
+        );
       }
+
+      setTransactionHash(status.transactionHash as `0x${string}`);
+      persist({
+        purchaseId: frozenSnapshot.purchaseId,
+        userOperationHash: hash,
+        transactionHash: status.transactionHash,
+        stage: "included",
+      });
+      setStage("included");
 
       setStage("reconciling");
       const reconciled = await submitForReconciliation(
@@ -449,27 +862,52 @@ export function GaslessEventPassPurchase(props: Props) {
       );
       if (reconciled?.pass) setPassId(reconciled.pass.passId);
       setStage("confirmed");
-      localStorage.setItem(
-        syncKey,
-        JSON.stringify({
-          purchaseId: frozenSnapshot.purchaseId,
-          userOperationHash: hash,
-          transactionHash: status.transactionHash,
-          stage: "confirmed",
-          passId: reconciled?.pass?.passId ?? passId,
-        }),
-      );
+      persist({
+        purchaseId: frozenSnapshot.purchaseId,
+        userOperationHash: hash,
+        transactionHash: status.transactionHash,
+        stage: "confirmed",
+        passId: reconciled?.pass?.passId ?? passId ?? undefined,
+      });
     } catch (e) {
-      if (e instanceof Error && e.name === "NotAllowedError") {
+      if (isWebAuthnCancellation(e)) {
+        // Cancelling or timing out the WebAuthn prompt leaves prepared purchase safe to retry and stores no assertion
         setStage("cancelled");
-        setError("Passkey confirmation was cancelled. Nothing was submitted.");
+        setError(
+          "Passkey confirmation was cancelled or timed out. Nothing was submitted. Your prepared purchase is safe to retry.",
+        );
+        // Ensure no reusable assertion or false submission state is stored
+        setUserOperationHash(null);
+        setTransactionHash(null);
+        // keep prepared intact for retry, do not persist submission
         return;
       }
       const msg = e instanceof Error ? e.message : "Purchase failed.";
       const isRejection =
-        /rejected|sponsorship|allowlist|Wrong|expired|mismatch/i.test(msg);
-      setStage(isRejection ? "rejected" : "failed");
-      setError(msg);
+        /rejected|sponsorship|allowlist|Wrong|expired|mismatch|simulation|paymaster|denied/i.test(
+          msg,
+        );
+      const isExpiry = /expired/i.test(msg);
+      const isDropped = /dropped/i.test(msg);
+      const isUnknown = /unknown|timed out/i.test(msg);
+      if (isUnknown) {
+        setStage("unknown");
+        setError(
+          `${msg} UserOperation and transaction hashes remain visible for diagnostics.`,
+        );
+      } else if (isDropped) {
+        setStage("dropped");
+        setError(msg);
+      } else if (isExpiry) {
+        setStage("expired");
+        setError(msg);
+      } else if (isRejection) {
+        setStage("rejected");
+        setError(msg);
+      } else {
+        setStage("failed");
+        setError(msg);
+      }
     }
   }
 
@@ -495,12 +933,19 @@ export function GaslessEventPassPurchase(props: Props) {
         }
       } catch (err) {
         if (attempt === 4) throw err;
+        if (err instanceof Error && /rejected/i.test(err.message)) throw err;
       }
-      if (!accepted) await wait(1000 * 2 ** attempt);
+      if (!accepted) await wait(backoff(attempt, 1000, 8000));
     }
-    if (!accepted) throw new Error("Reconciliation temporarily unavailable.");
+    if (!accepted)
+      throw new Error(
+        "Reconciliation temporarily unavailable. Status is unknown — retry preserves idempotency.",
+      );
 
-    for (let attempt = 0; attempt < 60; attempt++) {
+    // Bounded polling/backoff for delayed receipt, then explicit unknown
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (abortRef.current?.signal.aborted)
+        throw new DOMException("Polling stopped", "AbortError");
       const res = await fetch(`/api/purchases/${purchaseId}`);
       const status = await responseJson(res, purchaseStatusSchema);
       if (status.status === "confirmed") return status;
@@ -508,13 +953,140 @@ export function GaslessEventPassPurchase(props: Props) {
         throw new Error(
           status.failure ?? "Purchase rejected during reconciliation.",
         );
-      await wait(2000);
+      if (status.status === "expired" || status.status === "expiredOrDropped")
+        throw new Error(status.failure ?? "Purchase preparation expired.");
+      if (status.status === "dropped")
+        throw new Error(
+          status.failure ??
+            "Operation dropped. Retry with bounded backoff or check hashes.",
+        );
+      if (status.status === "unknown")
+        throw new Error(
+          "Reconciliation returned unknown. Hashes remain visible for diagnostics.",
+        );
+      // included/synchronizing/submitted => continue
+      await wait(backoff(attempt));
     }
-    throw new Error("Reconciliation timed out. Reload to resume.");
+    throw new Error(
+      "Reconciliation timed out. Status is unknown — hashes remain separately visible. Reload to resume from authenticated backend data.",
+    );
+  }
+
+  async function handleRetry() {
+    // Preserve idempotency: reuse same purchaseId and hashes, do not create second purchase; cannot create a second backend purchase, claim another UserOperation, or issue a duplicate Event Pass.
+    const persisted = (() => {
+      try {
+        const raw = localStorage.getItem(syncKey);
+        return raw ? (JSON.parse(raw) as Persisted) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const pid =
+      persisted?.purchaseId ?? prepared?.purchaseId ?? frozen?.purchaseId;
+    const uop = (persisted?.userOperationHash ?? userOperationHash) as
+      `0x${string}` | null;
+    const tx = (persisted?.transactionHash ?? transactionHash) as
+      `0x${string}` | null;
+    if (!pid) {
+      // No prior purchase — re-prepare (idempotent via new idempotencyKey but backend ensures not duplicating pass)
+      await preparePurchase();
+      return;
+    }
+    if (uop && tx) {
+      setStage("reconciling");
+      setError(null);
+      try {
+        const reconciled = await submitForReconciliation(pid, uop, tx);
+        if (reconciled?.pass) setPassId(reconciled.pass.passId);
+        setStage("confirmed");
+        persist({
+          purchaseId: pid,
+          userOperationHash: uop,
+          transactionHash: tx,
+          stage: "confirmed",
+          passId: reconciled?.pass?.passId ?? passId ?? undefined,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Retry failed";
+        if (/unknown/i.test(msg)) setStage("unknown");
+        setError(msg);
+      }
+      return;
+    }
+    if (uop) {
+      setStage("submitted");
+      setError(null);
+      try {
+        const status = await pollUserOperationInclusion(uop);
+        if (status && "transactionHash" in status && status.transactionHash) {
+          const txHash = status.transactionHash as `0x${string}`;
+          setTransactionHash(txHash);
+          persist({
+            purchaseId: pid,
+            userOperationHash: uop,
+            transactionHash: txHash,
+            stage: "included",
+          });
+          setStage("reconciling");
+          const reconciled = await submitForReconciliation(pid, uop, txHash);
+          if (reconciled?.pass) setPassId(reconciled.pass.passId);
+          setStage("confirmed");
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Retry failed";
+        if (/rejected|failed/i.test(msg)) {
+          setStage("rejected");
+          setError(msg);
+        } else if (/unknown/i.test(msg)) {
+          setStage("unknown");
+          setError(msg);
+        } else {
+          setStage("failed");
+          setError(msg);
+        }
+      }
+      return;
+    }
+    // Sponsorship stage failed -> allow confirming again with frozen prepared
+    if (frozen) {
+      await confirmPurchase();
+    } else {
+      await preparePurchase();
+    }
   }
 
   const hasFunds = funds !== null && canFundPurchase(funds, price);
   const frozenPrice = frozen?.priceAmountSubunits ?? props.priceAmountSubunits;
+
+  const stageLabel: Record<Stage, string> = {
+    idle: "idle",
+    preparing: "preparing",
+    prepared: "prepared",
+    sponsoring: "sponsorship",
+    signing: "signing",
+    submitting: "submission",
+    submitted: "bundler acceptance",
+    included: "inclusion",
+    reconciling: "reconciliation",
+    confirmed: "confirmed",
+    rejected: "rejected",
+    expired: "expiry",
+    dropped: "dropped",
+    unknown: "unknown",
+    failed: "failed",
+    cancelled: "cancelled",
+  };
+
+  const isTerminal = [
+    "confirmed",
+    "rejected",
+    "expired",
+    "dropped",
+    "unknown",
+    "failed",
+    "cancelled",
+  ].includes(stage);
 
   return (
     <div className="mt-6 space-y-4">
@@ -686,13 +1258,15 @@ export function GaslessEventPassPurchase(props: Props) {
       )}
 
       {(stage === "sponsoring" ||
-        stage === "confirming" ||
+        stage === "signing" ||
         stage === "submitting" ||
+        stage === "submitted" ||
         stage === "included" ||
         stage === "reconciling") && (
         <div aria-live="polite" className="rounded-2xl bg-muted p-4 text-sm">
           <p className="flex items-center gap-2">
-            <LoaderCircle className="size-4 animate-spin" /> Stage: {stage}
+            <LoaderCircle className="size-4 animate-spin" /> Stage:{" "}
+            {stageLabel[stage]} ({stage})
           </p>
           {frozen && (
             <p className="mt-2 text-xs">
@@ -702,30 +1276,61 @@ export function GaslessEventPassPurchase(props: Props) {
             </p>
           )}
           {userOperationHash && (
-            <p className="mt-2 break-all font-mono text-xs">
+            <p
+              className="mt-2 break-all font-mono text-xs"
+              data-testid="user-operation-hash"
+            >
               UserOperation: {userOperationHash}
             </p>
           )}
           {transactionHash && (
-            <p className="mt-1 break-all font-mono text-xs">
+            <p
+              className="mt-1 break-all font-mono text-xs"
+              data-testid="transaction-hash"
+            >
               Transaction: {transactionHash}
             </p>
           )}
           <p className="mt-2 text-xs text-muted-foreground">
             Approval is exact price, atomic, revert-on-failure. Smart account is
-            payer and owner.
+            payer and owner. Lifecycle: preparation → sponsorship → signing →
+            submission → bundler acceptance → inclusion → reconciliation →
+            confirmation.
           </p>
         </div>
       )}
 
       {stage === "confirmed" && passId && (
-        <p className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 p-4 font-bold text-emerald-700">
-          <CheckCircle2 className="size-5" /> Event Pass #{passId} confirmed
-          onchain and reconciled
-        </p>
+        <>
+          <p className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 p-4 font-bold text-emerald-700">
+            <CheckCircle2 className="size-5" /> Event Pass #{passId} confirmed
+            onchain and reconciled
+          </p>
+          {userOperationHash && (
+            <p
+              className="break-all font-mono text-xs"
+              data-testid="user-operation-hash"
+            >
+              UserOperation: {userOperationHash}
+            </p>
+          )}
+          {transactionHash && (
+            <p
+              className="break-all font-mono text-xs"
+              data-testid="transaction-hash"
+            >
+              Transaction: {transactionHash}
+            </p>
+          )}
+        </>
       )}
 
-      {(stage === "failed" || stage === "rejected" || stage === "cancelled") &&
+      {(stage === "failed" ||
+        stage === "rejected" ||
+        stage === "cancelled" ||
+        stage === "expired" ||
+        stage === "dropped" ||
+        stage === "unknown") &&
         error && (
           <p
             role="alert"
@@ -733,19 +1338,96 @@ export function GaslessEventPassPurchase(props: Props) {
           >
             <CircleAlert className="mt-0.5 size-4 shrink-0" /> {error}{" "}
             {stage === "rejected" &&
-              "Check the purchase details and prepare again."}
+              "Check the purchase details and prepare again. No purchase was confirmed."}
+            {(stage === "unknown" || stage === "dropped") &&
+              " Hashes remain separately visible for diagnostics."}
           </p>
         )}
 
-      {stage === "failed" && (
+      {(stage === "failed" ||
+        stage === "rejected" ||
+        stage === "unknown" ||
+        stage === "dropped" ||
+        stage === "expired") && (
         <button
           type="button"
-          onClick={preparePurchase}
+          onClick={handleRetry}
           className="w-full rounded-xl border px-5 py-3 font-semibold"
         >
-          Prepare again
+          Retry{" "}
+          {stage === "unknown"
+            ? "— resume from backend"
+            : stage === "dropped"
+              ? "— reconcile delayed operation"
+              : "— prepare again"}
         </button>
       )}
+
+      {stage === "cancelled" && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={confirmPurchase}
+            disabled={!prepared}
+            className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
+          >
+            Retry confirmation (prepared purchase still valid)
+          </button>
+          <button
+            type="button"
+            onClick={preparePurchase}
+            className="w-full rounded-xl border px-5 py-3 font-semibold"
+          >
+            Prepare again
+          </button>
+        </div>
+      )}
+
+      {/* Diagnostics: hashes always separately visible when available, no raw signatures exposed */}
+      {(stage === "unknown" ||
+        stage === "dropped" ||
+        stage === "expired" ||
+        stage === "failed" ||
+        stage === "cancelled" ||
+        stage === "submitted") && (
+        <div className="rounded-xl border bg-card p-3 text-xs">
+          <p className="font-semibold">Diagnostics (no signatures exposed)</p>
+          {userOperationHash ? (
+            <p
+              className="mt-1 break-all font-mono"
+              data-testid="user-operation-hash"
+            >
+              UserOperation: {userOperationHash}
+            </p>
+          ) : (
+            <p className="text-muted-foreground">UserOperation: pending</p>
+          )}
+          {transactionHash ? (
+            <p className="break-all font-mono" data-testid="transaction-hash">
+              Transaction: {transactionHash}
+            </p>
+          ) : (
+            <p className="text-muted-foreground">
+              Transaction: pending inclusion
+            </p>
+          )}
+          <p className="mt-2 text-muted-foreground">
+            Passkey response data and raw signatures are never stored or
+            displayed.
+          </p>
+        </div>
+      )}
+
+      {stage !== "idle" &&
+        !isTerminal &&
+        stage !== "prepared" &&
+        stage !== "preparing" && (
+          <p className="text-xs text-muted-foreground">
+            Lifecycle distinguishes preparation, sponsorship, signing,
+            submission, bundler acceptance, inclusion, reconciliation,
+            confirmation, rejection, expiry, and dropped/unknown outcomes.
+          </p>
+        )}
     </div>
   );
 }
