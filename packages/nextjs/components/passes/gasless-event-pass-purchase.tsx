@@ -41,7 +41,6 @@ import { prepareSignAndSubmitUserOperation } from "~~/lib/pimlico-user-operation
 import {
   getPasskeyAvailability,
   isAvailabilityBlocking,
-  type PasskeyAvailability,
 } from "~~/lib/passkey-availability";
 import { classifyPasskeyError } from "~~/lib/passkey-errors";
 import {
@@ -129,17 +128,6 @@ function isWebAuthnCancellation(error: unknown): boolean {
     classified.kind === "unsupported" ||
     classified.kind === "unknown"
   );
-}
-
-function availabilityBlockingMessage(
-  availability: PasskeyAvailability | null,
-): string | null {
-  if (!availability) return null;
-  if (!availability.supported)
-    return "Passkeys are not supported in this browser. Use a modern Chromium, Safari, or Firefox with a supported OS. Activation and purchase are disabled — no account was created or changed.";
-  if (availability.platformAuthenticatorAvailable === false)
-    return "No platform authenticator available. Enable biometrics/PIN or connect a security key. Controls are disabled before any WebAuthn ceremony.";
-  return null;
 }
 
 function actionableSponsorshipMessage(message: string): string {
@@ -246,7 +234,6 @@ export function GaslessEventPassPurchase(props: Props) {
   const availabilityChecked =
     availabilityQuery.isSuccess || availabilityQuery.isError;
   const blocking = availability ? isAvailabilityBlocking(availability) : false;
-  const availabilityMsg = availabilityBlockingMessage(availability);
 
   useEffect(() => {
     const destination = getEarlyBirdsRedirectUrl(
@@ -1124,7 +1111,6 @@ export function GaslessEventPassPurchase(props: Props) {
     }
   }
 
-  const hasFunds = funds !== null && canFundPurchase(funds, price);
   const isInsufficient =
     funds !== null && !canFundPurchase(funds, price) && !props.fixtureMode;
   const delta = isInsufficient ? price - (funds ?? 0n) : 0n;
