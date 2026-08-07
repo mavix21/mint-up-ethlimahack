@@ -103,29 +103,6 @@ describe("wallet linking route", () => {
     });
   });
 
-  it("submits a signed embedded-wallet proof through the client registration action", async () => {
-    const { POST } = await import("./route");
-    const response = await POST(
-      request({
-        action: "verify",
-        walletKind: "embedded",
-        address,
-        chainId: 421614,
-        message: "signed embedded SIWE message",
-        signature: `0x${"2".repeat(130)}`,
-      }),
-    );
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ success: true });
-    expect(fetchAuthAction).toHaveBeenCalledWith(expect.anything(), {
-      address,
-      chainId: 421614,
-      message: "signed embedded SIWE message",
-      signature: `0x${"2".repeat(130)}`,
-    });
-  });
-
   it("does not report a link when the proof is invalid or already consumed", async () => {
     fetchAuthAction.mockRejectedValueOnce(
       new Error("SIWE verification required"),

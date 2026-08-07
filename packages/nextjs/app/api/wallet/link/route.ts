@@ -27,13 +27,6 @@ const completeWalletLink = anyApi.passesIdentityActions
   CompleteWalletLinkArgs,
   string
 >;
-const completeClientEmbeddedWallet = anyApi.passesIdentityActions
-  .completeClientEmbeddedWallet as FunctionReference<
-  "action",
-  "public",
-  CompleteWalletLinkArgs,
-  string
->;
 
 function walletArgs(value: unknown): WalletLinkArgs | null {
   if (!value || typeof value !== "object") return null;
@@ -87,16 +80,11 @@ export async function POST(request: Request) {
     /^0x[0-9a-fA-F]+$/.test(body.signature)
   ) {
     try {
-      await fetchAuthAction(
-        body.walletKind === "embedded"
-          ? completeClientEmbeddedWallet
-          : completeWalletLink,
-        {
-          ...args,
-          message: body.message,
-          signature: body.signature,
-        },
-      );
+      await fetchAuthAction(completeWalletLink, {
+        ...args,
+        message: body.message,
+        signature: body.signature,
+      });
       return Response.json({ success: true });
     } catch {
       return Response.json(
