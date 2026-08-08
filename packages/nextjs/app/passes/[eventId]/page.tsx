@@ -89,12 +89,22 @@ async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
     : null;
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
-      <Link
-        href="/"
-        className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> All passes
-      </Link>
+      {mintUpReturnTo ? (
+        <a
+          href={mintUpReturnTo}
+          className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
+          data-testid="return-to-event"
+        >
+          <ArrowLeft className="size-4" /> Return to event
+        </a>
+      ) : (
+        <Link
+          href="/"
+          className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> All passes
+        </Link>
+      )}
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
         <article>
           {offer.imageUrl ? (
