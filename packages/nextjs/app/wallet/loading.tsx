@@ -3,17 +3,22 @@ import { Skeleton } from "~~/components/ui/skeleton";
 export default function WalletLoading() {
   return (
     <main
-      className="mx-auto min-h-[70svh] w-full max-w-6xl px-5 py-10 sm:px-8 sm:py-16"
-      aria-label="Loading your secured Event Pass account"
+      className="mx-auto min-h-[70svh] w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-10"
+      aria-label="Loading wallet"
     >
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-        Secure Event Passes
-      </p>
-      <Skeleton className="mt-4 h-12 w-full max-w-lg" />
-      <Skeleton className="mt-8 h-80 w-full rounded-4xl" />
-      <p className="mt-5 text-sm text-base-content/65">
-        Checking your protected Event Pass account...
-      </p>
+      <div className="mx-auto w-full max-w-105">
+        <div className="overflow-hidden rounded-[2rem] border bg-card shadow-xl">
+          <div className="bg-linear-to-br from-violet-600 via-indigo-600 to-blue-600 p-6 sm:p-7">
+            <Skeleton className="h-11 w-32 rounded-2xl bg-white/20" />
+            <Skeleton className="mt-6 h-19 w-full rounded-2xl bg-white/80" />
+          </div>
+          <div className="space-y-3 p-4 sm:p-5">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-18 w-full rounded-2xl" />
+            <Skeleton className="h-18 w-full rounded-2xl" />
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

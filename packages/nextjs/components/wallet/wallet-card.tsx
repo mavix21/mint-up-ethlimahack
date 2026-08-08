@@ -1,0 +1,210 @@
+"use client";
+
+import { useState } from "react";
+import { Check, Copy, Sparkles } from "lucide-react";
+import { formatUnits } from "viem";
+import { useBalance } from "wagmi";
+
+import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { eventPassEnvironment } from "~~/contracts/eventPassEnvironment";
+
+function shortAddress(address: string) {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+function TokenRow({
+  symbol,
+  balance,
+  isLoading,
+  isError,
+  icon,
+}: {
+  symbol: string;
+  balance?: string;
+  isLoading: boolean;
+  isError: boolean;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border bg-background p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex size-10 items-center justify-center rounded-full border bg-card text-sm font-bold">
+          {icon}
+        </div>
+        <div>
+          <p className="text-sm font-bold">{symbol}</p>
+          <p className="text-xs text-muted-foreground">
+            {symbol === "USDC" ? "USD Coin" : "Ether"}
+          </p>
+        </div>
+      </div>
+      <div className="text-right">
+        {isLoading ? (
+          <div className="h-5 w-20 animate-pulse rounded-full bg-muted" />
+        ) : isError ? (
+          <p className="text-xs text-muted-foreground">—</p>
+        ) : (
+          <>
+            <p className="font-mono text-[15px] font-bold tracking-tight">
+              {balance}
+            </p>
+            <p className="text-xs text-muted-foreground">{symbol}</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function WalletCard({ address }: { address: `0x${string}` }) {
+  const [copied, setCopied] = useState(false);
+  const { targetNetwork } = useTargetNetwork();
+
+  const {
+    data: ethBalance,
+    isLoading: ethLoading,
+    isError: ethError,
+  } = useBalance({
+    address,
+    chainId: targetNetwork.id,
+    query: { refetchInterval: 10_000 },
+  });
+
+  const {
+    data: usdcBalance,
+    isLoading: usdcLoading,
+    isError: usdcError,
+  } = useBalance({
+    address,
+    chainId: targetNetwork.id,
+    token: eventPassEnvironment.usdcAddress,
+    query: { refetchInterval: 10_000 },
+  });
+
+  const ethDisplay = ethBalance
+    ? formatAmount(ethBalance.value, ethBalance.decimals)
+    : "0";
+  const usdcDisplay = usdcBalance ? formatAmount(usdcBalance.value, 6) : "0";
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // fallback: select is not needed, toast fallback not required
+    }
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-[420px]">
+      {/* Phantom-style card */}
+      <div className="overflow-hidden rounded-[2rem] border bg-card shadow-xl">
+        {/* Header */}
+        <div className="relative bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 p-6 text-white sm:p-7">
+          {/* subtle glow */}
+          <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-white/10 blur-3xl" />
+          <div className="pointer-events-none absolute -left-10 bottom-0 size-40 rounded-full bg-violet-300/20 blur-2xl" />
+
+          <div className="relative flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-white text-violet-600 shadow-lg">
+              <Sparkles className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
+                Your wallet
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-white/90">
+                Ready for passes
+              </p>
+            </div>
+            <div className="ml-auto hidden items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold tracking-wide text-white backdrop-blur sm:flex">
+              <span className="size-2 rounded-full bg-emerald-400 shadow shadow-emerald-400/50" />
+              Active
+            </div>
+          </div>
+
+          {/* Address pill */}
+          <div className="relative mt-6 flex items-center gap-3 rounded-2xl bg-white/95 p-3 pl-4 text-foreground shadow-lg backdrop-blur sm:p-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                Address
+              </p>
+              <p
+                className="mt-0.5 truncate font-mono text-sm font-bold tracking-tight"
+                title={address}
+              >
+                {shortAddress(address)}
+              </p>
+              <p
+                className="truncate font-mono text-[11px] text-muted-foreground"
+                title={address}
+              >
+                {address}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label={copied ? "Copied" : "Copy address"}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-foreground px-4 py-2.5 text-xs font-bold text-background transition hover:bg-foreground/90 active:scale-[0.98]"
+            >
+              {copied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </div>
+
+        {/* Balances */}
+        <div className="space-y-3 p-4 sm:p-5">
+          <p className="px-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Balances
+          </p>
+          <TokenRow
+            symbol="USDC"
+            balance={usdcDisplay}
+            isLoading={usdcLoading}
+            isError={usdcError}
+            icon={
+              <span className="text-[11px] font-black tracking-tight text-[#2775CA]">
+                $
+              </span>
+            }
+          />
+          <TokenRow
+            symbol="ETH"
+            balance={ethDisplay}
+            isLoading={ethLoading}
+            isError={ethError}
+            icon={
+              <span className="font-serif text-sm font-bold text-foreground">
+                Ξ
+              </span>
+            }
+          />
+          <p className="px-1 pt-1 text-center text-xs leading-5 text-muted-foreground">
+            USDC for passes · ETH for network fees (sponsored)
+          </p>
+        </div>
+      </div>
+
+      <p className="mt-4 text-center text-xs text-muted-foreground">
+        Secured with Face ID on this device.
+      </p>
+    </div>
+  );
+}
+
+function formatAmount(value: bigint, decimals: number) {
+  const raw = formatUnits(value, decimals);
+  const [int, frac = ""] = raw.split(".");
+  if (value === 0n) return "0";
+  // Show up to 4 decimals for ETH, 2 for USDC — trim trailing zeros
+  const maxFrac = decimals === 6 ? 2 : 4;
+  const trimmed = frac.slice(0, maxFrac).replace(/0+$/, "");
+  return trimmed ? `${int}.${trimmed}` : int;
+}
