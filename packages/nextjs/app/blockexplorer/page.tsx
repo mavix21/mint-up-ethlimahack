@@ -9,7 +9,14 @@ import { notification } from "~~/utils/scaffold-eth";
 import { arbitrumNitro } from "~~/utils/scaffold-stylus/supportedChains";
 
 const BlockExplorer: NextPage = () => {
-  const { blocks, transactionReceipts, currentPage, hasNextPage, setCurrentPage, error } = useFetchBlocks();
+  const {
+    blocks,
+    transactionReceipts,
+    currentPage,
+    hasNextPage,
+    setCurrentPage,
+    error,
+  } = useFetchBlocks();
   const { targetNetwork } = useTargetNetwork();
   const [isLocalNetwork, setIsLocalNetwork] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -31,15 +38,29 @@ const BlockExplorer: NextPage = () => {
       notification.error(
         <>
           <p className="font-bold mt-0 mb-1">
-            <code className="bg-muted text-base font-bold italic"> targetNetwork </code> is not localhost
+            <code className="bg-muted text-base font-bold italic">
+              {" "}
+              targetNetwork{" "}
+            </code>{" "}
+            is not localhost
           </p>
           <p className="m-0">
-            - You are on <code className="bg-muted text-base font-bold italic">{targetNetwork.name}</code> .This block
-            explorer is only for <code className="bg-muted text-base font-bold italic">localhost</code>.
+            - You are on{" "}
+            <code className="bg-muted text-base font-bold italic">
+              {targetNetwork.name}
+            </code>{" "}
+            .This block explorer is only for{" "}
+            <code className="bg-muted text-base font-bold italic">
+              localhost
+            </code>
+            .
           </p>
           <p className="mt-1 break-normal">
             - You can use{" "}
-            <a className="text-primary" href={targetNetwork.blockExplorers?.default.url}>
+            <a
+              className="text-primary"
+              href={targetNetwork.blockExplorers?.default.url}
+            >
               {targetNetwork.blockExplorers?.default.name}
             </a>{" "}
             instead
@@ -58,13 +79,25 @@ const BlockExplorer: NextPage = () => {
     if (hasError) {
       notification.error(
         <>
-          <p className="font-bold mt-0 mb-1">Cannot connect to local provider</p>
+          <p className="font-bold mt-0 mb-1">
+            Cannot connect to local provider
+          </p>
           <p className="m-0">
-            - Did you forget to run <code className="bg-muted text-base font-bold italic">yarn chain</code> ?
+            - Did you forget to run{" "}
+            <code className="bg-muted text-base font-bold italic">
+              yarn chain
+            </code>{" "}
+            ?
           </p>
           <p className="mt-1 break-normal">
-            - Or you can change <code className="bg-muted text-base font-bold italic">targetNetwork</code> in{" "}
-            <code className="bg-muted text-base font-bold italic">scaffold.config.ts</code>
+            - Or you can change{" "}
+            <code className="bg-muted text-base font-bold italic">
+              targetNetwork
+            </code>{" "}
+            in{" "}
+            <code className="bg-muted text-base font-bold italic">
+              scaffold.config.ts
+            </code>
           </p>
         </>,
       );
@@ -74,8 +107,15 @@ const BlockExplorer: NextPage = () => {
   return (
     <div className="container mx-auto my-10">
       <SearchBar />
-      <TransactionsTable blocks={blocks} transactionReceipts={transactionReceipts} />
-      <PaginationButton currentPage={currentPage} hasNextPage={hasNextPage} setCurrentPage={setCurrentPage} />
+      <TransactionsTable
+        blocks={blocks}
+        transactionReceipts={transactionReceipts}
+      />
+      <PaginationButton
+        currentPage={currentPage}
+        hasNextPage={hasNextPage}
+        setCurrentPage={setCurrentPage}
+      />
     </div>
   );
 };
