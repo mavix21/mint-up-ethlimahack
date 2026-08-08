@@ -10,6 +10,8 @@ import "~~/styles/globals.css";
 const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist",
+  display: "swap",
+  preload: true,
 });
 
 const epilogue = localFont({
@@ -17,6 +19,8 @@ const epilogue = localFont({
   weight: "100 900",
   style: "normal",
   variable: "--font-accent",
+  display: "swap",
+  preload: true,
 });
 
 const baseUrl = process.env.VERCEL_URL

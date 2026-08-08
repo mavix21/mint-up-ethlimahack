@@ -93,14 +93,15 @@ export const Header = () => {
   const isLocalNetwork = targetNetwork?.id === arbitrumNitro.id;
 
   return (
-    <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 px-4 py-3 lg:static">
+    <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 border-b bg-background px-4 py-3">
       <div className="flex shrink-0 items-center gap-2">
         <Link href="/" className="flex shrink-0 items-center gap-0.5">
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt="Mint Up"
             width={56}
             height={56}
+            priority
             className="size-10 md:size-12"
           />
           <span className="mt-1 font-heading text-xl font-bold md:text-2xl">

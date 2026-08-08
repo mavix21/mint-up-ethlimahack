@@ -24,7 +24,7 @@ export function OfferCard({
               src={offer.imageUrl}
               alt=""
               fill
-              loading="eager"
+              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
               unoptimized={!shouldOptimizeImage(offer.imageUrl)}
               className="object-cover opacity-90 transition-transform duration-500 group-hover:scale-[1.03]"
             />
