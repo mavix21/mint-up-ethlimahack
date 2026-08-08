@@ -13,6 +13,6 @@ describe("getLocalRedirect", () => {
     "/\\evil.example",
     "/%5cevil.example",
   ])("rejects a non-local callback: %s", callback => {
-    expect(getLocalRedirect(callback)).toBe("/account");
+    expect(getLocalRedirect(callback)).toBe("/");
   });
 });

@@ -1,4 +1,4 @@
-export function getLocalRedirect(value: string | null, fallback = "/account") {
+export function getLocalRedirect(value: string | null, fallback = "/") {
   let decodedValue: string;
   try {
     decodedValue = decodeURIComponent(value ?? "");
