@@ -1153,6 +1153,26 @@ export function GaslessEventPassPurchase(props: Props) {
     }
   }, [stage, funds, props.fixtureMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleFaucet = async () => {
+    try {
+      await navigator.clipboard.writeText(props.passkeyAccount.address);
+    } catch {
+      // fallback for insecure context: hidden textarea copy
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = props.passkeyAccount.address;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch {}
+    }
+    window.open("https://faucet.circle.com/", "_blank", "noopener,noreferrer");
+  };
+
   const isConfirming =
     stage === "sponsoring" ||
     stage === "signing" ||
@@ -1228,13 +1248,10 @@ export function GaslessEventPassPurchase(props: Props) {
               <p>{addUsdcMessage}</p>
               <button
                 type="button"
-                onClick={() => void refreshFunds()}
-                disabled={usdcBalanceMutation.isPending}
-                className="mt-2 w-full rounded-xl border bg-background px-4 py-2 text-sm font-bold disabled:opacity-50"
+                onClick={handleFaucet}
+                className="mt-2 w-full rounded-xl border bg-background px-4 py-2 text-sm font-bold"
               >
-                {usdcBalanceMutation.isPending
-                  ? "Checking…"
-                  : "Add USDC to continue"}
+                Add USDC to continue
               </button>
             </div>
           )}
@@ -1309,13 +1326,10 @@ export function GaslessEventPassPurchase(props: Props) {
           stage === "dropped") && (
           <button
             type="button"
-            onClick={() => void refreshFunds()}
-            disabled={usdcBalanceMutation.isPending}
-            className="w-full rounded-xl border bg-background px-5 py-3 font-semibold disabled:opacity-50"
+            onClick={handleFaucet}
+            className="w-full rounded-xl border bg-background px-5 py-3 font-semibold"
           >
-            {usdcBalanceMutation.isPending
-              ? "Checking…"
-              : "Add USDC to continue"}
+            Add USDC to continue
           </button>
         )}
 
