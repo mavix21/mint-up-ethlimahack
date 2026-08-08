@@ -97,7 +97,7 @@ export const Header = () => {
       <div className="flex shrink-0 items-center gap-2">
         <Link href="/" className="flex shrink-0 items-center gap-0.5">
           <Image
-            src="/logo.svg"
+            src="/logo.png"
             alt="Mint Up"
             width={56}
             height={56}
