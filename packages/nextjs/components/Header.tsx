@@ -7,9 +7,7 @@ import { usePathname } from "next/navigation";
 import { SwitchTheme } from "./SwitchTheme";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import { SessionButton } from "~~/components/auth/session-button";
-import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { Button } from "~~/components/ui/button";
-import { Separator } from "~~/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -86,23 +84,6 @@ export const HeaderMenuLinks = ({
   </Suspense>
 );
 
-const HeaderWalletConnection = () => {
-  const pathname = usePathname();
-  const isWalletView =
-    pathname === "/wallet" || pathname.startsWith("/wallet/");
-
-  if (isWalletView) return null;
-
-  return (
-    <>
-      <RainbowKitCustomConnectButton />
-      <div className="h-6">
-        <Separator orientation="vertical" />
-      </div>
-    </>
-  );
-};
-
 /**
  * Site header
  */
@@ -113,7 +94,7 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 px-4 py-3 lg:static">
-      <div className="flex w-auto items-center lg:w-1/2">
+      <div className="flex shrink-0 items-center gap-2">
         <Link href="/" className="flex shrink-0 items-center gap-0.5">
           <Image
             src="/logo.png"
@@ -137,7 +118,7 @@ export const Header = () => {
                 />
               }
             >
-              <Bars3Icon />
+              <Bars3Icon className="size-6" />
             </SheetTrigger>
             <SheetContent side="left">
               <SheetHeader>
@@ -155,11 +136,8 @@ export const Header = () => {
           <HeaderMenuLinks />
         </ul>
       </div>
-      <div className="mr-4 flex flex-grow items-center justify-end gap-4">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         <SessionButton />
-        <Suspense fallback={null}>
-          <HeaderWalletConnection />
-        </Suspense>
         <SwitchTheme
           className={`pointer-events-auto ${isLocalNetwork ? "self-end md:self-auto" : ""}`}
         />
