@@ -37,11 +37,11 @@ export const menuLinks: HeaderMenuLink[] = [
     label: "Wallet",
     href: "/wallet",
   },
-  {
-    label: "Debug Contracts",
-    href: "/debug",
-    // icon: <BugAntIcon className="h-4 w-4" />,
-  },
+  // {
+  //   label: "Debug Contracts",
+  //   href: "/debug",
+  //   icon: <BugAntIcon className="h-4 w-4" />,
+  // },
 ];
 
 const HeaderMenuLinksContent = ({
