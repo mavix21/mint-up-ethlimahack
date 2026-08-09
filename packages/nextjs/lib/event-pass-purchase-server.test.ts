@@ -55,6 +55,10 @@ describe("live Event Pass purchase availability", () => {
       .mockResolvedValueOnce([
         "0x6666666666666666666666666666666666666666",
         purchase.paymentAssetAddress,
+        "0x8888888888888888888888888888888888888888",
+        "0x9999999999999999999999999999999999999999",
+        500,
+        900,
         false,
       ])
       .mockResolvedValueOnce([
@@ -157,7 +161,7 @@ describe("Event Pass purchase reconciliation", () => {
         eventName: "Transfer",
         args: {
           from: purchase.buyerAddress as `0x${string}`,
-          to: purchase.revenueRecipient as `0x${string}`,
+          to: purchase.contractAddress as `0x${string}`,
         },
       }) as [`0x${string}`, ...`0x${string}`[]],
     };
@@ -173,6 +177,7 @@ describe("Event Pass purchase reconciliation", () => {
       entryPointAddress?: string;
       passCount?: number;
       transferValue?: bigint;
+      transferRecipient?: string;
       blockTimestamp?: bigint;
       passInfo?: [string, string, number, boolean];
     } = {},
@@ -223,17 +228,15 @@ describe("Event Pass purchase reconciliation", () => {
         opts.transferValue !== undefined
           ? encodeAbiParameters([{ type: "uint256" }], [opts.transferValue!])
           : tl.data,
-      topics:
-        opts.transferValue !== undefined
-          ? (encodeEventTopics({
-              abi: erc20Abi,
-              eventName: "Transfer",
-              args: {
-                from: purchase.buyerAddress as `0x${string}`,
-                to: purchase.revenueRecipient as `0x${string}`,
-              },
-            }) as [`0x${string}`, ...`0x${string}`[]])
-          : tl.topics,
+      topics: encodeEventTopics({
+        abi: erc20Abi,
+        eventName: "Transfer",
+        args: {
+          from: purchase.buyerAddress as `0x${string}`,
+          to: (opts.transferRecipient ??
+            purchase.contractAddress) as `0x${string}`,
+        },
+      }) as [`0x${string}`, ...`0x${string}`[]],
       logIndex: logs.length,
     });
     getTransactionReceipt.mockResolvedValue({
@@ -383,11 +386,18 @@ describe("Event Pass purchase reconciliation", () => {
 
   it("rejects wrong USDC payment and invalid final state", async () => {
     setupMocks({
+      transferRecipient: purchase.revenueRecipient,
+      entryPointHash: snapshotBase.userOperationHash,
+    });
+    await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
+      "Protected USDC payment",
+    );
+    setupMocks({
       transferValue: 1n,
       entryPointHash: snapshotBase.userOperationHash,
     });
     await expect(verifyEventPassPurchase(snapshotBase)).rejects.toThrow(
-      "USDC payment",
+      "Protected USDC payment",
     );
     setupMocks({
       passInfo: [

@@ -4,7 +4,7 @@ Paid Event Pass contract for Arbitrum Stylus. Each acquired Event Pass is an
 ERC-721 collectible backed by OpenZeppelin Stylus, with immutable per-Event
 IPFS metadata. The collectible remains visible to wallets and indexers but
 cannot be approved, transferred, or sold outside Mint Up. ERC-721 enumeration,
-resale, refunds, and mutable metadata are not implemented.
+resale, fund release, and mutable metadata are not implemented.
 
 ## Model
 
@@ -16,19 +16,28 @@ resale, refunds, and mutable metadata are not implemented.
 - Event registration requires an `ipfs://` metadata URI with a valid CID. The
   URI is captured for each Event Pass when it is acquired and cannot be changed.
 - Pass state is `1` (active) or `2` (attended).
-- Cancellation invalidates entry without deleting ownership or attendance.
+- Primary payments are retained by the contract as Protected payments until the
+  Event's configured funds-release timestamp. The sale must end no later than
+  that timestamp.
+- Cancellation is permanent, can occur only strictly before that timestamp,
+  and invalidates entry without deleting ownership or attendance.
+- After cancellation, the current holder can claim the original price once,
+  including after a transfer or check-in. A refund does not burn the Event Pass
+  or erase its metadata and history.
 - The administrator is fixed and cannot transfer or check in user passes unless
   explicitly configured as that event's check-in operator.
-- USDC is fixed by the constructor and primary-sale funds go directly from the
-  buyer to the event revenue recipient.
+- USDC and a nonzero Mint Up fee recipient are fixed by the constructor. Global
+  fees are fixed at 500 basis points for primary sales and 900 basis points for
+  resales. Primary fees are not deducted until the later fund-release flow.
 
 Arbitrum Sepolia's official Circle USDC address is:
 
 `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
 
 Deploy with constructor arguments
-`(administrator, usdc, authorizationSigner, initiallyPaused)`. The immutable
-Mint Up signer must be nonzero and distinct from the administrator and USDC.
+`(administrator, usdc, authorizationSigner, feeRecipient, initiallyPaused)`.
+The immutable Mint Up signer must be nonzero and distinct from the administrator
+and USDC. The fee recipient must be nonzero.
 Stylus constructors are guarded by the SDK's reserved constructor slot and can
 only execute once.
 
@@ -63,12 +72,16 @@ remain enforced.
 | 13 | Pass belongs to another event |
 | 14 | USDC payment failed |
 | 15 | Contract paused |
-| 16 | Reentrant purchase |
+| 16 | Reentrant USDC operation |
 | 17 | Pass ID overflow |
 | 18 | Movement is restricted to an authorized Mint Up operation |
 | 19 | Invalid Mint Up authorization |
 | 20 | Mint Up authorization expired |
 | 21 | Mint Up authorization nonce already used |
+| 22 | Event cancellation protection window closed |
+| 23 | Pass refund is not available |
+| 24 | Pass refund was already claimed |
+| 25 | Protected-payment accounting invariant failed |
 
 ## Commands
 
@@ -105,10 +118,11 @@ and deploys `scripts/local/MockUsdc.sol`, updates the dependency file, and then
 deploys Event Pass with the new token address.
 
 `yarn test:local` runs a complete on-chain flow: mint mock USDC, register a live
-event, approve USDC, verify sale boundaries and direct payment, transfer and
-check in a pass, and exercise cancellation, pause, authorization, errors, and
-events. The mock has permissionless minting and is only selected automatically
-for chain ID `412346`; it must never be used as a production payment token.
+event, approve USDC, verify sale boundaries and retained payment, transfer and
+check in a pass, cancel and refund another pass, and exercise pause,
+authorization, errors, and events. The mock has permissionless minting and is
+only selected automatically for chain ID `412346`; it must never be used as a
+production payment token.
 
 Deploy to Arbitrum Sepolia with:
 
@@ -116,7 +130,7 @@ Deploy to Arbitrum Sepolia with:
 cargo stylus deploy \
   --endpoint https://sepolia-rollup.arbitrum.io/rpc \
   --private-key "$PRIVATE_KEY" \
-  --constructor-args "$ADMIN" 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d "$AUTHORIZATION_SIGNER" false \
+  --constructor-args "$ADMIN" 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d "$AUTHORIZATION_SIGNER" "$FEE_RECIPIENT" false \
   --no-verify
 ```
 

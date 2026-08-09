@@ -7,7 +7,7 @@ import { createEventPassPublicClient } from "./event-pass-public-client";
 import type { PreparedPurchase } from "./event-pass-purchase-api";
 
 const availabilityAbi = parseAbi([
-  "function config() view returns (address administrator, address usdc, bool paused)",
+  "function config() view returns (address administrator, address usdc, address authorization_signer, address fee_recipient, uint16 primary_fee_bps, uint16 resale_fee_bps, bool paused)",
   "function eventInfo(bytes32 event_id) view returns (address revenue_recipient, uint64 price, uint32 maximum_supply, uint32 issued_supply, uint64 sale_start, uint64 sale_end, bool sales_enabled, bool transfers_enabled, bool cancelled, address check_in_operator)",
 ]);
 
@@ -58,7 +58,7 @@ export async function verifyPreparedPurchaseAvailability(
     }),
     client.getBlock(),
   ]);
-  const [, usdc, paused] = config;
+  const [, usdc, , , , , paused] = config;
   const [
     revenueRecipient,
     price,
@@ -94,7 +94,6 @@ export async function verifyEventPassPurchase(
   const block = await client.getBlock({ blockNumber: receipt.blockNumber });
   const contractAddress = getAddress(snapshot.contractAddress);
   const buyerAddress = getAddress(snapshot.buyerAddress);
-  const revenueRecipient = getAddress(snapshot.revenueRecipient);
   const paymentAssetAddress = getAddress(snapshot.paymentAssetAddress);
 
   if (receipt.status !== "success") {
@@ -172,7 +171,7 @@ export async function verifyEventPassPurchase(
     );
   }
 
-  const paidDirectly = receipt.logs.some(log => {
+  const protectedPayment = receipt.logs.some(log => {
     if (log.address.toLowerCase() !== paymentAssetAddress.toLowerCase())
       return false;
     try {
@@ -186,15 +185,15 @@ export async function verifyEventPassPurchase(
         decodedTransfer.args.from.toLowerCase() ===
           buyerAddress.toLowerCase() &&
         decodedTransfer.args.to.toLowerCase() ===
-          revenueRecipient.toLowerCase() &&
+          contractAddress.toLowerCase() &&
         decodedTransfer.args.value === BigInt(snapshot.priceAmountSubunits)
       );
     } catch {
       return false;
     }
   });
-  if (!paidDirectly) {
-    throw new Error("Direct USDC payment could not be verified");
+  if (!protectedPayment) {
+    throw new Error("Protected USDC payment could not be verified");
   }
 
   const passId = decoded.args.pass_id;

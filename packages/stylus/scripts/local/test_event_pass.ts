@@ -40,6 +40,7 @@ const PAYMENT_FAILED = 14;
 const PAUSED = 15;
 const MOVEMENT_RESTRICTED = 18;
 const INVALID_AUTHORIZATION = 19;
+const REFUND_ALREADY_CLAIMED = 24;
 const chain = arbitrumNitro as Chain;
 const TRANSFER_OPERATION = keccak256(toHex("TRANSFER_PASS"));
 
@@ -51,12 +52,15 @@ const usdcAbi = parseAbi([
 
 const eventPassAbi = parseAbi([
   "error MintUpError(uint8)",
-  "function registerEvent(bytes32 event_id, address revenue_recipient, uint64 price, uint32 maximum_supply, uint64 sale_start, uint64 sale_end, bool sales_enabled, bool transfers_enabled, address check_in_operator, string metadata_uri)",
+  "function registerEvent(bytes32 event_id, address revenue_recipient, uint64 price, uint32 maximum_supply, uint64 sale_start, uint64 sale_end, uint64 funds_release_at, bool sales_enabled, bool transfers_enabled, address check_in_operator, string metadata_uri)",
   "function cancelEvent(bytes32 event_id)",
   "function setPaused(bool paused)",
   "function purchase(bytes32 event_id) returns (uint64)",
+  "function claimRefund(uint64 pass_id)",
   "function eventInfo(bytes32 event_id) view returns (address, uint64, uint32, uint32, uint64, uint64, bool, bool, bool, address)",
-  "function config() view returns (address administrator, address usdc, address authorization_signer, bool paused)",
+  "function eventProtectionInfo(bytes32 event_id) view returns (uint64 funds_release_at, uint256 protected_balance, bool cancelled)",
+  "function passRefundInfo(uint64 pass_id) view returns (uint64 original_price, bool refunded, bool refund_available)",
+  "function config() view returns (address administrator, address usdc, address authorization_signer, address fee_recipient, uint16 primary_fee_bps, uint16 resale_fee_bps, bool paused)",
   "function approve(address to, uint256 token_id)",
   "function setApprovalForAll(address operator, bool approved)",
   "function transferFrom(address from, address to, uint256 token_id)",
@@ -74,6 +78,7 @@ const eventPassAbi = parseAbi([
   "event MintUpAuthorizationUsed(bytes32 indexed operation, address indexed caller, uint256 indexed nonce, uint64 pass_id, address recipient, uint256 amount)",
   "event EventPassCheckedIn(uint64 indexed pass_id, bytes32 indexed event_id, address indexed attendee)",
   "event EventCancelled(bytes32 indexed event_id)",
+  "event EventPassRefunded(uint64 indexed pass_id, bytes32 indexed event_id, address indexed recipient, uint64 amount)",
   "event ContractPaused(bool paused)",
 ]);
 
@@ -223,6 +228,7 @@ async function main() {
       10,
       saleStart,
       saleEnd,
+      saleEnd,
       true,
       true,
       operator.address,
@@ -242,6 +248,7 @@ async function main() {
       1,
       saleStart,
       saleEnd + 3600n,
+      saleEnd + 7200n,
       true,
       false,
       operator.address,
@@ -276,11 +283,11 @@ async function main() {
   });
   await publicClient.waitForTransactionReceipt({ hash });
 
-  const recipientBalanceBefore = await publicClient.readContract({
+  const contractBalanceBefore = await publicClient.readContract({
     address: usdc,
     abi: usdcAbi,
     functionName: "balanceOf",
-    args: [ATTENDEE],
+    args: [eventPass],
   });
   hash = await buyerWallet.writeContract({
     address: eventPass,
@@ -324,22 +331,23 @@ async function main() {
   });
   assert.equal(issuedSupply, 1);
 
-  const recipientBalanceAfter = await publicClient.readContract({
+  const contractBalanceAfter = await publicClient.readContract({
     address: usdc,
     abi: usdcAbi,
     functionName: "balanceOf",
-    args: [ATTENDEE],
+    args: [eventPass],
   });
-  assert.equal(recipientBalanceAfter - recipientBalanceBefore, PRICE);
   assert.equal(
-    await publicClient.readContract({
-      address: usdc,
-      abi: usdcAbi,
-      functionName: "balanceOf",
-      args: [eventPass],
-    }),
-    0n,
+    contractBalanceAfter - contractBalanceBefore,
+    PRICE,
   );
+  const [, protectedBalance] = await publicClient.readContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "eventProtectionInfo",
+    args: [eventId],
+  });
+  assert.equal(protectedBalance, PRICE);
 
   const [purchasingOwner] = await publicClient.readContract({
     address: eventPass,
@@ -687,6 +695,57 @@ async function main() {
       args: [cancelledEventId],
     }),
     EVENT_CANCELLED,
+  );
+
+  const buyerBalanceBeforeRefund = await publicClient.readContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "balanceOf",
+    args: [buyer.address],
+  });
+  hash = await buyerWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "claimRefund",
+    args: [disabledTransferPass.args.pass_id],
+  });
+  const refundReceipt = await publicClient.waitForTransactionReceipt({ hash });
+  assert(eventNames(refundReceipt.logs).includes("EventPassRefunded"));
+  const buyerBalanceAfterRefund = await publicClient.readContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "balanceOf",
+    args: [buyer.address],
+  });
+  assert.equal(buyerBalanceAfterRefund - buyerBalanceBeforeRefund, PRICE);
+  assert.deepEqual(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "passRefundInfo",
+      args: [disabledTransferPass.args.pass_id],
+    }),
+    [PRICE, true, false],
+  );
+  await expectMintUpError(
+    publicClient.simulateContract({
+      account: buyer,
+      address: eventPass,
+      abi: eventPassAbi as Abi,
+      functionName: "claimRefund",
+      args: [disabledTransferPass.args.pass_id],
+    }),
+    REFUND_ALREADY_CLAIMED,
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [eventPass],
+    }),
+    PRICE,
+    "Refund must preserve the other Event's protected payment",
   );
 
   await expectMintUpError(

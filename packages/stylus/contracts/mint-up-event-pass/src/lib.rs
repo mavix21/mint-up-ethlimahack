@@ -31,6 +31,8 @@ use stylus_sdk::{
 const ACTIVE: u8 = 1;
 const ATTENDED: u8 = 2;
 const MAX_AUTHORIZATION_LIFETIME: u64 = 300;
+const PRIMARY_FEE_BPS: u16 = 500;
+const RESALE_FEE_BPS: u16 = 900;
 
 type U32 = Uint<32, 1>;
 type U64 = Uint<64, 1>;
@@ -56,6 +58,10 @@ const MOVEMENT_RESTRICTED: u8 = 18;
 const INVALID_AUTHORIZATION: u8 = 19;
 const AUTHORIZATION_EXPIRED: u8 = 20;
 const AUTHORIZATION_USED: u8 = 21;
+const CANCELLATION_CLOSED: u8 = 22;
+const REFUND_UNAVAILABLE: u8 = 23;
+const REFUND_ALREADY_CLAIMED: u8 = 24;
+const ACCOUNTING_ERROR: u8 = 25;
 
 type AuthorizationHashTuple = sol! {
     tuple(bytes32, bytes32, address, uint64, address, uint256, uint256, uint64, uint64)
@@ -68,7 +74,8 @@ sol! {
     event EventRegistered(
         bytes32 indexed event_id,
         address indexed revenue_recipient,
-        address indexed check_in_operator
+        address indexed check_in_operator,
+        uint64 funds_release_at
     );
     event EventSalesStatusChanged(bytes32 indexed event_id, bool enabled);
     event EventCancelled(bytes32 indexed event_id);
@@ -88,6 +95,12 @@ sol! {
         uint64 indexed pass_id,
         bytes32 indexed event_id,
         address indexed attendee
+    );
+    event EventPassRefunded(
+        uint64 indexed pass_id,
+        bytes32 indexed event_id,
+        address indexed recipient,
+        uint64 amount
     );
     event ContractPaused(bool paused);
     event MintUpAuthorizationUsed(
@@ -143,6 +156,8 @@ sol_storage! {
         uint32 issued_supply;
         uint64 sale_start;
         uint64 sale_end;
+        uint64 funds_release_at;
+        uint256 protected_balance;
         bool exists;
         bool sales_enabled;
         bool transfers_enabled;
@@ -152,6 +167,8 @@ sol_storage! {
 
     pub struct PassData {
         bool attended;
+        bool refunded;
+        uint64 original_price;
         bytes32 event_id;
     }
 
@@ -159,6 +176,7 @@ sol_storage! {
     pub struct MintUpEventPass {
         address administrator;
         address authorization_signer;
+        address fee_recipient;
         bool paused;
         bool entered;
         uint64 next_pass_id;
@@ -180,11 +198,13 @@ impl MintUpEventPass {
         administrator: Address,
         usdc: Address,
         authorization_signer: Address,
+        fee_recipient: Address,
         paused: bool,
     ) -> Result<(), Error> {
         if administrator.is_zero()
             || usdc.is_zero()
             || authorization_signer.is_zero()
+            || fee_recipient.is_zero()
             || authorization_signer == administrator
             || authorization_signer == usdc
         {
@@ -193,6 +213,7 @@ impl MintUpEventPass {
         self.administrator.set(administrator);
         self.usdc.set(usdc);
         self.authorization_signer.set(authorization_signer);
+        self.fee_recipient.set(fee_recipient);
         self.paused.set(paused);
         self.next_pass_id.set(U64::from(1));
         self.metadata
@@ -209,6 +230,7 @@ impl MintUpEventPass {
         maximum_supply: u32,
         sale_start: u64,
         sale_end: u64,
+        funds_release_at: u64,
         sales_enabled: bool,
         transfers_enabled: bool,
         check_in_operator: Address,
@@ -221,6 +243,7 @@ impl MintUpEventPass {
             || price == 0
             || maximum_supply == 0
             || sale_start >= sale_end
+            || sale_end > funds_release_at
             || !valid_ipfs_uri(&metadata_uri)
         {
             return Err(error(INVALID_INPUT));
@@ -236,6 +259,7 @@ impl MintUpEventPass {
         event.maximum_supply.set(U32::from(maximum_supply));
         event.sale_start.set(U64::from(sale_start));
         event.sale_end.set(U64::from(sale_end));
+        event.funds_release_at.set(U64::from(funds_release_at));
         event.exists.set(true);
         event.sales_enabled.set(sales_enabled);
         event.transfers_enabled.set(transfers_enabled);
@@ -246,6 +270,7 @@ impl MintUpEventPass {
                 event_id,
                 revenue_recipient,
                 check_in_operator,
+                funds_release_at,
             },
         );
         Ok(())
@@ -277,6 +302,16 @@ impl MintUpEventPass {
     pub fn cancel_event(&mut self, event_id: B256) -> Result<(), Error> {
         self.only_admin()?;
         self.require_event_live(event_id)?;
+        if self.vm().block_timestamp()
+            >= self
+                .events
+                .getter(event_id)
+                .funds_release_at
+                .get()
+                .to::<u64>()
+        {
+            return Err(error(CANCELLATION_CLOSED));
+        }
         let mut event = self.events.setter(event_id);
         event.cancelled.set(true);
         event.sales_enabled.set(false);
@@ -319,31 +354,29 @@ impl MintUpEventPass {
         if issued_supply >= event.maximum_supply.get().to::<u32>() {
             return Err(error(SOLD_OUT));
         }
-        let recipient = event.revenue_recipient.get();
         let price = event.price.get().to::<u64>();
         let metadata_uri = event.metadata_uri.get_string();
         drop(event);
 
         let pass_id = self.next_pass_id.get().to::<u64>();
         let next_pass_id = pass_id.checked_add(1).ok_or_else(|| error(ID_OVERFLOW))?;
-        let call = transfer_from_data(buyer, recipient, price);
-        self.entered.set(true);
-        let result = self.vm().call(&Call::new(), self.usdc.get(), &call);
-        self.entered.set(false);
-        let paid = result.is_ok_and(|data| {
-            data.len() == 32 && data[..31].iter().all(|byte| *byte == 0) && data[31] == 1
-        });
-        if !paid {
+        let call = transfer_from_data(buyer, self.vm().contract_address(), price);
+        if !self.strict_usdc_call(&call) {
             return Err(error(PAYMENT_FAILED));
         }
 
-        self.events
-            .setter(event_id)
-            .issued_supply
-            .set(U32::from(issued_supply + 1));
+        let mut event = self.events.setter(event_id);
+        let protected_balance = event.protected_balance.get();
+        let next_protected_balance = protected_balance
+            .checked_add(U256::from(price))
+            .ok_or_else(|| error(ACCOUNTING_ERROR))?;
+        event.issued_supply.set(U32::from(issued_supply + 1));
+        event.protected_balance.set(next_protected_balance);
+        drop(event);
         self.next_pass_id.set(U64::from(next_pass_id));
         let mut pass = self.passes.setter(U64::from(pass_id));
         pass.event_id.set(event_id);
+        pass.original_price.set(U64::from(price));
         drop(pass);
         let token_id = U256::from(pass_id);
         self.erc721._mint(buyer, token_id)?;
@@ -357,6 +390,59 @@ impl MintUpEventPass {
             },
         );
         Ok(pass_id)
+    }
+
+    pub fn claim_refund(&mut self, pass_id: u64) -> Result<(), Error> {
+        self.not_paused()?;
+        if self.entered.get() {
+            return Err(error(REENTRANCY));
+        }
+
+        let token_id = U256::from(pass_id);
+        let owner = self
+            .erc721
+            .owner_of(token_id)
+            .map_err(|_| error(PASS_NOT_FOUND))?;
+        if owner != self.vm().msg_sender() {
+            return Err(error(NOT_PASS_OWNER));
+        }
+        let pass = self.passes.getter(U64::from(pass_id));
+        if pass.refunded.get() {
+            return Err(error(REFUND_ALREADY_CLAIMED));
+        }
+        let event_id = pass.event_id.get();
+        let amount = pass.original_price.get().to::<u64>();
+        drop(pass);
+        let event = self.events.getter(event_id);
+        if !event.cancelled.get() {
+            return Err(error(REFUND_UNAVAILABLE));
+        }
+        let remaining = event
+            .protected_balance
+            .get()
+            .checked_sub(U256::from(amount))
+            .ok_or_else(|| error(ACCOUNTING_ERROR))?;
+        drop(event);
+
+        if !self.strict_usdc_call(&transfer_data(owner, amount)) {
+            return Err(error(PAYMENT_FAILED));
+        }
+
+        self.passes.setter(U64::from(pass_id)).refunded.set(true);
+        self.events
+            .setter(event_id)
+            .protected_balance
+            .set(remaining);
+        log(
+            self.vm(),
+            EventPassRefunded {
+                pass_id,
+                event_id,
+                recipient: owner,
+                amount,
+            },
+        );
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -453,13 +539,44 @@ impl MintUpEventPass {
         Ok(())
     }
 
-    pub fn config(&self) -> (Address, Address, Address, bool) {
+    pub fn config(&self) -> (Address, Address, Address, Address, u16, u16, bool) {
         (
             self.administrator.get(),
             self.usdc.get(),
             self.authorization_signer.get(),
+            self.fee_recipient.get(),
+            PRIMARY_FEE_BPS,
+            RESALE_FEE_BPS,
             self.paused.get(),
         )
+    }
+
+    pub fn event_protection_info(&self, event_id: B256) -> Result<(u64, U256, bool), Error> {
+        let event = self.events.getter(event_id);
+        if !event.exists.get() {
+            return Err(error(EVENT_NOT_FOUND));
+        }
+        Ok((
+            event.funds_release_at.get().to::<u64>(),
+            event.protected_balance.get(),
+            event.cancelled.get(),
+        ))
+    }
+
+    pub fn pass_refund_info(&self, pass_id: u64) -> Result<(u64, bool, bool), Error> {
+        self.erc721
+            .owner_of(U256::from(pass_id))
+            .map_err(|_| error(PASS_NOT_FOUND))?;
+        let pass = self.passes.getter(U64::from(pass_id));
+        let original_price = pass.original_price.get().to::<u64>();
+        let refunded = pass.refunded.get();
+        let event_id = pass.event_id.get();
+        drop(pass);
+        Ok((
+            original_price,
+            refunded,
+            !refunded && self.events.getter(event_id).cancelled.get(),
+        ))
     }
 
     #[allow(clippy::type_complexity)]
@@ -714,6 +831,7 @@ mod tests {
 
     const START: u64 = 100;
     const END: u64 = 200;
+    const RELEASE: u64 = 300;
     const PRICE: u64 = 25_000_000;
     const METADATA_URI: &str =
         "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/event.json";
@@ -732,7 +850,7 @@ mod tests {
         vm.set_sender(address(1));
         let mut contract = MintUpEventPass::from(&vm);
         contract
-            .constructor(address(1), address(2), address(5), false)
+            .constructor(address(1), address(2), address(5), address(9), false)
             .unwrap();
         (vm, contract)
     }
@@ -752,6 +870,7 @@ mod tests {
                 supply,
                 START,
                 END,
+                RELEASE,
                 true,
                 transfers,
                 operator,
@@ -760,12 +879,20 @@ mod tests {
             .unwrap();
     }
 
-    fn payment_data(buyer: Address) -> Vec<u8> {
-        transfer_from_data(buyer, address(3), PRICE).to_vec()
+    fn payment_data(vm: &TestVM, buyer: Address) -> Vec<u8> {
+        transfer_from_data(buyer, vm.contract_address(), PRICE).to_vec()
     }
 
     fn mock_payment(vm: &TestVM, buyer: Address, response: Result<Vec<u8>, Vec<u8>>) {
-        vm.mock_call(address(2), payment_data(buyer), response);
+        vm.mock_call(address(2), payment_data(vm, buyer), response);
+    }
+
+    fn mock_refund(vm: &TestVM, recipient: Address, response: Result<Vec<u8>, Vec<u8>>) {
+        vm.mock_call(
+            address(2),
+            transfer_data(recipient, PRICE).to_vec(),
+            response,
+        );
     }
 
     fn true_word() -> Vec<u8> {
@@ -840,7 +967,15 @@ mod tests {
         let (vm, mut contract) = setup();
         assert_eq!(
             contract.config(),
-            (address(1), address(2), address(5), false)
+            (
+                address(1),
+                address(2),
+                address(5),
+                address(9),
+                500,
+                900,
+                false
+            )
         );
 
         vm.set_sender(address(9));
@@ -852,6 +987,7 @@ mod tests {
                 1,
                 START,
                 END,
+                RELEASE,
                 true,
                 true,
                 address(4),
@@ -870,6 +1006,7 @@ mod tests {
                 2,
                 START,
                 END,
+                RELEASE,
                 true,
                 true,
                 address(4),
@@ -885,11 +1022,59 @@ mod tests {
                 2,
                 START,
                 END,
+                RELEASE,
                 true,
                 true,
                 address(4),
                 METADATA_URI.into(),
             ),
+            INVALID_INPUT,
+        );
+    }
+
+    #[test]
+    fn constructor_and_registration_fix_protection_configuration() {
+        let (vm, mut contract) = setup();
+        let id = event_id(7);
+
+        assert_eq!(
+            contract.config(),
+            (
+                address(1),
+                address(2),
+                address(5),
+                address(9),
+                500,
+                900,
+                false
+            )
+        );
+        register(&mut contract, id, 1, true, address(4));
+        assert_eq!(
+            contract.event_protection_info(id).unwrap(),
+            (RELEASE, U256::ZERO, false)
+        );
+
+        assert_error(
+            contract.register_event(
+                event_id(8),
+                address(3),
+                PRICE,
+                1,
+                START,
+                END,
+                END - 1,
+                true,
+                true,
+                address(4),
+                METADATA_URI.into(),
+            ),
+            INVALID_INPUT,
+        );
+
+        let mut invalid = MintUpEventPass::from(&vm);
+        assert_error(
+            invalid.constructor(address(1), address(2), address(5), Address::ZERO, false),
             INVALID_INPUT,
         );
     }
@@ -903,7 +1088,7 @@ mod tests {
             let mut contract = MintUpEventPass::from(&vm);
 
             assert_error(
-                contract.constructor(address(1), address(2), signer, false),
+                contract.constructor(address(1), address(2), signer, address(9), false),
                 INVALID_INPUT,
             );
         }
@@ -941,6 +1126,7 @@ mod tests {
                     1,
                     START,
                     END,
+                    RELEASE,
                     true,
                     true,
                     address(4),
@@ -1289,6 +1475,18 @@ mod tests {
         );
         assert_eq!(contract.event_info(first_event).unwrap().3, 1);
         assert_eq!(contract.event_info(second_event).unwrap().3, 1);
+        assert_eq!(
+            contract.event_protection_info(first_event).unwrap(),
+            (RELEASE, U256::from(PRICE), false)
+        );
+        assert_eq!(
+            contract.event_protection_info(second_event).unwrap(),
+            (RELEASE, U256::from(PRICE), false)
+        );
+        assert_eq!(
+            contract.pass_refund_info(first).unwrap(),
+            (PRICE, false, false)
+        );
 
         vm.set_sender(address(8));
         vm.set_block_timestamp(150);
@@ -1298,7 +1496,14 @@ mod tests {
 
     #[test]
     fn failed_usdc_responses_never_issue() {
-        for response in [Ok(vec![0; 32]), Ok(vec![1]), Err(vec![0xff])] {
+        for response in [
+            Ok(vec![]),
+            Ok(vec![0; 32]),
+            Ok(vec![1]),
+            Ok(vec![2; 32]),
+            Ok(vec![0; 33]),
+            Err(vec![0xff]),
+        ] {
             let (vm, mut contract) = setup();
             let id = event_id(1);
             register(&mut contract, id, 1, true, address(4));
@@ -1308,8 +1513,165 @@ mod tests {
 
             assert_error(contract.purchase(id), PAYMENT_FAILED);
             assert_eq!(contract.event_info(id).unwrap().3, 0);
+            assert_eq!(contract.event_protection_info(id).unwrap().1, U256::ZERO);
             assert_error(contract.pass_info(1), PASS_NOT_FOUND);
         }
+    }
+
+    #[test]
+    fn cancellation_is_admin_only_and_strictly_before_release() {
+        for timestamp in [RELEASE, RELEASE + 1] {
+            let (vm, mut contract) = setup();
+            let id = event_id(1);
+            register(&mut contract, id, 1, true, address(4));
+            vm.set_block_timestamp(timestamp);
+
+            assert_error(contract.cancel_event(id), CANCELLATION_CLOSED);
+            assert!(!contract.event_protection_info(id).unwrap().2);
+        }
+
+        let (vm, mut contract) = setup();
+        let id = event_id(2);
+        register(&mut contract, id, 1, true, address(4));
+        vm.set_sender(address(6));
+        vm.set_block_timestamp(RELEASE - 1);
+        assert_error(contract.cancel_event(id), UNAUTHORIZED);
+        vm.set_sender(address(1));
+        contract.cancel_event(id).unwrap();
+        assert!(contract.event_protection_info(id).unwrap().2);
+    }
+
+    #[test]
+    fn refund_follows_transferred_checked_in_pass_and_preserves_history() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let buyer = address(6);
+        let holder = address(7);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, buyer);
+        let (v, r, s) =
+            mock_authorization(&vm, &contract, buyer, pass_id, holder, U256::from(1), 180);
+        contract
+            .transfer_pass(pass_id, holder, U256::from(1), 150, 180, v, r, s)
+            .unwrap();
+        vm.set_sender(address(4));
+        contract.check_in(id, pass_id).unwrap();
+        vm.set_sender(address(1));
+        contract.cancel_event(id).unwrap();
+
+        vm.set_sender(buyer);
+        assert_error(contract.claim_refund(pass_id), NOT_PASS_OWNER);
+        vm.set_sender(holder);
+        mock_refund(&vm, holder, Ok(true_word()));
+        contract.claim_refund(pass_id).unwrap();
+
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), holder);
+        assert_eq!(contract.balance_of(holder).unwrap(), U256::from(1));
+        assert_eq!(
+            contract.token_uri(U256::from(pass_id)).unwrap(),
+            METADATA_URI
+        );
+        assert_eq!(
+            contract.pass_info(pass_id).unwrap(),
+            (holder, id, ATTENDED, false)
+        );
+        assert_eq!(
+            contract.pass_refund_info(pass_id).unwrap(),
+            (PRICE, true, false)
+        );
+        assert_eq!(contract.event_protection_info(id).unwrap().1, U256::ZERO);
+        assert_error(contract.claim_refund(pass_id), REFUND_ALREADY_CLAIMED);
+        assert!(vm.get_emitted_logs().iter().any(|(topics, _)| {
+            topics[0]
+                == stylus_sdk::alloy_primitives::keccak256(
+                    "EventPassRefunded(uint64,bytes32,address,uint64)",
+                )
+        }));
+    }
+
+    #[test]
+    fn failed_and_paused_refunds_preserve_event_accounting_for_retry() {
+        for response in [
+            Ok(vec![]),
+            Ok(vec![0; 32]),
+            Ok(vec![1]),
+            Ok(vec![0; 33]),
+            Err(vec![0xff]),
+        ] {
+            let (vm, mut contract) = setup();
+            let id = event_id(1);
+            let buyer = address(6);
+            register(&mut contract, id, 1, true, address(4));
+            let pass_id = buy(&vm, &mut contract, id, buyer);
+            vm.set_sender(address(1));
+            contract.cancel_event(id).unwrap();
+            contract.set_paused(true).unwrap();
+            vm.set_sender(buyer);
+            assert_error(contract.claim_refund(pass_id), PAUSED);
+            vm.set_sender(address(1));
+            contract.set_paused(false).unwrap();
+            vm.set_sender(buyer);
+            mock_refund(&vm, buyer, response);
+
+            assert_error(contract.claim_refund(pass_id), PAYMENT_FAILED);
+            assert_eq!(
+                contract.pass_refund_info(pass_id).unwrap(),
+                (PRICE, false, true)
+            );
+            assert_eq!(
+                contract.event_protection_info(id).unwrap().1,
+                U256::from(PRICE)
+            );
+        }
+    }
+
+    #[test]
+    fn refund_only_consumes_its_events_protected_balance() {
+        let (vm, mut contract) = setup();
+        let first_event = event_id(1);
+        let second_event = event_id(2);
+        let buyer = address(6);
+        register(&mut contract, first_event, 1, true, address(4));
+        register(&mut contract, second_event, 1, true, address(4));
+        let first_pass = buy(&vm, &mut contract, first_event, buyer);
+        buy(&vm, &mut contract, second_event, buyer);
+        vm.set_sender(address(1));
+        contract.cancel_event(first_event).unwrap();
+        vm.set_sender(buyer);
+        mock_refund(&vm, buyer, Ok(true_word()));
+        contract.claim_refund(first_pass).unwrap();
+
+        assert_eq!(
+            contract.event_protection_info(first_event).unwrap().1,
+            U256::ZERO
+        );
+        assert_eq!(
+            contract.event_protection_info(second_event).unwrap().1,
+            U256::from(PRICE)
+        );
+    }
+
+    #[test]
+    fn refund_reentrancy_lock_prevents_duplicate_execution() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let buyer = address(6);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, buyer);
+        vm.set_sender(address(1));
+        contract.cancel_event(id).unwrap();
+        vm.set_sender(buyer);
+        contract.entered.set(true);
+
+        assert_error(contract.claim_refund(pass_id), REENTRANCY);
+        assert_eq!(
+            contract.pass_refund_info(pass_id).unwrap(),
+            (PRICE, false, true)
+        );
+        assert_eq!(
+            contract.event_protection_info(id).unwrap().1,
+            U256::from(PRICE)
+        );
     }
 
     #[test]
@@ -1510,6 +1872,15 @@ mod tests {
 impl MintUpEventPass {
     fn transfer_operation_hash() -> B256 {
         keccak256("TRANSFER_PASS")
+    }
+
+    fn strict_usdc_call(&mut self, calldata: &[u8]) -> bool {
+        self.entered.set(true);
+        let result = self.vm().call(&Call::new(), self.usdc.get(), calldata);
+        self.entered.set(false);
+        result.is_ok_and(|data| {
+            data.len() == 32 && data[..31].iter().all(|byte| *byte == 0) && data[31] == 1
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1799,5 +2170,13 @@ fn transfer_from_data(from: Address, to: Address, amount: u64) -> [u8; 100] {
     data[16..36].copy_from_slice(from.as_slice());
     data[48..68].copy_from_slice(to.as_slice());
     data[68..].copy_from_slice(&U256::from(amount).to_be_bytes::<32>());
+    data
+}
+
+fn transfer_data(to: Address, amount: u64) -> [u8; 68] {
+    let mut data = [0; 68];
+    data[..4].copy_from_slice(&[0xa9, 0x05, 0x9c, 0xbb]);
+    data[16..36].copy_from_slice(to.as_slice());
+    data[36..].copy_from_slice(&U256::from(amount).to_be_bytes::<32>());
     data
 }

@@ -278,6 +278,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "claimRefund",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
           inputs: [],
           name: "config",
           outputs: [
@@ -295,6 +308,21 @@ const deployedContracts = {
               internalType: "address",
               name: "authorization_signer",
               type: "address",
+            },
+            {
+              internalType: "address",
+              name: "fee_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint16",
+              name: "primary_fee_bps",
+              type: "uint16",
+            },
+            {
+              internalType: "uint16",
+              name: "resale_fee_bps",
+              type: "uint16",
             },
             {
               internalType: "bool",
@@ -364,6 +392,35 @@ const deployedContracts = {
               internalType: "address",
               name: "check_in_operator",
               type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "eventProtectionInfo",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "funds_release_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "protected_balance",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "cancelled",
+              type: "bool",
             },
           ],
           stateMutability: "view",
@@ -500,6 +557,35 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "passRefundInfo",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "original_price",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "refunded",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "refund_available",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "bytes32",
               name: "event_id",
               type: "bytes32",
@@ -546,6 +632,11 @@ const deployedContracts = {
             {
               internalType: "uint64",
               name: "sale_end",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "funds_release_at",
               type: "uint64",
             },
             {
@@ -983,6 +1074,37 @@ const deployedContracts = {
             },
             {
               indexed: true,
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "recipient",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "amount",
+              type: "uint64",
+            },
+          ],
+          name: "EventPassRefunded",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              indexed: true,
               internalType: "address",
               name: "previous_owner",
               type: "address",
@@ -1023,6 +1145,12 @@ const deployedContracts = {
               internalType: "address",
               name: "check_in_operator",
               type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "funds_release_at",
+              type: "uint64",
             },
           ],
           name: "EventRegistered",

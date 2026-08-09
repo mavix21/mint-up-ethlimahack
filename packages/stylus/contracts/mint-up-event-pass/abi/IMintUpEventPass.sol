@@ -21,7 +21,8 @@ interface IMintUpEventPass {
     event EventRegistered(
         bytes32 indexed event_id,
         address indexed revenue_recipient,
-        address indexed check_in_operator
+        address indexed check_in_operator,
+        uint64 funds_release_at
     );
     event EventSalesStatusChanged(bytes32 indexed event_id, bool enabled);
     event EventCancelled(bytes32 indexed event_id);
@@ -42,6 +43,12 @@ interface IMintUpEventPass {
         bytes32 indexed event_id,
         address indexed attendee
     );
+    event EventPassRefunded(
+        uint64 indexed pass_id,
+        bytes32 indexed event_id,
+        address indexed recipient,
+        uint64 amount
+    );
     event ContractPaused(bool paused);
     event MintUpAuthorizationUsed(
         bytes32 indexed operation,
@@ -59,6 +66,7 @@ interface IMintUpEventPass {
         uint32 maximum_supply,
         uint64 sale_start,
         uint64 sale_end,
+        uint64 funds_release_at,
         bool sales_enabled,
         bool transfers_enabled,
         address check_in_operator,
@@ -70,6 +78,7 @@ interface IMintUpEventPass {
     function cancelEvent(bytes32 event_id) external;
     function setPaused(bool paused) external;
     function purchase(bytes32 event_id) external returns (uint64 pass_id);
+    function claimRefund(uint64 pass_id) external;
     function transferPass(
         uint64 pass_id,
         address to,
@@ -85,7 +94,25 @@ interface IMintUpEventPass {
     function config()
         external
         view
-        returns (address administrator, address usdc, address authorization_signer, bool paused);
+        returns (
+            address administrator,
+            address usdc,
+            address authorization_signer,
+            address fee_recipient,
+            uint16 primary_fee_bps,
+            uint16 resale_fee_bps,
+            bool paused
+        );
+
+    function eventProtectionInfo(bytes32 event_id)
+        external
+        view
+        returns (uint64 funds_release_at, uint256 protected_balance, bool cancelled);
+
+    function passRefundInfo(uint64 pass_id)
+        external
+        view
+        returns (uint64 original_price, bool refunded, bool refund_available);
 
     function transferOperation() external view returns (bytes32);
     function authorizationDigest(

@@ -35,6 +35,7 @@ export default async function deployScript(deployOptions: DeployOptions) {
   const eventPassAdministrator = process.env["EVENT_PASS_ADMINISTRATOR"];
   const eventPassAuthorizationSigner =
     process.env["EVENT_PASS_AUTHORIZATION_SIGNER"];
+  const eventPassFeeRecipient = process.env["EVENT_PASS_FEE_RECIPIENT"];
 
   if (!eventPassAdministrator) {
     throw new Error(
@@ -44,6 +45,11 @@ export default async function deployScript(deployOptions: DeployOptions) {
   if (!eventPassAuthorizationSigner) {
     throw new Error(
       "EVENT_PASS_AUTHORIZATION_SIGNER must be set to deploy the Event Pass contract",
+    );
+  }
+  if (!eventPassFeeRecipient) {
+    throw new Error(
+      "EVENT_PASS_FEE_RECIPIENT must be set to deploy the Event Pass contract",
     );
   }
 
@@ -77,6 +83,7 @@ export default async function deployScript(deployOptions: DeployOptions) {
       eventPassAdministrator,
       usdc,
       eventPassAuthorizationSigner,
+      eventPassFeeRecipient,
       false,
     ],
     ...deployOptions,
