@@ -18,6 +18,7 @@
     "deploy": "ts-node scripts/deploy_wrapper.ts",
     "dev": "tsc --watch",
     "export-abi": "ts-node scripts/export_abi.ts",
+    "generate": "ts-node scripts/generate_event_pass_artifacts.ts",
     "info:networks": "ts-node scripts/test_network.ts",
     "lint": "eslint scripts --ext .ts",
     "lint:fix": "eslint scripts --ext .ts --fix",

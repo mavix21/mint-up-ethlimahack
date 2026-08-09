@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { describe, expect, it } from "@jest/globals";
 import deployedContracts from "../../../nextjs/contracts/deployedContracts";
+import generatedStylusAbi from "../generated/mint-up-event-pass";
 
 type AbiEntry = {
   anonymous?: boolean;
@@ -84,6 +85,46 @@ function stylusAbi(): AbiEntry[] {
   return JSON.parse(json) as AbiEntry[];
 }
 
+function stylusEventAbi(): AbiEntry[] {
+  const contractDirectory = path.resolve(
+    __dirname,
+    "../../contracts/mint-up-event-pass",
+  );
+  const metadata = JSON.parse(
+    execFileSync("cargo", ["metadata", "--format-version", "1"], {
+      cwd: contractDirectory,
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    }),
+  ) as { packages: { manifest_path: string; name: string }[] };
+  const openZeppelinManifest = metadata.packages.find(
+    (entry) => entry.name === "openzeppelin-stylus",
+  )?.manifest_path;
+  if (!openZeppelinManifest) {
+    throw new Error("OpenZeppelin Stylus dependency was not resolved");
+  }
+  const openZeppelinRoot = path.dirname(openZeppelinManifest);
+  const sources = [
+    path.join(contractDirectory, "src/lib.rs"),
+    path.join(openZeppelinRoot, "src/token/erc721/mod.rs"),
+    path.join(openZeppelinRoot, "src/token/erc721/extensions/uri_storage.rs"),
+  ].map((source) => fs.readFileSync(source, "utf8"));
+  const events = sources.flatMap(
+    (source) => source.match(/event\s+\w+\s*\([^;]+\);/gs) ?? [],
+  );
+  const output = JSON.parse(
+    execFileSync("solc", ["--combined-json", "abi", "-"], {
+      encoding: "utf8",
+      input: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+interface StylusEvents { ${events.join("\n")} }`,
+    }),
+  ) as { contracts: Record<string, { abi: AbiEntry[] }> };
+  const contract = Object.values(output.contracts)[0];
+  if (!contract) throw new Error("Stylus event ABI was not generated");
+  return contract.abi;
+}
+
 function checkedInAbi(): AbiEntry[] {
   return JSON.parse(
     fs.readFileSync(
@@ -96,20 +137,49 @@ function checkedInAbi(): AbiEntry[] {
   ) as AbiEntry[];
 }
 
+function publishedStylusAbi(): AbiEntry[] {
+  const artifact = fs.readFileSync(
+    path.resolve(__dirname, "../../deployments/mint-up-event-pass"),
+    "utf8",
+  );
+  const json = artifact.slice(artifact.indexOf("["));
+  return JSON.parse(json) as AbiEntry[];
+}
+
 describe("Event Pass ABI parity", () => {
   it("keeps source, Stylus export, and generated frontend signatures aligned", () => {
     const source = sourceAbi();
     const stylus = stylusAbi();
+    const stylusEvents = stylusEventAbi();
     const checkedIn = checkedInAbi();
-    const frontend = deployedContracts["412346"]["mint-up-event-pass"]
-      .abi as readonly AbiEntry[];
+    const publishedStylus = publishedStylusAbi();
+    const generatedLocal = generatedStylusAbi as readonly AbiEntry[];
+    const frontendAbis = Object.values(deployedContracts).map(
+      (contracts) => contracts["mint-up-event-pass"].abi as readonly AbiEntry[],
+    );
 
     expect(signatures(stylus, ["function", "error"], false)).toEqual(
       signatures(source, ["function", "error"], false),
     );
-    expect(signatures(frontend, ["function", "error", "event"], true)).toEqual(
-      signatures(source, ["function", "error", "event"], true),
+    const stylusEventNames = new Set(stylusEvents.map((event) => event.name));
+    expect(signatures(stylusEvents, ["event"], true)).toEqual(
+      signatures(
+        source.filter((event) => stylusEventNames.has(event.name)),
+        ["event"],
+        true,
+      ),
     );
+    expect(
+      signatures(publishedStylus, ["function", "error", "event"], true),
+    ).toEqual(signatures(source, ["function", "error", "event"], true));
+    expect(
+      signatures(generatedLocal, ["function", "error", "event"], true),
+    ).toEqual(signatures(source, ["function", "error", "event"], true));
+    for (const frontend of frontendAbis) {
+      expect(
+        signatures(frontend, ["function", "error", "event"], true),
+      ).toEqual(signatures(source, ["function", "error", "event"], true));
+    }
     expect(signatures(checkedIn, ["function", "error", "event"], true)).toEqual(
       signatures(source, ["function", "error", "event"], true),
     );

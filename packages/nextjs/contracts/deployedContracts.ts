@@ -137,889 +137,6 @@ const deployedContracts = {
           type: "error",
         },
         {
-          inputs: [
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "approve",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "operation",
-              type: "bytes32",
-            },
-            {
-              internalType: "address",
-              name: "caller",
-              type: "address",
-            },
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "address",
-              name: "recipient",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-          ],
-          name: "authorizationDigest",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-          ],
-          name: "authorizationUsed",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "owner",
-              type: "address",
-            },
-          ],
-          name: "balanceOf",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "cancelEvent",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "cancelResaleOffer",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "checkIn",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "claimRefund",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "config",
-          outputs: [
-            {
-              internalType: "address",
-              name: "administrator",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "usdc",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "authorization_signer",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "fee_recipient",
-              type: "address",
-            },
-            {
-              internalType: "uint16",
-              name: "primary_fee_bps",
-              type: "uint16",
-            },
-            {
-              internalType: "uint16",
-              name: "resale_fee_bps",
-              type: "uint16",
-            },
-            {
-              internalType: "bool",
-              name: "paused",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-          ],
-          name: "createResaleOffer",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "eventInfo",
-          outputs: [
-            {
-              internalType: "address",
-              name: "revenue_recipient",
-              type: "address",
-            },
-            {
-              internalType: "uint64",
-              name: "price",
-              type: "uint64",
-            },
-            {
-              internalType: "uint32",
-              name: "maximum_supply",
-              type: "uint32",
-            },
-            {
-              internalType: "uint32",
-              name: "issued_supply",
-              type: "uint32",
-            },
-            {
-              internalType: "uint64",
-              name: "sale_start",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "sale_end",
-              type: "uint64",
-            },
-            {
-              internalType: "bool",
-              name: "sales_enabled",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "transfers_enabled",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "cancelled",
-              type: "bool",
-            },
-            {
-              internalType: "address",
-              name: "check_in_operator",
-              type: "address",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "eventProtectionInfo",
-          outputs: [
-            {
-              internalType: "uint64",
-              name: "funds_release_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint256",
-              name: "protected_balance",
-              type: "uint256",
-            },
-            {
-              internalType: "bool",
-              name: "cancelled",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "funds_released",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "getApproved",
-          outputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "owner",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "operator",
-              type: "address",
-            },
-          ],
-          name: "isApprovedForAll",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "isValidForCheckIn",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "name",
-          outputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "ownerOf",
-          outputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "passInfo",
-          outputs: [
-            {
-              internalType: "address",
-              name: "owner",
-              type: "address",
-            },
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint8",
-              name: "state",
-              type: "uint8",
-            },
-            {
-              internalType: "bool",
-              name: "valid_for_check_in",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "passRefundInfo",
-          outputs: [
-            {
-              internalType: "uint64",
-              name: "original_price",
-              type: "uint64",
-            },
-            {
-              internalType: "bool",
-              name: "refunded",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "refund_available",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "purchase",
-          outputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "purchaseResale",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "address",
-              name: "revenue_recipient",
-              type: "address",
-            },
-            {
-              internalType: "uint64",
-              name: "price",
-              type: "uint64",
-            },
-            {
-              internalType: "uint32",
-              name: "maximum_supply",
-              type: "uint32",
-            },
-            {
-              internalType: "uint64",
-              name: "sale_start",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "sale_end",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "funds_release_at",
-              type: "uint64",
-            },
-            {
-              internalType: "bool",
-              name: "sales_enabled",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "transfers_enabled",
-              type: "bool",
-            },
-            {
-              internalType: "address",
-              name: "check_in_operator",
-              type: "address",
-            },
-            {
-              internalType: "string",
-              name: "metadata_uri",
-              type: "string",
-            },
-          ],
-          name: "registerEvent",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "releaseFunds",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "resaleOffer",
-          outputs: [
-            {
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-            {
-              internalType: "bool",
-              name: "eligible",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "from",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "safeTransferFrom",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "from",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-            {
-              internalType: "bytes",
-              name: "data",
-              type: "bytes",
-            },
-          ],
-          name: "safeTransferFrom",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "operator",
-              type: "address",
-            },
-            {
-              internalType: "bool",
-              name: "approved",
-              type: "bool",
-            },
-          ],
-          name: "setApprovalForAll",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "address",
-              name: "operator",
-              type: "address",
-            },
-          ],
-          name: "setCheckInOperator",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "bool",
-              name: "enabled",
-              type: "bool",
-            },
-          ],
-          name: "setEventSales",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bool",
-              name: "paused",
-              type: "bool",
-            },
-          ],
-          name: "setPaused",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes4",
-              name: "interface_id",
-              type: "bytes4",
-            },
-          ],
-          name: "supportsInterface",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "symbol",
-          outputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "tokenURI",
-          outputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "from",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "transferFrom",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "transferOperation",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-            {
-              internalType: "uint8",
-              name: "v",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "r",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "s",
-              type: "bytes32",
-            },
-          ],
-          name: "transferPass",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
           anonymous: false,
           inputs: [
             {
@@ -1067,6 +184,25 @@ const deployedContracts = {
             },
           ],
           name: "ApprovalForAll",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "from_token_id",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "to_token_id",
+              type: "uint256",
+            },
+          ],
+          name: "BatchMetadataUpdate",
           type: "event",
         },
         {
@@ -1486,6 +622,1018 @@ const deployedContracts = {
           ],
           name: "Transfer",
           type: "event",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "approve",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "operation",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "caller",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "address",
+              name: "recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+          ],
+          name: "authorizationDigest",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+          ],
+          name: "authorizationUsed",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+          ],
+          name: "balanceOf",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "cancelEvent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "v",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "r",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "cancelResaleOffer",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "cancelResaleOfferOperation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "checkIn",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "claimRefund",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "config",
+          outputs: [
+            {
+              internalType: "address",
+              name: "administrator",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "usdc",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "authorization_signer",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "fee_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint16",
+              name: "primary_fee_bps",
+              type: "uint16",
+            },
+            {
+              internalType: "uint16",
+              name: "resale_fee_bps",
+              type: "uint16",
+            },
+            {
+              internalType: "bool",
+              name: "paused",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "address",
+              name: "designated_buyer",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "price",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "v",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "r",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "createResaleOffer",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "createResaleOfferOperation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "eventInfo",
+          outputs: [
+            {
+              internalType: "address",
+              name: "revenue_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "price",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "maximum_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "issued_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_end",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "sales_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "transfers_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "cancelled",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "check_in_operator",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "eventProtectionInfo",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "funds_release_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "protected_balance",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "cancelled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "funds_released",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "getApproved",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+          ],
+          name: "isApprovedForAll",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "isValidForCheckIn",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "name",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "ownerOf",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "passInfo",
+          outputs: [
+            {
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint8",
+              name: "state",
+              type: "uint8",
+            },
+            {
+              internalType: "bool",
+              name: "valid_for_check_in",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "passRefundInfo",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "original_price",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "refunded",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "refund_available",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "purchase",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "v",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "r",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "purchaseResale",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "purchaseResaleOperation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "revenue_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "price",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "maximum_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_end",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "funds_release_at",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "sales_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "transfers_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "check_in_operator",
+              type: "address",
+            },
+            {
+              internalType: "string",
+              name: "metadata_uri",
+              type: "string",
+            },
+          ],
+          name: "registerEvent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "releaseFunds",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "resaleOffer",
+          outputs: [
+            {
+              internalType: "address",
+              name: "seller",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "designated_buyer",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "price",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "eligible",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "safeTransferFrom",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes",
+              name: "data",
+              type: "bytes",
+            },
+          ],
+          name: "safeTransferFrom",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "approved",
+              type: "bool",
+            },
+          ],
+          name: "setApprovalForAll",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+          ],
+          name: "setCheckInOperator",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "setEventSales",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bool",
+              name: "paused",
+              type: "bool",
+            },
+          ],
+          name: "setPaused",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes4",
+              name: "interface_id",
+              type: "bytes4",
+            },
+          ],
+          name: "supportsInterface",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "symbol",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "tokenURI",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "transferFrom",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "transferOperation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "v",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "r",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "transferPass",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
         },
       ],
     },
@@ -1861,889 +2009,6 @@ const deployedContracts = {
           type: "error",
         },
         {
-          inputs: [
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "approve",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "operation",
-              type: "bytes32",
-            },
-            {
-              internalType: "address",
-              name: "caller",
-              type: "address",
-            },
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "address",
-              name: "recipient",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-          ],
-          name: "authorizationDigest",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-          ],
-          name: "authorizationUsed",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "owner",
-              type: "address",
-            },
-          ],
-          name: "balanceOf",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "cancelEvent",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "cancelResaleOffer",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "checkIn",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "claimRefund",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "config",
-          outputs: [
-            {
-              internalType: "address",
-              name: "administrator",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "usdc",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "authorization_signer",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "fee_recipient",
-              type: "address",
-            },
-            {
-              internalType: "uint16",
-              name: "primary_fee_bps",
-              type: "uint16",
-            },
-            {
-              internalType: "uint16",
-              name: "resale_fee_bps",
-              type: "uint16",
-            },
-            {
-              internalType: "bool",
-              name: "paused",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-          ],
-          name: "createResaleOffer",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "eventInfo",
-          outputs: [
-            {
-              internalType: "address",
-              name: "revenue_recipient",
-              type: "address",
-            },
-            {
-              internalType: "uint64",
-              name: "price",
-              type: "uint64",
-            },
-            {
-              internalType: "uint32",
-              name: "maximum_supply",
-              type: "uint32",
-            },
-            {
-              internalType: "uint32",
-              name: "issued_supply",
-              type: "uint32",
-            },
-            {
-              internalType: "uint64",
-              name: "sale_start",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "sale_end",
-              type: "uint64",
-            },
-            {
-              internalType: "bool",
-              name: "sales_enabled",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "transfers_enabled",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "cancelled",
-              type: "bool",
-            },
-            {
-              internalType: "address",
-              name: "check_in_operator",
-              type: "address",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "eventProtectionInfo",
-          outputs: [
-            {
-              internalType: "uint64",
-              name: "funds_release_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint256",
-              name: "protected_balance",
-              type: "uint256",
-            },
-            {
-              internalType: "bool",
-              name: "cancelled",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "funds_released",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "getApproved",
-          outputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "owner",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "operator",
-              type: "address",
-            },
-          ],
-          name: "isApprovedForAll",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "isValidForCheckIn",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "name",
-          outputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "ownerOf",
-          outputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "passInfo",
-          outputs: [
-            {
-              internalType: "address",
-              name: "owner",
-              type: "address",
-            },
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint8",
-              name: "state",
-              type: "uint8",
-            },
-            {
-              internalType: "bool",
-              name: "valid_for_check_in",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "passRefundInfo",
-          outputs: [
-            {
-              internalType: "uint64",
-              name: "original_price",
-              type: "uint64",
-            },
-            {
-              internalType: "bool",
-              name: "refunded",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "refund_available",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "purchase",
-          outputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "purchaseResale",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "address",
-              name: "revenue_recipient",
-              type: "address",
-            },
-            {
-              internalType: "uint64",
-              name: "price",
-              type: "uint64",
-            },
-            {
-              internalType: "uint32",
-              name: "maximum_supply",
-              type: "uint32",
-            },
-            {
-              internalType: "uint64",
-              name: "sale_start",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "sale_end",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "funds_release_at",
-              type: "uint64",
-            },
-            {
-              internalType: "bool",
-              name: "sales_enabled",
-              type: "bool",
-            },
-            {
-              internalType: "bool",
-              name: "transfers_enabled",
-              type: "bool",
-            },
-            {
-              internalType: "address",
-              name: "check_in_operator",
-              type: "address",
-            },
-            {
-              internalType: "string",
-              name: "metadata_uri",
-              type: "string",
-            },
-          ],
-          name: "registerEvent",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-          ],
-          name: "releaseFunds",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "resaleOffer",
-          outputs: [
-            {
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-            {
-              internalType: "bool",
-              name: "eligible",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "from",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "safeTransferFrom",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "from",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-            {
-              internalType: "bytes",
-              name: "data",
-              type: "bytes",
-            },
-          ],
-          name: "safeTransferFrom",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "operator",
-              type: "address",
-            },
-            {
-              internalType: "bool",
-              name: "approved",
-              type: "bool",
-            },
-          ],
-          name: "setApprovalForAll",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "address",
-              name: "operator",
-              type: "address",
-            },
-          ],
-          name: "setCheckInOperator",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "event_id",
-              type: "bytes32",
-            },
-            {
-              internalType: "bool",
-              name: "enabled",
-              type: "bool",
-            },
-          ],
-          name: "setEventSales",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bool",
-              name: "paused",
-              type: "bool",
-            },
-          ],
-          name: "setPaused",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes4",
-              name: "interface_id",
-              type: "bytes4",
-            },
-          ],
-          name: "supportsInterface",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "symbol",
-          outputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "tokenURI",
-          outputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "from",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "token_id",
-              type: "uint256",
-            },
-          ],
-          name: "transferFrom",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "transferOperation",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "address",
-              name: "to",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-            {
-              internalType: "uint8",
-              name: "v",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "r",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "s",
-              type: "bytes32",
-            },
-          ],
-          name: "transferPass",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
           anonymous: false,
           inputs: [
             {
@@ -2791,6 +2056,25 @@ const deployedContracts = {
             },
           ],
           name: "ApprovalForAll",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "from_token_id",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "to_token_id",
+              type: "uint256",
+            },
+          ],
+          name: "BatchMetadataUpdate",
           type: "event",
         },
         {
@@ -3210,6 +2494,1018 @@ const deployedContracts = {
           ],
           name: "Transfer",
           type: "event",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "approve",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "operation",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "caller",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "address",
+              name: "recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+          ],
+          name: "authorizationDigest",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+          ],
+          name: "authorizationUsed",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+          ],
+          name: "balanceOf",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "cancelEvent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "v",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "r",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "cancelResaleOffer",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "cancelResaleOfferOperation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "checkIn",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "claimRefund",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "config",
+          outputs: [
+            {
+              internalType: "address",
+              name: "administrator",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "usdc",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "authorization_signer",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "fee_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint16",
+              name: "primary_fee_bps",
+              type: "uint16",
+            },
+            {
+              internalType: "uint16",
+              name: "resale_fee_bps",
+              type: "uint16",
+            },
+            {
+              internalType: "bool",
+              name: "paused",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "address",
+              name: "designated_buyer",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "price",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "v",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "r",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "createResaleOffer",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "createResaleOfferOperation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "eventInfo",
+          outputs: [
+            {
+              internalType: "address",
+              name: "revenue_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "price",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "maximum_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "issued_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_end",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "sales_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "transfers_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "cancelled",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "check_in_operator",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "eventProtectionInfo",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "funds_release_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "protected_balance",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "cancelled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "funds_released",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "getApproved",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+          ],
+          name: "isApprovedForAll",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "isValidForCheckIn",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "name",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "ownerOf",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "passInfo",
+          outputs: [
+            {
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint8",
+              name: "state",
+              type: "uint8",
+            },
+            {
+              internalType: "bool",
+              name: "valid_for_check_in",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "passRefundInfo",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "original_price",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "refunded",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "refund_available",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "purchase",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "v",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "r",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "purchaseResale",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "purchaseResaleOperation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "revenue_recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "price",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "maximum_supply",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sale_end",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "funds_release_at",
+              type: "uint64",
+            },
+            {
+              internalType: "bool",
+              name: "sales_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "transfers_enabled",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "check_in_operator",
+              type: "address",
+            },
+            {
+              internalType: "string",
+              name: "metadata_uri",
+              type: "string",
+            },
+          ],
+          name: "registerEvent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "releaseFunds",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+          ],
+          name: "resaleOffer",
+          outputs: [
+            {
+              internalType: "address",
+              name: "seller",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "designated_buyer",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "price",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "eligible",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "safeTransferFrom",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes",
+              name: "data",
+              type: "bytes",
+            },
+          ],
+          name: "safeTransferFrom",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "approved",
+              type: "bool",
+            },
+          ],
+          name: "setApprovalForAll",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+          ],
+          name: "setCheckInOperator",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "setEventSales",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bool",
+              name: "paused",
+              type: "bool",
+            },
+          ],
+          name: "setPaused",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes4",
+              name: "interface_id",
+              type: "bytes4",
+            },
+          ],
+          name: "supportsInterface",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "symbol",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "tokenURI",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "token_id",
+              type: "uint256",
+            },
+          ],
+          name: "transferFrom",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "transferOperation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "v",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "r",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "transferPass",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
         },
       ],
     },

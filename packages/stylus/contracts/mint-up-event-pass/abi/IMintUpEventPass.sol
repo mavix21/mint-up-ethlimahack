@@ -17,6 +17,7 @@ interface IMintUpEventPass {
     event Approval(address indexed owner, address indexed approved, uint256 indexed token_id);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
     event MetadataUpdate(uint256 token_id);
+    event BatchMetadataUpdate(uint256 from_token_id, uint256 to_token_id);
 
     event EventRegistered(
         bytes32 indexed event_id,
@@ -102,9 +103,35 @@ interface IMintUpEventPass {
     function purchase(bytes32 event_id) external returns (uint64 pass_id);
     function claimRefund(uint64 pass_id) external;
     function releaseFunds(bytes32 event_id) external;
-    function createResaleOffer(uint64 pass_id, address designated_buyer, uint256 price) external;
-    function cancelResaleOffer(uint64 pass_id) external;
-    function purchaseResale(uint64 pass_id) external;
+    function createResaleOffer(
+        uint64 pass_id,
+        address designated_buyer,
+        uint256 price,
+        uint256 nonce,
+        uint64 issued_at,
+        uint64 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+    function cancelResaleOffer(
+        uint64 pass_id,
+        uint256 nonce,
+        uint64 issued_at,
+        uint64 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+    function purchaseResale(
+        uint64 pass_id,
+        uint256 nonce,
+        uint64 issued_at,
+        uint64 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
     function transferPass(
         uint64 pass_id,
         address to,
@@ -151,6 +178,9 @@ interface IMintUpEventPass {
         returns (address seller, address designated_buyer, uint256 price, bool eligible);
 
     function transferOperation() external view returns (bytes32);
+    function createResaleOfferOperation() external view returns (bytes32);
+    function cancelResaleOfferOperation() external view returns (bytes32);
+    function purchaseResaleOperation() external view returns (bytes32);
     function authorizationDigest(
         bytes32 operation,
         address caller,

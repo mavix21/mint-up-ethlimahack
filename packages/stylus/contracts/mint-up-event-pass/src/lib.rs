@@ -583,29 +583,32 @@ impl MintUpEventPass {
             r,
             s,
         )?;
-        self.used_authorizations.setter(nonce).set(true);
+        self.record_authorization(
+            Self::transfer_operation_hash(),
+            sender,
+            nonce,
+            pass_id,
+            to,
+            U256::ZERO,
+        );
         self.clear_resale_offer(pass_id);
         self.erc721._transfer(previous_owner, to, token_id)?;
         self.log_pass_transfer(token_id, previous_owner, to, event_id);
-        log(
-            self.vm(),
-            MintUpAuthorizationUsed {
-                operation: Self::transfer_operation_hash(),
-                caller: sender,
-                nonce,
-                pass_id,
-                recipient: to,
-                amount: U256::ZERO,
-            },
-        );
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_resale_offer(
         &mut self,
         pass_id: u64,
         designated_buyer: Address,
         price: U256,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+        v: u8,
+        r: B256,
+        s: B256,
     ) -> Result<(), Error> {
         self.not_entered()?;
         if designated_buyer.is_zero() || price.is_zero() {
@@ -619,6 +622,21 @@ impl MintUpEventPass {
         if designated_buyer == seller {
             return Err(error(INVALID_INPUT));
         }
+        let operation = Self::create_resale_offer_operation_hash();
+        self.validate_authorization(
+            operation,
+            seller,
+            pass_id,
+            designated_buyer,
+            price,
+            nonce,
+            issued_at,
+            deadline,
+            v,
+            r,
+            s,
+        )?;
+        self.record_authorization(operation, seller, nonce, pass_id, designated_buyer, price);
 
         let mut offer = self.resale_offers.setter(U64::from(pass_id));
         offer.seller.set(seller);
@@ -637,7 +655,17 @@ impl MintUpEventPass {
         Ok(())
     }
 
-    pub fn cancel_resale_offer(&mut self, pass_id: u64) -> Result<(), Error> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn cancel_resale_offer(
+        &mut self,
+        pass_id: u64,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+        v: u8,
+        r: B256,
+        s: B256,
+    ) -> Result<(), Error> {
         self.not_entered()?;
         let seller = self.vm().msg_sender();
         let (owner, _) = self.require_resale_eligible(pass_id)?;
@@ -653,13 +681,38 @@ impl MintUpEventPass {
         {
             return Err(error(RESALE_OFFER_NOT_FOUND));
         }
+        let operation = Self::cancel_resale_offer_operation_hash();
+        self.validate_authorization(
+            operation,
+            seller,
+            pass_id,
+            Address::ZERO,
+            U256::ZERO,
+            nonce,
+            issued_at,
+            deadline,
+            v,
+            r,
+            s,
+        )?;
+        self.record_authorization(operation, seller, nonce, pass_id, Address::ZERO, U256::ZERO);
 
         self.clear_resale_offer(pass_id);
         log(self.vm(), EventPassResaleOfferCancelled { pass_id, seller });
         Ok(())
     }
 
-    pub fn purchase_resale(&mut self, pass_id: u64) -> Result<(), Error> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn purchase_resale(
+        &mut self,
+        pass_id: u64,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+        v: u8,
+        r: B256,
+        s: B256,
+    ) -> Result<(), Error> {
         self.not_paused()?;
         if self.entered.get() {
             return Err(error(REENTRANCY));
@@ -685,6 +738,10 @@ impl MintUpEventPass {
         if current_owner != seller {
             return Err(error(RESALE_UNAVAILABLE));
         }
+        let operation = Self::purchase_resale_operation_hash();
+        self.validate_authorization(
+            operation, buyer, pass_id, seller, price, nonce, issued_at, deadline, v, r, s,
+        )?;
 
         let fee_amount = basis_points(price, RESALE_FEE_BPS);
         let seller_amount = price - fee_amount;
@@ -697,6 +754,7 @@ impl MintUpEventPass {
         {
             return Err(error(PAYMENT_FAILED));
         }
+        self.record_authorization(operation, buyer, nonce, pass_id, seller, price);
 
         self.clear_resale_offer(pass_id);
         self.erc721._transfer(seller, buyer, U256::from(pass_id))?;
@@ -873,6 +931,18 @@ impl MintUpEventPass {
 
     pub fn transfer_operation(&self) -> B256 {
         Self::transfer_operation_hash()
+    }
+
+    pub fn create_resale_offer_operation(&self) -> B256 {
+        Self::create_resale_offer_operation_hash()
+    }
+
+    pub fn cancel_resale_offer_operation(&self) -> B256 {
+        Self::cancel_resale_offer_operation_hash()
+    }
+
+    pub fn purchase_resale_operation(&self) -> B256 {
+        Self::purchase_resale_operation_hash()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1192,10 +1262,9 @@ mod tests {
         nonce: U256,
         deadline: u64,
     ) -> (u8, B256, B256) {
-        let v = 27;
-        let r = B256::with_last_byte(11);
-        let s = B256::with_last_byte(12);
-        let digest = contract.authorization_digest(
+        mock_action_authorization(
+            vm,
+            contract,
             contract.transfer_operation(),
             caller,
             pass_id,
@@ -1204,6 +1273,27 @@ mod tests {
             nonce,
             150,
             deadline,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn mock_action_authorization(
+        vm: &TestVM,
+        contract: &MintUpEventPass,
+        operation: B256,
+        caller: Address,
+        pass_id: u64,
+        recipient: Address,
+        amount: U256,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+    ) -> (u8, B256, B256) {
+        let v = 27;
+        let r = B256::with_last_byte(11);
+        let s = B256::with_last_byte(12);
+        let digest = contract.authorization_digest(
+            operation, caller, pass_id, recipient, amount, nonce, issued_at, deadline,
         );
         let mut calldata = vec![0; 128];
         calldata[..32].copy_from_slice(digest.as_slice());
@@ -1218,6 +1308,84 @@ mod tests {
             Ok(recovered),
         );
         (v, r, s)
+    }
+
+    fn authorized_create_offer(
+        vm: &TestVM,
+        contract: &mut MintUpEventPass,
+        pass_id: u64,
+        buyer: Address,
+        price: U256,
+        nonce: u64,
+    ) -> Result<(), Error> {
+        let seller = vm.msg_sender();
+        let nonce = U256::from(nonce);
+        let issued_at = vm.block_timestamp();
+        let deadline = issued_at + 30;
+        let (v, r, s) = mock_action_authorization(
+            vm,
+            contract,
+            contract.create_resale_offer_operation(),
+            seller,
+            pass_id,
+            buyer,
+            price,
+            nonce,
+            issued_at,
+            deadline,
+        );
+        contract.create_resale_offer(pass_id, buyer, price, nonce, issued_at, deadline, v, r, s)
+    }
+
+    fn authorized_cancel_offer(
+        vm: &TestVM,
+        contract: &mut MintUpEventPass,
+        pass_id: u64,
+        nonce: u64,
+    ) -> Result<(), Error> {
+        let seller = vm.msg_sender();
+        let nonce = U256::from(nonce);
+        let issued_at = vm.block_timestamp();
+        let deadline = issued_at + 30;
+        let (v, r, s) = mock_action_authorization(
+            vm,
+            contract,
+            contract.cancel_resale_offer_operation(),
+            seller,
+            pass_id,
+            Address::ZERO,
+            U256::ZERO,
+            nonce,
+            issued_at,
+            deadline,
+        );
+        contract.cancel_resale_offer(pass_id, nonce, issued_at, deadline, v, r, s)
+    }
+
+    fn authorized_purchase_resale(
+        vm: &TestVM,
+        contract: &mut MintUpEventPass,
+        pass_id: u64,
+        nonce: u64,
+    ) -> Result<(), Error> {
+        let buyer = vm.msg_sender();
+        let (seller, _, price, _) = contract.resale_offer(pass_id)?;
+        let nonce = U256::from(nonce);
+        let issued_at = vm.block_timestamp();
+        let deadline = issued_at + 30;
+        let (v, r, s) = mock_action_authorization(
+            vm,
+            contract,
+            contract.purchase_resale_operation(),
+            buyer,
+            pass_id,
+            seller,
+            price,
+            nonce,
+            issued_at,
+            deadline,
+        );
+        contract.purchase_resale(pass_id, nonce, issued_at, deadline, v, r, s)
     }
 
     #[test]
@@ -1753,6 +1921,156 @@ mod tests {
     }
 
     #[test]
+    fn resale_actions_reject_missing_mint_up_authorization() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let owner = address(6);
+        let buyer = address(7);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, owner);
+
+        assert_error(
+            contract.create_resale_offer(
+                pass_id,
+                buyer,
+                U256::from(30_000_000),
+                U256::from(1),
+                150,
+                180,
+                27,
+                B256::ZERO,
+                B256::ZERO,
+            ),
+            INVALID_AUTHORIZATION,
+        );
+        authorized_create_offer(
+            &vm,
+            &mut contract,
+            pass_id,
+            buyer,
+            U256::from(30_000_000),
+            2,
+        )
+        .unwrap();
+        assert_error(
+            contract.cancel_resale_offer(
+                pass_id,
+                U256::from(3),
+                150,
+                180,
+                27,
+                B256::ZERO,
+                B256::ZERO,
+            ),
+            INVALID_AUTHORIZATION,
+        );
+        vm.set_sender(buyer);
+        assert_error(
+            contract.purchase_resale(pass_id, U256::from(4), 150, 180, 27, B256::ZERO, B256::ZERO),
+            INVALID_AUTHORIZATION,
+        );
+    }
+
+    #[test]
+    fn resale_authorization_binds_action_recipient_price_and_nonce() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let owner = address(6);
+        let buyer = address(7);
+        let other_buyer = address(8);
+        let price = U256::from(30_000_000);
+        let nonce = U256::from(1);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, owner);
+        let (v, r, s) = mock_action_authorization(
+            &vm,
+            &contract,
+            contract.create_resale_offer_operation(),
+            owner,
+            pass_id,
+            buyer,
+            price,
+            nonce,
+            150,
+            180,
+        );
+
+        assert_error(
+            contract.create_resale_offer(pass_id, other_buyer, price, nonce, 150, 180, v, r, s),
+            INVALID_AUTHORIZATION,
+        );
+        assert_error(
+            contract.create_resale_offer(
+                pass_id,
+                buyer,
+                price + U256::from(1),
+                nonce,
+                150,
+                180,
+                v,
+                r,
+                s,
+            ),
+            INVALID_AUTHORIZATION,
+        );
+        contract
+            .create_resale_offer(pass_id, buyer, price, nonce, 150, 180, v, r, s)
+            .unwrap();
+        assert!(contract.authorization_used(nonce));
+        assert_error(
+            contract.create_resale_offer(pass_id, buyer, price, nonce, 150, 180, v, r, s),
+            AUTHORIZATION_USED,
+        );
+        let cancel_nonce = U256::from(2);
+        let (cancel_v, cancel_r, cancel_s) = mock_action_authorization(
+            &vm,
+            &contract,
+            contract.cancel_resale_offer_operation(),
+            owner,
+            pass_id,
+            Address::ZERO,
+            U256::ZERO,
+            cancel_nonce,
+            150,
+            180,
+        );
+        assert_error(
+            contract.create_resale_offer(
+                pass_id,
+                buyer,
+                price,
+                cancel_nonce,
+                150,
+                180,
+                cancel_v,
+                cancel_r,
+                cancel_s,
+            ),
+            INVALID_AUTHORIZATION,
+        );
+        contract
+            .cancel_resale_offer(
+                pass_id,
+                cancel_nonce,
+                150,
+                180,
+                cancel_v,
+                cancel_r,
+                cancel_s,
+            )
+            .unwrap();
+        assert!(contract.authorization_used(cancel_nonce));
+        assert_ne!(
+            contract.create_resale_offer_operation(),
+            contract.cancel_resale_offer_operation(),
+        );
+        assert_ne!(
+            contract.create_resale_offer_operation(),
+            contract.purchase_resale_operation(),
+        );
+    }
+
+    #[test]
     fn owner_creates_replaces_and_withdraws_one_private_resale_offer() {
         let (vm, mut contract) = setup();
         let id = event_id(1);
@@ -1766,42 +2084,39 @@ mod tests {
 
         vm.set_sender(first_buyer);
         assert_error(
-            contract.create_resale_offer(pass_id, first_buyer, first_price),
+            authorized_create_offer(&vm, &mut contract, pass_id, first_buyer, first_price, 1),
             NOT_PASS_OWNER,
         );
         vm.set_sender(owner);
         assert_error(
-            contract.create_resale_offer(pass_id, owner, first_price),
+            authorized_create_offer(&vm, &mut contract, pass_id, owner, first_price, 1),
             INVALID_INPUT,
         );
         assert_error(
-            contract.create_resale_offer(pass_id, first_buyer, U256::ZERO),
+            authorized_create_offer(&vm, &mut contract, pass_id, first_buyer, U256::ZERO, 1),
             INVALID_INPUT,
         );
 
-        contract
-            .create_resale_offer(pass_id, first_buyer, first_price)
-            .unwrap();
+        authorized_create_offer(&vm, &mut contract, pass_id, first_buyer, first_price, 1).unwrap();
         assert_eq!(
             contract.resale_offer(pass_id).unwrap(),
             (owner, first_buyer, first_price, true)
         );
 
-        contract
-            .create_resale_offer(pass_id, second_buyer, second_price)
+        authorized_create_offer(&vm, &mut contract, pass_id, second_buyer, second_price, 2)
             .unwrap();
         assert_eq!(
             contract.resale_offer(pass_id).unwrap(),
             (owner, second_buyer, second_price, true)
         );
 
-        contract.cancel_resale_offer(pass_id).unwrap();
+        authorized_cancel_offer(&vm, &mut contract, pass_id, 3).unwrap();
         assert_eq!(
             contract.resale_offer(pass_id).unwrap(),
             (Address::ZERO, Address::ZERO, U256::ZERO, false)
         );
         assert_error(
-            contract.cancel_resale_offer(pass_id),
+            authorized_cancel_offer(&vm, &mut contract, pass_id, 4),
             RESALE_OFFER_NOT_FOUND,
         );
     }
@@ -1817,11 +2132,12 @@ mod tests {
         let seller_amount = U256::from(27_300_001);
         register(&mut contract, id, 1, true, address(4));
         let pass_id = buy(&vm, &mut contract, id, seller);
-        contract
-            .create_resale_offer(pass_id, buyer, resale_price)
-            .unwrap();
+        authorized_create_offer(&vm, &mut contract, pass_id, buyer, resale_price, 1).unwrap();
 
-        assert_error(contract.purchase_resale(pass_id), NOT_DESIGNATED_BUYER);
+        assert_error(
+            authorized_purchase_resale(&vm, &mut contract, pass_id, 2),
+            NOT_DESIGNATED_BUYER,
+        );
         vm.set_sender(buyer);
         vm.mock_call(
             address(2),
@@ -1839,7 +2155,7 @@ mod tests {
             Ok(true_word()),
         );
 
-        contract.purchase_resale(pass_id).unwrap();
+        authorized_purchase_resale(&vm, &mut contract, pass_id, 2).unwrap();
 
         assert_eq!(seller_amount + fee_amount, resale_price);
         assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), buyer);
@@ -1851,7 +2167,10 @@ mod tests {
             contract.pass_refund_info(pass_id).unwrap(),
             (PRICE, false, false)
         );
-        assert_error(contract.purchase_resale(pass_id), RESALE_OFFER_NOT_FOUND);
+        assert_error(
+            authorized_purchase_resale(&vm, &mut contract, pass_id, 3),
+            RESALE_OFFER_NOT_FOUND,
+        );
         assert!(vm.get_emitted_logs().iter().any(|(topics, _)| {
             topics[0]
                 == stylus_sdk::alloy_primitives::keccak256(
@@ -1871,7 +2190,7 @@ mod tests {
             register(&mut contract, id, 1, true, address(4));
             let pass_id = buy(&vm, &mut contract, id, seller);
             let price = U256::from(price);
-            contract.create_resale_offer(pass_id, buyer, price).unwrap();
+            authorized_create_offer(&vm, &mut contract, pass_id, buyer, price, 1).unwrap();
             vm.set_sender(buyer);
             vm.set_block_timestamp(RELEASE - 1);
             vm.mock_call(
@@ -1890,7 +2209,7 @@ mod tests {
                 Ok(true_word()),
             );
 
-            contract.purchase_resale(pass_id).unwrap();
+            authorized_purchase_resale(&vm, &mut contract, pass_id, 2).unwrap();
 
             assert_eq!(seller_amount + fee_amount, price.to::<u64>());
             assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), buyer);
@@ -1909,7 +2228,7 @@ mod tests {
         let seller_amount = price - fee_amount;
         register(&mut contract, id, 1, true, address(4));
         let pass_id = buy(&vm, &mut contract, id, seller);
-        contract.create_resale_offer(pass_id, buyer, price).unwrap();
+        authorized_create_offer(&vm, &mut contract, pass_id, buyer, price, 1).unwrap();
         vm.set_sender(buyer);
         vm.mock_call(
             address(2),
@@ -1927,7 +2246,7 @@ mod tests {
             Ok(true_word()),
         );
 
-        contract.purchase_resale(pass_id).unwrap();
+        authorized_purchase_resale(&vm, &mut contract, pass_id, 2).unwrap();
 
         assert_eq!(seller_amount + fee_amount, price);
         assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), buyer);
@@ -1942,9 +2261,15 @@ mod tests {
         let buyer = address(8);
         register(&mut contract, id, 1, true, address(4));
         let pass_id = buy(&vm, &mut contract, id, owner);
-        contract
-            .create_resale_offer(pass_id, buyer, U256::from(30_000_000))
-            .unwrap();
+        authorized_create_offer(
+            &vm,
+            &mut contract,
+            pass_id,
+            buyer,
+            U256::from(30_000_000),
+            1,
+        )
+        .unwrap();
         let (v, r, s) = mock_authorization(
             &vm,
             &contract,
@@ -1964,9 +2289,15 @@ mod tests {
         );
 
         vm.set_sender(recipient);
-        contract
-            .create_resale_offer(pass_id, buyer, U256::from(31_000_000))
-            .unwrap();
+        authorized_create_offer(
+            &vm,
+            &mut contract,
+            pass_id,
+            buyer,
+            U256::from(31_000_000),
+            2,
+        )
+        .unwrap();
         vm.set_sender(address(4));
         contract.check_in(id, pass_id).unwrap();
         assert_eq!(
@@ -1984,9 +2315,15 @@ mod tests {
             let buyer = address(7);
             register(&mut contract, id, 1, true, address(4));
             let pass_id = buy(&vm, &mut contract, id, owner);
-            contract
-                .create_resale_offer(pass_id, buyer, U256::from(30_000_000))
-                .unwrap();
+            authorized_create_offer(
+                &vm,
+                &mut contract,
+                pass_id,
+                buyer,
+                U256::from(30_000_000),
+                1,
+            )
+            .unwrap();
 
             if invalidation == "start" {
                 vm.set_block_timestamp(RELEASE);
@@ -2002,7 +2339,10 @@ mod tests {
 
             assert!(!contract.resale_offer(pass_id).unwrap().3);
             vm.set_sender(buyer);
-            assert_error(contract.purchase_resale(pass_id), RESALE_UNAVAILABLE);
+            assert_error(
+                authorized_purchase_resale(&vm, &mut contract, pass_id, 2),
+                RESALE_UNAVAILABLE,
+            );
         }
     }
 
@@ -2028,8 +2368,7 @@ mod tests {
                 let fee_amount = U256::from(2_700_000);
                 register(&mut contract, id, 1, true, address(4));
                 let pass_id = buy(&vm, &mut contract, id, seller);
-                contract
-                    .create_resale_offer(pass_id, buyer, resale_price)
+                authorized_create_offer(&vm, &mut contract, pass_id, buyer, resale_price, 1)
                     .unwrap();
                 vm.set_sender(buyer);
                 let responses = (0..3).map(|leg| {
@@ -2050,7 +2389,10 @@ mod tests {
                     vm.mock_call(address(2), calldata, response);
                 }
 
-                assert_error(contract.purchase_resale(pass_id), PAYMENT_FAILED);
+                assert_error(
+                    authorized_purchase_resale(&vm, &mut contract, pass_id, 2),
+                    PAYMENT_FAILED,
+                );
                 assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), seller);
                 assert_eq!(
                     contract.resale_offer(pass_id).unwrap(),
@@ -2073,13 +2415,14 @@ mod tests {
         let resale_price = U256::from(30_000_000);
         register(&mut contract, id, 1, true, address(4));
         let pass_id = buy(&vm, &mut contract, id, seller);
-        contract
-            .create_resale_offer(pass_id, buyer, resale_price)
-            .unwrap();
+        authorized_create_offer(&vm, &mut contract, pass_id, buyer, resale_price, 1).unwrap();
         vm.set_sender(buyer);
         contract.entered.set(true);
 
-        assert_error(contract.purchase_resale(pass_id), REENTRANCY);
+        assert_error(
+            authorized_purchase_resale(&vm, &mut contract, pass_id, 2),
+            REENTRANCY,
+        );
         vm.set_sender(address(4));
         assert_error(contract.check_in(id, pass_id), REENTRANCY);
         assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), seller);
@@ -2661,6 +3004,41 @@ mod tests {
 impl MintUpEventPass {
     fn transfer_operation_hash() -> B256 {
         keccak256("TRANSFER_PASS")
+    }
+
+    fn create_resale_offer_operation_hash() -> B256 {
+        keccak256("CREATE_RESALE_OFFER")
+    }
+
+    fn cancel_resale_offer_operation_hash() -> B256 {
+        keccak256("CANCEL_RESALE_OFFER")
+    }
+
+    fn purchase_resale_operation_hash() -> B256 {
+        keccak256("PURCHASE_RESALE")
+    }
+
+    fn record_authorization(
+        &mut self,
+        operation: B256,
+        caller: Address,
+        nonce: U256,
+        pass_id: u64,
+        recipient: Address,
+        amount: U256,
+    ) {
+        self.used_authorizations.setter(nonce).set(true);
+        log(
+            self.vm(),
+            MintUpAuthorizationUsed {
+                operation,
+                caller,
+                nonce,
+                pass_id,
+                recipient,
+                amount,
+            },
+        );
     }
 
     fn strict_usdc_call(&mut self, calldata: &[u8]) -> bool {

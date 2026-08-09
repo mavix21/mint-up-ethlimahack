@@ -2,6 +2,7 @@ import * as path from "path";
 import * as fs from "fs";
 import {
   getExportConfig,
+  validateAndLoadCanonicalAbi,
   ensureDeploymentDirectory,
   executeCommand,
   generateTsAbi,
@@ -11,7 +12,7 @@ import {
 export async function exportStylusAbi(
   contractFolder: string,
   contractName: string,
-  isScript: boolean = true,
+  verbose: boolean = true,
   chainId?: string,
 ) {
   console.log("📄 Starting Stylus ABI export...");
@@ -27,7 +28,7 @@ export async function exportStylusAbi(
     process.exit(1);
   }
 
-  if (isScript) {
+  if (verbose) {
     console.log(`📄 Contract name: ${config.contractName}`);
     console.log(`📁 Deployment directory: ${config.deploymentDir}`);
     console.log(`📍 Contract address: ${config.contractAddress}`);
@@ -58,16 +59,31 @@ export async function exportStylusAbi(
       );
     }
 
-    // do not Generate TypeScript ABI when called from yarn script
-    if (!isScript) {
-      await generateTsAbi(
-        abiFilePath,
-        config.contractName,
-        config.contractAddress,
-        config.txHash,
-        config.chainId,
-      );
-    }
+    const artifact = fs.readFileSync(abiFilePath, "utf8");
+    const exportedAbi = JSON.parse(
+      artifact.slice(artifact.indexOf("[")),
+    ) as readonly unknown[];
+    const canonicalAbi = validateAndLoadCanonicalAbi(
+      exportedAbi,
+      config.contractName,
+    );
+    fs.writeFileSync(
+      abiFilePath,
+      `\n======= <stdin>:I${config.contractName
+        .split("-")
+        .map((part) => part[0]?.toUpperCase() + part.slice(1))
+        .join(
+          "",
+        )} =======\nContract JSON ABI\n${JSON.stringify(canonicalAbi)}\n`,
+    );
+
+    await generateTsAbi(
+      abiFilePath,
+      config.contractName,
+      config.contractAddress,
+      config.txHash,
+      config.chainId,
+    );
   } catch (error) {
     handleSolcError(error as Error);
     process.exit(1);
@@ -82,10 +98,8 @@ if (require.main === module) {
     console.error(`❌ Contract folder does not exist: ${contractFolder}`);
     process.exit(1);
   }
-  exportStylusAbi(rawContract, rawContract).catch(
-    (error) => {
-      console.error("Fatal error:", error);
-      process.exit(1);
-    },
-  );
+  exportStylusAbi(rawContract, rawContract).catch((error) => {
+    console.error("Fatal error:", error);
+    process.exit(1);
+  });
 }

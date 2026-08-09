@@ -17,6 +17,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arbitrumNitro } from "../../../nextjs/utils/scaffold-stylus/supportedChains";
+import eventPassAbi from "../generated/mint-up-event-pass";
 
 const RPC_URL = "http://localhost:8547";
 const ADMIN_KEY =
@@ -46,7 +47,6 @@ const REFUND_ALREADY_CLAIMED = 24;
 const FUNDS_ALREADY_RELEASED = 27;
 const NOT_DESIGNATED_BUYER = 30;
 const chain = arbitrumNitro as Chain;
-const TRANSFER_OPERATION = keccak256(toHex("TRANSFER_PASS"));
 
 const usdcAbi = parseAbi([
   "function mint(address to, uint256 amount)",
@@ -56,47 +56,6 @@ const usdcAbi = parseAbi([
   "function setReentry(address target, bytes data)",
   "function reentryAttempted() view returns (bool)",
   "function reentrySucceeded() view returns (bool)",
-]);
-
-const eventPassAbi = parseAbi([
-  "error MintUpError(uint8)",
-  "function registerEvent(bytes32 event_id, address revenue_recipient, uint64 price, uint32 maximum_supply, uint64 sale_start, uint64 sale_end, uint64 funds_release_at, bool sales_enabled, bool transfers_enabled, address check_in_operator, string metadata_uri)",
-  "function cancelEvent(bytes32 event_id)",
-  "function setPaused(bool paused)",
-  "function purchase(bytes32 event_id) returns (uint64)",
-  "function claimRefund(uint64 pass_id)",
-  "function releaseFunds(bytes32 event_id)",
-  "function createResaleOffer(uint64 pass_id, address designated_buyer, uint256 price)",
-  "function cancelResaleOffer(uint64 pass_id)",
-  "function purchaseResale(uint64 pass_id)",
-  "function resaleOffer(uint64 pass_id) view returns (address seller, address designated_buyer, uint256 price, bool eligible)",
-  "function eventInfo(bytes32 event_id) view returns (address, uint64, uint32, uint32, uint64, uint64, bool, bool, bool, address)",
-  "function eventProtectionInfo(bytes32 event_id) view returns (uint64 funds_release_at, uint256 protected_balance, bool cancelled, bool funds_released)",
-  "function passRefundInfo(uint64 pass_id) view returns (uint64 original_price, bool refunded, bool refund_available)",
-  "function config() view returns (address administrator, address usdc, address authorization_signer, address fee_recipient, uint16 primary_fee_bps, uint16 resale_fee_bps, bool paused)",
-  "function approve(address to, uint256 token_id)",
-  "function setApprovalForAll(address operator, bool approved)",
-  "function transferFrom(address from, address to, uint256 token_id)",
-  "function safeTransferFrom(address from, address to, uint256 token_id)",
-  "function safeTransferFrom(address from, address to, uint256 token_id, bytes data)",
-  "function transferPass(uint64 pass_id, address to, uint256 nonce, uint64 issued_at, uint64 deadline, uint8 v, bytes32 r, bytes32 s)",
-  "function checkIn(bytes32 event_id, uint64 pass_id)",
-  "function passInfo(uint64 pass_id) view returns (address, bytes32, uint8, bool)",
-  "function ownerOf(uint256 token_id) view returns (address)",
-  "function balanceOf(address owner) view returns (uint256)",
-  "function tokenURI(uint256 token_id) view returns (string)",
-  "event Transfer(address indexed from, address indexed to, uint256 indexed token_id)",
-  "event EventPassPurchased(uint64 indexed pass_id, bytes32 indexed event_id, address indexed buyer)",
-  "event EventPassTransferred(uint64 indexed pass_id, address indexed previous_owner, address indexed new_owner, bytes32 event_id)",
-  "event MintUpAuthorizationUsed(bytes32 indexed operation, address indexed caller, uint256 indexed nonce, uint64 pass_id, address recipient, uint256 amount)",
-  "event EventPassCheckedIn(uint64 indexed pass_id, bytes32 indexed event_id, address indexed attendee)",
-  "event EventCancelled(bytes32 indexed event_id)",
-  "event EventPassRefunded(uint64 indexed pass_id, bytes32 indexed event_id, address indexed recipient, uint64 amount)",
-  "event EventFundsReleased(bytes32 indexed event_id, address indexed revenue_recipient, address indexed fee_recipient, uint256 revenue_amount, uint256 fee_amount)",
-  "event EventPassResaleOffered(uint64 indexed pass_id, address indexed seller, address indexed designated_buyer, uint256 price)",
-  "event EventPassResaleOfferCancelled(uint64 indexed pass_id, address indexed seller)",
-  "event EventPassResold(uint64 indexed pass_id, address indexed seller, address indexed buyer, uint256 price, uint256 seller_amount, uint256 fee_amount)",
-  "event ContractPaused(bool paused)",
 ]);
 
 interface DeploymentFile {
@@ -200,6 +159,58 @@ async function main() {
     chain,
     transport: http(RPC_URL),
   });
+  const signAuthorization = async ({
+    operation,
+    caller,
+    passId,
+    recipient,
+    amount,
+    nonce,
+    issuedAt,
+    deadline,
+  }: {
+    operation: Hex;
+    caller: Address;
+    passId: bigint;
+    recipient: Address;
+    amount: bigint;
+    nonce: bigint;
+    issuedAt: bigint;
+    deadline: bigint;
+  }) =>
+    splitSignature(
+      await operator.signTypedData({
+        domain: {
+          name: "Mint Up",
+          version: "1",
+          chainId: chain.id,
+          verifyingContract: eventPass,
+        },
+        types: {
+          MintUpAuthorization: [
+            { name: "operation", type: "bytes32" },
+            { name: "caller", type: "address" },
+            { name: "passId", type: "uint64" },
+            { name: "recipient", type: "address" },
+            { name: "amount", type: "uint256" },
+            { name: "nonce", type: "uint256" },
+            { name: "issuedAt", type: "uint64" },
+            { name: "deadline", type: "uint64" },
+          ],
+        },
+        primaryType: "MintUpAuthorization",
+        message: {
+          operation,
+          caller,
+          passId,
+          recipient,
+          amount,
+          nonce,
+          issuedAt,
+          deadline,
+        },
+      }),
+    );
 
   const usdcBytecode = await publicClient.getBytecode({ address: usdc });
   const eventPassBytecode = await publicClient.getBytecode({
@@ -220,6 +231,83 @@ async function main() {
     authorizationSigner.toLowerCase(),
     operator.address.toLowerCase(),
     "Local deployment authorization signer must match OPERATOR_KEY",
+  );
+  const [
+    transferOperation,
+    createResaleOfferOperation,
+    cancelResaleOfferOperation,
+    purchaseResaleOperation,
+  ] = await Promise.all([
+    publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "transferOperation",
+    }),
+    publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "createResaleOfferOperation",
+    }),
+    publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "cancelResaleOfferOperation",
+    }),
+    publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "purchaseResaleOperation",
+    }),
+  ]);
+  assert.equal(transferOperation, keccak256(toHex("TRANSFER_PASS")));
+  assert.equal(
+    createResaleOfferOperation,
+    keccak256(toHex("CREATE_RESALE_OFFER")),
+  );
+  assert.equal(
+    cancelResaleOfferOperation,
+    keccak256(toHex("CANCEL_RESALE_OFFER")),
+  );
+  assert.equal(purchaseResaleOperation, keccak256(toHex("PURCHASE_RESALE")));
+  for (const interfaceId of [
+    "0x01ffc9a7",
+    "0x80ac58cd",
+    "0x5b5e139f",
+  ] as const) {
+    assert.equal(
+      await publicClient.readContract({
+        address: eventPass,
+        abi: eventPassAbi,
+        functionName: "supportsInterface",
+        args: [interfaceId],
+      }),
+      true,
+    );
+  }
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "supportsInterface",
+      args: ["0x780e9d63"],
+    }),
+    false,
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "name",
+    }),
+    "Mint Up Event Pass",
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "symbol",
+    }),
+    "MUEP",
   );
 
   const eventId = keccak256(toHex(`mint-up-local-${Date.now()}`));
@@ -375,11 +463,28 @@ async function main() {
   assert.equal(purchased.args.event_id, eventId);
   assert.equal(purchased.args.buyer.toLowerCase(), buyer.address.toLowerCase());
   const passId = purchased.args.pass_id;
+  const minted = purchaseReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "Transfer");
+  assert(minted?.eventName === "Transfer");
+  assert.equal(minted.args.from, "0x0000000000000000000000000000000000000000");
+  assert.equal(minted.args.to.toLowerCase(), buyer.address.toLowerCase());
+  assert.equal(minted.args.token_id, passId);
   const [, , , issuedSupply] = await publicClient.readContract({
     address: eventPass,
     abi: eventPassAbi,
     functionName: "eventInfo",
-    args: [resaleEventId],
+    args: [eventId],
   });
   assert.equal(issuedSupply, 1);
 
@@ -439,7 +544,7 @@ async function main() {
     address: eventPass,
     abi: eventPassAbi,
     functionName: "purchase",
-    args: [eventId],
+    args: [resaleEventId],
     gas: 2_000_000n,
   });
   const resalePassPurchase = await publicClient.waitForTransactionReceipt({
@@ -459,15 +564,80 @@ async function main() {
     })
     .find((entry) => entry?.eventName === "EventPassPurchased");
   assert(resalePassPurchased && "pass_id" in resalePassPurchased.args);
+  assert.equal(resalePassPurchased.args.event_id, resaleEventId);
   const resalePassId = resalePassPurchased.args.pass_id;
+  await expectMintUpError(
+    publicClient.simulateContract({
+      account: buyer,
+      address: eventPass,
+      abi: eventPassAbi as Abi,
+      functionName: "createResaleOffer",
+      args: [
+        resalePassId,
+        attendee.address,
+        RESALE_PRICE,
+        10n,
+        saleStart,
+        saleEnd,
+        27,
+        toHex(0, { size: 32 }),
+        toHex(0, { size: 32 }),
+      ],
+    }),
+    INVALID_AUTHORIZATION,
+  );
+  const offerIssuedAt = (await publicClient.getBlock()).timestamp;
+  const offerDeadline = offerIssuedAt + 60n;
+  const offerSignature = await signAuthorization({
+    operation: createResaleOfferOperation,
+    caller: buyer.address,
+    passId: resalePassId,
+    recipient: attendee.address,
+    amount: RESALE_PRICE,
+    nonce: 10n,
+    issuedAt: offerIssuedAt,
+    deadline: offerDeadline,
+  });
   hash = await buyerWallet.writeContract({
     address: eventPass,
     abi: eventPassAbi,
     functionName: "createResaleOffer",
-    args: [resalePassId, attendee.address, RESALE_PRICE],
+    args: [
+      resalePassId,
+      attendee.address,
+      RESALE_PRICE,
+      10n,
+      offerIssuedAt,
+      offerDeadline,
+      offerSignature.v,
+      offerSignature.r,
+      offerSignature.s,
+    ],
   });
   const offerReceipt = await publicClient.waitForTransactionReceipt({ hash });
   assert(eventNames(offerReceipt.logs).includes("EventPassResaleOffered"));
+  assert(eventNames(offerReceipt.logs).includes("MintUpAuthorizationUsed"));
+  const offered = offerReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "EventPassResaleOffered");
+  assert(offered?.eventName === "EventPassResaleOffered");
+  assert.equal(offered.args.pass_id, resalePassId);
+  assert.equal(offered.args.seller.toLowerCase(), buyer.address.toLowerCase());
+  assert.equal(
+    offered.args.designated_buyer.toLowerCase(),
+    attendee.address.toLowerCase(),
+  );
+  assert.equal(offered.args.price, RESALE_PRICE);
   assert.deepEqual(
     await publicClient.readContract({
       address: eventPass,
@@ -479,11 +649,99 @@ async function main() {
   );
   await expectMintUpError(
     publicClient.simulateContract({
+      account: buyer,
+      address: eventPass,
+      abi: eventPassAbi as Abi,
+      functionName: "cancelResaleOffer",
+      args: [
+        resalePassId,
+        11n,
+        offerIssuedAt,
+        offerDeadline,
+        27,
+        toHex(0, { size: 32 }),
+        toHex(0, { size: 32 }),
+      ],
+    }),
+    INVALID_AUTHORIZATION,
+  );
+  const cancelSignature = await signAuthorization({
+    operation: cancelResaleOfferOperation,
+    caller: buyer.address,
+    passId: resalePassId,
+    recipient: "0x0000000000000000000000000000000000000000",
+    amount: 0n,
+    nonce: 11n,
+    issuedAt: offerIssuedAt,
+    deadline: offerDeadline,
+  });
+  hash = await buyerWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "cancelResaleOffer",
+    args: [
+      resalePassId,
+      11n,
+      offerIssuedAt,
+      offerDeadline,
+      cancelSignature.v,
+      cancelSignature.r,
+      cancelSignature.s,
+    ],
+  });
+  const cancelOfferReceipt = await publicClient.waitForTransactionReceipt({
+    hash,
+  });
+  assert(
+    eventNames(cancelOfferReceipt.logs).includes(
+      "EventPassResaleOfferCancelled",
+    ),
+  );
+  assert(
+    eventNames(cancelOfferReceipt.logs).includes("MintUpAuthorizationUsed"),
+  );
+  const replacementSignature = await signAuthorization({
+    operation: createResaleOfferOperation,
+    caller: buyer.address,
+    passId: resalePassId,
+    recipient: attendee.address,
+    amount: RESALE_PRICE,
+    nonce: 12n,
+    issuedAt: offerIssuedAt,
+    deadline: offerDeadline,
+  });
+  hash = await buyerWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "createResaleOffer",
+    args: [
+      resalePassId,
+      attendee.address,
+      RESALE_PRICE,
+      12n,
+      offerIssuedAt,
+      offerDeadline,
+      replacementSignature.v,
+      replacementSignature.r,
+      replacementSignature.s,
+    ],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  await expectMintUpError(
+    publicClient.simulateContract({
       account: admin,
       address: eventPass,
       abi: eventPassAbi as Abi,
       functionName: "purchaseResale",
-      args: [resalePassId],
+      args: [
+        resalePassId,
+        13n,
+        offerIssuedAt,
+        offerDeadline,
+        27,
+        toHex(0, { size: 32 }),
+        toHex(0, { size: 32 }),
+      ],
     }),
     NOT_DESIGNATED_BUYER,
   );
@@ -503,7 +761,15 @@ async function main() {
       encodeFunctionData({
         abi: eventPassAbi,
         functionName: "purchaseResale",
-        args: [resalePassId],
+        args: [
+          resalePassId,
+          13n,
+          offerIssuedAt,
+          offerDeadline,
+          27,
+          toHex(0, { size: 32 }),
+          toHex(0, { size: 32 }),
+        ],
       }),
     ],
   });
@@ -522,16 +788,147 @@ async function main() {
     functionName: "balanceOf",
     args: [feeRecipient],
   });
+  await expectMintUpError(
+    publicClient.simulateContract({
+      account: attendee,
+      address: eventPass,
+      abi: eventPassAbi as Abi,
+      functionName: "purchaseResale",
+      args: [
+        resalePassId,
+        13n,
+        offerIssuedAt,
+        offerDeadline,
+        27,
+        toHex(0, { size: 32 }),
+        toHex(0, { size: 32 }),
+      ],
+    }),
+    INVALID_AUTHORIZATION,
+  );
+  const purchaseSignature = await signAuthorization({
+    operation: purchaseResaleOperation,
+    caller: attendee.address,
+    passId: resalePassId,
+    recipient: buyer.address,
+    amount: RESALE_PRICE,
+    nonce: 13n,
+    issuedAt: offerIssuedAt,
+    deadline: offerDeadline,
+  });
   hash = await attendeeWallet.writeContract({
     address: eventPass,
     abi: eventPassAbi,
     functionName: "purchaseResale",
-    args: [resalePassId],
+    args: [
+      resalePassId,
+      13n,
+      offerIssuedAt,
+      offerDeadline,
+      purchaseSignature.v,
+      purchaseSignature.r,
+      purchaseSignature.s,
+    ],
     gas: 2_000_000n,
   });
   const resaleReceipt = await publicClient.waitForTransactionReceipt({ hash });
   assert(eventNames(resaleReceipt.logs).includes("EventPassResold"));
   assert(eventNames(resaleReceipt.logs).includes("EventPassTransferred"));
+  assert(eventNames(resaleReceipt.logs).includes("Transfer"));
+  assert(eventNames(resaleReceipt.logs).includes("MintUpAuthorizationUsed"));
+  const resold = resaleReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "EventPassResold");
+  assert(resold?.eventName === "EventPassResold");
+  assert.equal(resold.args.pass_id, resalePassId);
+  assert.equal(resold.args.seller.toLowerCase(), buyer.address.toLowerCase());
+  assert.equal(resold.args.buyer.toLowerCase(), attendee.address.toLowerCase());
+  assert.equal(resold.args.price, RESALE_PRICE);
+  assert.equal(resold.args.seller_amount, sellerAmount);
+  assert.equal(resold.args.fee_amount, resaleFee);
+  const resaleTransferred = resaleReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "EventPassTransferred");
+  assert(resaleTransferred?.eventName === "EventPassTransferred");
+  assert.equal(resaleTransferred.args.pass_id, resalePassId);
+  assert.equal(
+    resaleTransferred.args.previous_owner.toLowerCase(),
+    buyer.address.toLowerCase(),
+  );
+  assert.equal(
+    resaleTransferred.args.new_owner.toLowerCase(),
+    attendee.address.toLowerCase(),
+  );
+  assert.equal(resaleTransferred.args.event_id, resaleEventId);
+  const resaleTransfer = resaleReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "Transfer");
+  assert(resaleTransfer?.eventName === "Transfer");
+  assert.equal(
+    resaleTransfer.args.from.toLowerCase(),
+    buyer.address.toLowerCase(),
+  );
+  assert.equal(
+    resaleTransfer.args.to.toLowerCase(),
+    attendee.address.toLowerCase(),
+  );
+  assert.equal(resaleTransfer.args.token_id, resalePassId);
+  const resaleAuthorization = resaleReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "MintUpAuthorizationUsed");
+  assert(resaleAuthorization?.eventName === "MintUpAuthorizationUsed");
+  assert.equal(resaleAuthorization.args.operation, purchaseResaleOperation);
+  assert.equal(
+    resaleAuthorization.args.caller.toLowerCase(),
+    attendee.address.toLowerCase(),
+  );
+  assert.equal(resaleAuthorization.args.nonce, 13n);
+  assert.equal(resaleAuthorization.args.pass_id, resalePassId);
+  assert.equal(
+    resaleAuthorization.args.recipient.toLowerCase(),
+    buyer.address.toLowerCase(),
+  );
+  assert.equal(resaleAuthorization.args.amount, RESALE_PRICE);
   assert.equal(
     await publicClient.readContract({
       address: usdc,
@@ -558,6 +955,24 @@ async function main() {
       })
     ).toLowerCase(),
     attendee.address.toLowerCase(),
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "balanceOf",
+      args: [buyer.address],
+    }),
+    1n,
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "balanceOf",
+      args: [attendee.address],
+    }),
+    1n,
   );
   assert.equal(
     (await publicClient.readContract({
@@ -672,39 +1087,16 @@ async function main() {
   const transferNonce = 3n;
   const transferIssuedAt = (await publicClient.getBlock()).timestamp;
   const transferDeadline = transferIssuedAt + 60n;
-  const signature = splitSignature(
-    await operator.signTypedData({
-      domain: {
-        name: "Mint Up",
-        version: "1",
-        chainId: chain.id,
-        verifyingContract: eventPass,
-      },
-      types: {
-        MintUpAuthorization: [
-          { name: "operation", type: "bytes32" },
-          { name: "caller", type: "address" },
-          { name: "passId", type: "uint64" },
-          { name: "recipient", type: "address" },
-          { name: "amount", type: "uint256" },
-          { name: "nonce", type: "uint256" },
-          { name: "issuedAt", type: "uint64" },
-          { name: "deadline", type: "uint64" },
-        ],
-      },
-      primaryType: "MintUpAuthorization",
-      message: {
-        operation: TRANSFER_OPERATION,
-        caller: buyer.address,
-        passId,
-        recipient: ATTENDEE,
-        amount: 0n,
-        nonce: transferNonce,
-        issuedAt: transferIssuedAt,
-        deadline: transferDeadline,
-      },
-    }),
-  );
+  const signature = await signAuthorization({
+    operation: transferOperation,
+    caller: buyer.address,
+    passId,
+    recipient: ATTENDEE,
+    amount: 0n,
+    nonce: transferNonce,
+    issuedAt: transferIssuedAt,
+    deadline: transferDeadline,
+  });
 
   await expectMintUpError(
     publicClient.simulateContract({
@@ -787,7 +1179,7 @@ async function main() {
     .find((entry) => entry?.eventName === "MintUpAuthorizationUsed");
   assert(authorizationUsed);
   assert(authorizationUsed.eventName === "MintUpAuthorizationUsed");
-  assert.equal(authorizationUsed.args.operation, TRANSFER_OPERATION);
+  assert.equal(authorizationUsed.args.operation, transferOperation);
   assert.equal(
     authorizationUsed.args.caller.toLowerCase(),
     buyer.address.toLowerCase(),
@@ -799,6 +1191,35 @@ async function main() {
     ATTENDEE.toLowerCase(),
   );
   assert.equal(authorizationUsed.args.amount, 0n);
+  assert.equal(
+    (
+      await publicClient.readContract({
+        address: eventPass,
+        abi: eventPassAbi,
+        functionName: "ownerOf",
+        args: [passId],
+      })
+    ).toLowerCase(),
+    attendee.address.toLowerCase(),
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "balanceOf",
+      args: [buyer.address],
+    }),
+    1n,
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "balanceOf",
+      args: [attendee.address],
+    }),
+    2n,
+  );
 
   await expectMintUpError(
     publicClient.simulateContract({
@@ -912,6 +1333,27 @@ async function main() {
   });
   const refundReceipt = await publicClient.waitForTransactionReceipt({ hash });
   assert(eventNames(refundReceipt.logs).includes("EventPassRefunded"));
+  const refunded = refundReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "EventPassRefunded");
+  assert(refunded?.eventName === "EventPassRefunded");
+  assert.equal(refunded.args.pass_id, disabledTransferPass.args.pass_id);
+  assert.equal(refunded.args.event_id, cancelledEventId);
+  assert.equal(
+    refunded.args.recipient.toLowerCase(),
+    buyer.address.toLowerCase(),
+  );
+  assert.equal(refunded.args.amount, PRICE);
   const buyerBalanceAfterRefund = await publicClient.readContract({
     address: usdc,
     abi: usdcAbi,
