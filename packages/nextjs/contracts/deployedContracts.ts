@@ -291,6 +291,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+          ],
+          name: "releaseFunds",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
           inputs: [],
           name: "config",
           outputs: [
@@ -420,6 +433,11 @@ const deployedContracts = {
             {
               internalType: "bool",
               name: "cancelled",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "funds_released",
               type: "bool",
             },
           ],
@@ -1011,6 +1029,43 @@ const deployedContracts = {
             },
           ],
           name: "EventCancelled",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "event_id",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "revenue_recipient",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "fee_recipient",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "revenue_amount",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "fee_amount",
+              type: "uint256",
+            },
+          ],
+          name: "EventFundsReleased",
           type: "event",
         },
         {

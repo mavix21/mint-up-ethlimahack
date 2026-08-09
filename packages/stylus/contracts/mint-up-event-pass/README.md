@@ -4,7 +4,7 @@ Paid Event Pass contract for Arbitrum Stylus. Each acquired Event Pass is an
 ERC-721 collectible backed by OpenZeppelin Stylus, with immutable per-Event
 IPFS metadata. The collectible remains visible to wallets and indexers but
 cannot be approved, transferred, or sold outside Mint Up. ERC-721 enumeration,
-resale, fund release, and mutable metadata are not implemented.
+resale, and mutable metadata are not implemented.
 
 ## Model
 
@@ -28,7 +28,10 @@ resale, fund release, and mutable metadata are not implemented.
   explicitly configured as that event's check-in operator.
 - USDC and a nonzero Mint Up fee recipient are fixed by the constructor. Global
   fees are fixed at 500 basis points for primary sales and 900 basis points for
-  resales. Primary fees are not deducted until the later fund-release flow.
+  resales. At or after the configured funds-release timestamp, anyone can
+  release a non-cancelled Event's protected balance once. The fee is rounded
+  down to 5%, and the exact remainder goes to the Event's configured revenue
+  recipient.
 
 Arbitrum Sepolia's official Circle USDC address is:
 
@@ -82,6 +85,8 @@ remain enforced.
 | 23 | Pass refund is not available |
 | 24 | Pass refund was already claimed |
 | 25 | Protected-payment accounting invariant failed |
+| 26 | Event funds are not ready for release |
+| 27 | Event funds were already released |
 
 ## Commands
 
@@ -119,10 +124,11 @@ deploys Event Pass with the new token address.
 
 `yarn test:local` runs a complete on-chain flow: mint mock USDC, register a live
 event, approve USDC, verify sale boundaries and retained payment, transfer and
-check in a pass, cancel and refund another pass, and exercise pause,
-authorization, errors, and events. The mock has permissionless minting and is
-only selected automatically for chain ID `412346`; it must never be used as a
-production payment token.
+check in a pass, cancel and refund another pass, release a non-cancelled Event's
+funds with exact balance and rollback checks, and exercise pause, authorization,
+errors, and events. The mock has permissionless minting and is only selected
+automatically for chain ID `412346`; it must never be used as a production
+payment token.
 
 Deploy to Arbitrum Sepolia with:
 

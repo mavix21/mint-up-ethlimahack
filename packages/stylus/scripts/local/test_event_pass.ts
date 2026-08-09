@@ -9,6 +9,7 @@ import {
   createPublicClient,
   createWalletClient,
   decodeEventLog,
+  encodeFunctionData,
   http,
   keccak256,
   parseAbi,
@@ -41,6 +42,7 @@ const PAUSED = 15;
 const MOVEMENT_RESTRICTED = 18;
 const INVALID_AUTHORIZATION = 19;
 const REFUND_ALREADY_CLAIMED = 24;
+const FUNDS_ALREADY_RELEASED = 27;
 const chain = arbitrumNitro as Chain;
 const TRANSFER_OPERATION = keccak256(toHex("TRANSFER_PASS"));
 
@@ -48,6 +50,10 @@ const usdcAbi = parseAbi([
   "function mint(address to, uint256 amount)",
   "function approve(address spender, uint256 amount) returns (bool)",
   "function balanceOf(address owner) view returns (uint256)",
+  "function setFailTransferTo(address recipient)",
+  "function setReentry(address target, bytes data)",
+  "function reentryAttempted() view returns (bool)",
+  "function reentrySucceeded() view returns (bool)",
 ]);
 
 const eventPassAbi = parseAbi([
@@ -57,8 +63,9 @@ const eventPassAbi = parseAbi([
   "function setPaused(bool paused)",
   "function purchase(bytes32 event_id) returns (uint64)",
   "function claimRefund(uint64 pass_id)",
+  "function releaseFunds(bytes32 event_id)",
   "function eventInfo(bytes32 event_id) view returns (address, uint64, uint32, uint32, uint64, uint64, bool, bool, bool, address)",
-  "function eventProtectionInfo(bytes32 event_id) view returns (uint64 funds_release_at, uint256 protected_balance, bool cancelled)",
+  "function eventProtectionInfo(bytes32 event_id) view returns (uint64 funds_release_at, uint256 protected_balance, bool cancelled, bool funds_released)",
   "function passRefundInfo(uint64 pass_id) view returns (uint64 original_price, bool refunded, bool refund_available)",
   "function config() view returns (address administrator, address usdc, address authorization_signer, address fee_recipient, uint16 primary_fee_bps, uint16 resale_fee_bps, bool paused)",
   "function approve(address to, uint256 token_id)",
@@ -79,6 +86,7 @@ const eventPassAbi = parseAbi([
   "event EventPassCheckedIn(uint64 indexed pass_id, bytes32 indexed event_id, address indexed attendee)",
   "event EventCancelled(bytes32 indexed event_id)",
   "event EventPassRefunded(uint64 indexed pass_id, bytes32 indexed event_id, address indexed recipient, uint64 amount)",
+  "event EventFundsReleased(bytes32 indexed event_id, address indexed revenue_recipient, address indexed fee_recipient, uint256 revenue_amount, uint256 fee_amount)",
   "event ContractPaused(bool paused)",
 ]);
 
@@ -188,11 +196,12 @@ async function main() {
     eventPassBytecode && eventPassBytecode !== "0x",
     "Event Pass is not deployed",
   );
-  const [, , authorizationSigner] = await publicClient.readContract({
-    address: eventPass,
-    abi: eventPassAbi,
-    functionName: "config",
-  });
+  const [, , authorizationSigner, feeRecipient] =
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "config",
+    });
   assert.equal(
     authorizationSigner.toLowerCase(),
     operator.address.toLowerCase(),
@@ -337,10 +346,7 @@ async function main() {
     functionName: "balanceOf",
     args: [eventPass],
   });
-  assert.equal(
-    contractBalanceAfter - contractBalanceBefore,
-    PRICE,
-  );
+  assert.equal(contractBalanceAfter - contractBalanceBefore, PRICE);
   const [, protectedBalance] = await publicClient.readContract({
     address: eventPass,
     abi: eventPassAbi,
@@ -813,6 +819,175 @@ async function main() {
       args: [eventId],
     }),
     OUTSIDE_SALE_WINDOW,
+  );
+
+  const feeAmount = (PRICE * 500n) / 10_000n;
+  const revenueAmount = PRICE - feeAmount;
+  const revenueBalanceBefore = await publicClient.readContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "balanceOf",
+    args: [ATTENDEE],
+  });
+  const feeBalanceBefore = await publicClient.readContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "balanceOf",
+    args: [feeRecipient],
+  });
+  hash = await adminWallet.writeContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "setFailTransferTo",
+    args: [feeRecipient],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  hash = await buyerWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "releaseFunds",
+    args: [eventId],
+    gas: 2_000_000n,
+  });
+  const failedReleaseReceipt = await publicClient.waitForTransactionReceipt({
+    hash,
+  });
+  assert.equal(failedReleaseReceipt.status, "reverted");
+  assert.equal(
+    await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [ATTENDEE],
+    }),
+    revenueBalanceBefore,
+    "A failed fee transfer must roll back the revenue transfer",
+  );
+  assert.deepEqual(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "eventProtectionInfo",
+      args: [eventId],
+    }),
+    [saleEnd, PRICE, false, false],
+  );
+
+  hash = await adminWallet.writeContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "setFailTransferTo",
+    args: ["0x0000000000000000000000000000000000000000"],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  hash = await adminWallet.writeContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "setReentry",
+    args: [
+      eventPass,
+      encodeFunctionData({
+        abi: eventPassAbi,
+        functionName: "releaseFunds",
+        args: [eventId],
+      }),
+    ],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  hash = await buyerWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "releaseFunds",
+    args: [eventId],
+  });
+  const releaseReceipt = await publicClient.waitForTransactionReceipt({ hash });
+  assert(eventNames(releaseReceipt.logs).includes("EventFundsReleased"));
+  assert.equal(
+    await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "reentryAttempted",
+    }),
+    true,
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "reentrySucceeded",
+    }),
+    false,
+  );
+  const released = releaseReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "EventFundsReleased");
+  assert(released?.eventName === "EventFundsReleased");
+  assert.equal(released.args.event_id, eventId);
+  assert.equal(
+    released.args.revenue_recipient.toLowerCase(),
+    ATTENDEE.toLowerCase(),
+  );
+  assert.equal(
+    released.args.fee_recipient.toLowerCase(),
+    feeRecipient.toLowerCase(),
+  );
+  assert.equal(released.args.revenue_amount, revenueAmount);
+  assert.equal(released.args.fee_amount, feeAmount);
+  assert.equal(
+    (await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [ATTENDEE],
+    })) - revenueBalanceBefore,
+    revenueAmount,
+  );
+  assert.equal(
+    (await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [feeRecipient],
+    })) - feeBalanceBefore,
+    feeAmount,
+  );
+  assert.deepEqual(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "eventProtectionInfo",
+      args: [eventId],
+    }),
+    [saleEnd, 0n, false, true],
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [eventPass],
+    }),
+    0n,
+  );
+  await expectMintUpError(
+    publicClient.simulateContract({
+      account: admin,
+      address: eventPass,
+      abi: eventPassAbi as Abi,
+      functionName: "releaseFunds",
+      args: [eventId],
+    }),
+    FUNDS_ALREADY_RELEASED,
   );
 
   console.log("Local Event Pass black-box flow completed");

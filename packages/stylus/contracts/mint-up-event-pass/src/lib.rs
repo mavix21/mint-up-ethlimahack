@@ -62,6 +62,8 @@ const CANCELLATION_CLOSED: u8 = 22;
 const REFUND_UNAVAILABLE: u8 = 23;
 const REFUND_ALREADY_CLAIMED: u8 = 24;
 const ACCOUNTING_ERROR: u8 = 25;
+const RELEASE_NOT_READY: u8 = 26;
+const FUNDS_ALREADY_RELEASED: u8 = 27;
 
 type AuthorizationHashTuple = sol! {
     tuple(bytes32, bytes32, address, uint64, address, uint256, uint256, uint64, uint64)
@@ -101,6 +103,13 @@ sol! {
         bytes32 indexed event_id,
         address indexed recipient,
         uint64 amount
+    );
+    event EventFundsReleased(
+        bytes32 indexed event_id,
+        address indexed revenue_recipient,
+        address indexed fee_recipient,
+        uint256 revenue_amount,
+        uint256 fee_amount
     );
     event ContractPaused(bool paused);
     event MintUpAuthorizationUsed(
@@ -162,6 +171,7 @@ sol_storage! {
         bool sales_enabled;
         bool transfers_enabled;
         bool cancelled;
+        bool funds_released;
         string metadata_uri;
     }
 
@@ -424,7 +434,7 @@ impl MintUpEventPass {
             .ok_or_else(|| error(ACCOUNTING_ERROR))?;
         drop(event);
 
-        if !self.strict_usdc_call(&transfer_data(owner, amount)) {
+        if !self.strict_usdc_call(&transfer_data(owner, U256::from(amount))) {
             return Err(error(PAYMENT_FAILED));
         }
 
@@ -440,6 +450,55 @@ impl MintUpEventPass {
                 event_id,
                 recipient: owner,
                 amount,
+            },
+        );
+        Ok(())
+    }
+
+    pub fn release_funds(&mut self, event_id: B256) -> Result<(), Error> {
+        self.not_paused()?;
+        if self.entered.get() {
+            return Err(error(REENTRANCY));
+        }
+
+        let event = self.events.getter(event_id);
+        if !event.exists.get() {
+            return Err(error(EVENT_NOT_FOUND));
+        }
+        if event.cancelled.get() {
+            return Err(error(EVENT_CANCELLED));
+        }
+        if event.funds_released.get() {
+            return Err(error(FUNDS_ALREADY_RELEASED));
+        }
+        if self.vm().block_timestamp() < event.funds_release_at.get().to::<u64>() {
+            return Err(error(RELEASE_NOT_READY));
+        }
+
+        let protected_balance = event.protected_balance.get();
+        let revenue_recipient = event.revenue_recipient.get();
+        let fee_recipient = self.fee_recipient.get();
+        drop(event);
+        let fee_amount = protected_balance * U256::from(PRIMARY_FEE_BPS) / U256::from(10_000);
+        let revenue_amount = protected_balance - fee_amount;
+
+        if !self.strict_usdc_call(&transfer_data(revenue_recipient, revenue_amount))
+            || !self.strict_usdc_call(&transfer_data(fee_recipient, fee_amount))
+        {
+            return Err(error(PAYMENT_FAILED));
+        }
+
+        let mut event = self.events.setter(event_id);
+        event.protected_balance.set(U256::ZERO);
+        event.funds_released.set(true);
+        log(
+            self.vm(),
+            EventFundsReleased {
+                event_id,
+                revenue_recipient,
+                fee_recipient,
+                revenue_amount,
+                fee_amount,
             },
         );
         Ok(())
@@ -551,7 +610,7 @@ impl MintUpEventPass {
         )
     }
 
-    pub fn event_protection_info(&self, event_id: B256) -> Result<(u64, U256, bool), Error> {
+    pub fn event_protection_info(&self, event_id: B256) -> Result<(u64, U256, bool, bool), Error> {
         let event = self.events.getter(event_id);
         if !event.exists.get() {
             return Err(error(EVENT_NOT_FOUND));
@@ -560,6 +619,7 @@ impl MintUpEventPass {
             event.funds_release_at.get().to::<u64>(),
             event.protected_balance.get(),
             event.cancelled.get(),
+            event.funds_released.get(),
         ))
     }
 
@@ -890,8 +950,27 @@ mod tests {
     fn mock_refund(vm: &TestVM, recipient: Address, response: Result<Vec<u8>, Vec<u8>>) {
         vm.mock_call(
             address(2),
-            transfer_data(recipient, PRICE).to_vec(),
+            transfer_data(recipient, U256::from(PRICE)).to_vec(),
             response,
+        );
+    }
+
+    fn mock_release(
+        vm: &TestVM,
+        revenue_amount: U256,
+        fee_amount: U256,
+        revenue_response: Result<Vec<u8>, Vec<u8>>,
+        fee_response: Result<Vec<u8>, Vec<u8>>,
+    ) {
+        vm.mock_call(
+            address(2),
+            transfer_data(address(3), revenue_amount).to_vec(),
+            revenue_response,
+        );
+        vm.mock_call(
+            address(2),
+            transfer_data(address(9), fee_amount).to_vec(),
+            fee_response,
         );
     }
 
@@ -1052,7 +1131,7 @@ mod tests {
         register(&mut contract, id, 1, true, address(4));
         assert_eq!(
             contract.event_protection_info(id).unwrap(),
-            (RELEASE, U256::ZERO, false)
+            (RELEASE, U256::ZERO, false, false)
         );
 
         assert_error(
@@ -1477,11 +1556,11 @@ mod tests {
         assert_eq!(contract.event_info(second_event).unwrap().3, 1);
         assert_eq!(
             contract.event_protection_info(first_event).unwrap(),
-            (RELEASE, U256::from(PRICE), false)
+            (RELEASE, U256::from(PRICE), false, false)
         );
         assert_eq!(
             contract.event_protection_info(second_event).unwrap(),
-            (RELEASE, U256::from(PRICE), false)
+            (RELEASE, U256::from(PRICE), false, false)
         );
         assert_eq!(
             contract.pass_refund_info(first).unwrap(),
@@ -1670,6 +1749,200 @@ mod tests {
         );
         assert_eq!(
             contract.event_protection_info(id).unwrap().1,
+            U256::from(PRICE)
+        );
+    }
+
+    #[test]
+    fn anyone_releases_exact_protected_balance_at_release_time() {
+        let (vm, mut contract) = setup();
+        let id = event_id(3);
+        register(&mut contract, id, 1, true, address(4));
+        buy(&vm, &mut contract, id, address(6));
+        let fee = U256::from(1_250_000);
+        let revenue_amount = U256::from(23_750_000);
+
+        vm.set_sender(address(8));
+        vm.set_block_timestamp(RELEASE - 1);
+        assert_error(contract.release_funds(id), RELEASE_NOT_READY);
+
+        vm.set_block_timestamp(RELEASE);
+        mock_release(&vm, revenue_amount, fee, Ok(true_word()), Ok(true_word()));
+        contract.release_funds(id).unwrap();
+
+        assert_eq!(
+            contract.event_protection_info(id).unwrap(),
+            (RELEASE, U256::ZERO, false, true)
+        );
+        assert_eq!(contract.event_info(id).unwrap().0, address(3));
+        assert_eq!(contract.config().3, address(9));
+        assert_error(contract.release_funds(id), FUNDS_ALREADY_RELEASED);
+        let release = vm
+            .get_emitted_logs()
+            .into_iter()
+            .find(|(topics, _)| {
+                topics[0]
+                    == stylus_sdk::alloy_primitives::keccak256(
+                        "EventFundsReleased(bytes32,address,address,uint256,uint256)",
+                    )
+            })
+            .expect("release should emit canonical settlement evidence");
+        assert_eq!(
+            release.0,
+            vec![
+                stylus_sdk::alloy_primitives::keccak256(
+                    "EventFundsReleased(bytes32,address,address,uint256,uint256)",
+                ),
+                id,
+                topic_address(address(3)),
+                topic_address(address(9)),
+            ]
+        );
+        let mut expected_data = vec![0; 64];
+        expected_data[..32].copy_from_slice(&revenue_amount.to_be_bytes::<32>());
+        expected_data[32..].copy_from_slice(&fee.to_be_bytes::<32>());
+        assert_eq!(release.1, expected_data);
+    }
+
+    #[test]
+    fn release_rounds_fee_down_and_preserves_small_balances() {
+        for (balance, revenue_amount, fee) in [(1_u64, 1_u64, 0_u64), (19, 19, 0), (20, 19, 1)] {
+            let (vm, mut contract) = setup();
+            let id = event_id(balance as u8);
+            contract
+                .register_event(
+                    id,
+                    address(3),
+                    balance,
+                    1,
+                    START,
+                    END,
+                    RELEASE,
+                    true,
+                    true,
+                    address(4),
+                    METADATA_URI.into(),
+                )
+                .unwrap();
+            vm.set_sender(address(6));
+            vm.set_block_timestamp(150);
+            vm.mock_call(
+                address(2),
+                transfer_from_data(address(6), vm.contract_address(), balance).to_vec(),
+                Ok(true_word()),
+            );
+            contract.purchase(id).unwrap();
+            vm.set_block_timestamp(RELEASE);
+            mock_release(
+                &vm,
+                U256::from(revenue_amount),
+                U256::from(fee),
+                Ok(true_word()),
+                Ok(true_word()),
+            );
+
+            contract.release_funds(id).unwrap();
+            assert_eq!(revenue_amount + fee, balance);
+            assert_eq!(contract.event_protection_info(id).unwrap().1, U256::ZERO);
+        }
+    }
+
+    #[test]
+    fn failed_release_is_retryable_and_does_not_consume_another_event() {
+        let (vm, mut contract) = setup();
+        let first_event = event_id(3);
+        let second_event = event_id(4);
+        register(&mut contract, first_event, 1, true, address(4));
+        register(&mut contract, second_event, 1, true, address(4));
+        buy(&vm, &mut contract, first_event, address(6));
+        buy(&vm, &mut contract, second_event, address(7));
+        vm.set_block_timestamp(RELEASE);
+        let fee = U256::from(1_250_000);
+        let revenue_amount = U256::from(23_750_000);
+        mock_release(&vm, revenue_amount, fee, Ok(true_word()), Ok(vec![0; 32]));
+
+        assert_error(contract.release_funds(first_event), PAYMENT_FAILED);
+        assert_eq!(
+            contract.event_protection_info(first_event).unwrap(),
+            (RELEASE, U256::from(PRICE), false, false)
+        );
+        assert_eq!(
+            contract.event_protection_info(second_event).unwrap(),
+            (RELEASE, U256::from(PRICE), false, false)
+        );
+
+        mock_release(&vm, revenue_amount, fee, Ok(true_word()), Ok(true_word()));
+        contract.release_funds(first_event).unwrap();
+        assert_eq!(
+            contract.event_protection_info(first_event).unwrap().1,
+            U256::ZERO
+        );
+        assert_eq!(
+            contract.event_protection_info(second_event).unwrap().1,
+            U256::from(PRICE)
+        );
+    }
+
+    #[test]
+    fn every_failed_release_leg_preserves_settlement_for_retry() {
+        let invalid_responses = [
+            Ok(vec![]),
+            Ok(vec![0; 32]),
+            Ok(vec![1]),
+            Ok(vec![2; 32]),
+            Ok(vec![0; 33]),
+            Err(vec![0xff]),
+        ];
+
+        for fail_revenue_leg in [true, false] {
+            for response in invalid_responses.clone() {
+                let (vm, mut contract) = setup();
+                let id = event_id(3);
+                register(&mut contract, id, 1, true, address(4));
+                buy(&vm, &mut contract, id, address(6));
+                vm.set_block_timestamp(RELEASE);
+                let success = Ok(true_word());
+                let (revenue_response, fee_response) = if fail_revenue_leg {
+                    (response, success)
+                } else {
+                    (success, response)
+                };
+                mock_release(
+                    &vm,
+                    U256::from(23_750_000),
+                    U256::from(1_250_000),
+                    revenue_response,
+                    fee_response,
+                );
+
+                assert_error(contract.release_funds(id), PAYMENT_FAILED);
+                assert_eq!(
+                    contract.event_protection_info(id).unwrap(),
+                    (RELEASE, U256::from(PRICE), false, false)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn cancelled_and_paused_releases_are_rejected() {
+        let (vm, mut contract) = setup();
+        let id = event_id(3);
+        register(&mut contract, id, 1, true, address(4));
+        buy(&vm, &mut contract, id, address(6));
+        vm.set_sender(address(1));
+        contract.cancel_event(id).unwrap();
+        vm.set_block_timestamp(RELEASE);
+        assert_error(contract.release_funds(id), EVENT_CANCELLED);
+
+        let live_id = event_id(4);
+        register(&mut contract, live_id, 1, true, address(4));
+        buy(&vm, &mut contract, live_id, address(7));
+        vm.set_sender(address(1));
+        contract.set_paused(true).unwrap();
+        assert_error(contract.release_funds(live_id), PAUSED);
+        assert_eq!(
+            contract.event_protection_info(live_id).unwrap().1,
             U256::from(PRICE)
         );
     }
@@ -2173,10 +2446,10 @@ fn transfer_from_data(from: Address, to: Address, amount: u64) -> [u8; 100] {
     data
 }
 
-fn transfer_data(to: Address, amount: u64) -> [u8; 68] {
+fn transfer_data(to: Address, amount: U256) -> [u8; 68] {
     let mut data = [0; 68];
     data[..4].copy_from_slice(&[0xa9, 0x05, 0x9c, 0xbb]);
     data[16..36].copy_from_slice(to.as_slice());
-    data[36..].copy_from_slice(&U256::from(amount).to_be_bytes::<32>());
+    data[36..].copy_from_slice(&amount.to_be_bytes::<32>());
     data
 }

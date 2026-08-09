@@ -8,6 +8,11 @@ contract MockUsdc {
 
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
+    address public failTransferTo;
+    address public reentryTarget;
+    bytes public reentryCalldata;
+    bool public reentryAttempted;
+    bool public reentrySucceeded;
 
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -24,6 +29,17 @@ contract MockUsdc {
         allowance[msg.sender][spender] = amount;
         emit Approval(msg.sender, spender, amount);
         return true;
+    }
+
+    function setFailTransferTo(address recipient) external {
+        failTransferTo = recipient;
+    }
+
+    function setReentry(address target, bytes calldata data) external {
+        reentryTarget = target;
+        reentryCalldata = data;
+        reentryAttempted = false;
+        reentrySucceeded = false;
     }
 
     function transfer(address to, uint256 amount) external returns (bool) {
@@ -43,6 +59,11 @@ contract MockUsdc {
 
     function _transfer(address from, address to, uint256 amount) private {
         require(to != address(0), "recipient");
+        require(to != failTransferTo, "forced transfer failure");
+        if (reentryTarget != address(0)) {
+            reentryAttempted = true;
+            (reentrySucceeded,) = reentryTarget.call(reentryCalldata);
+        }
         uint256 balance = balanceOf[from];
         require(balance >= amount, "balance");
         unchecked {

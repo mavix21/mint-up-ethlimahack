@@ -49,6 +49,13 @@ interface IMintUpEventPass {
         address indexed recipient,
         uint64 amount
     );
+    event EventFundsReleased(
+        bytes32 indexed event_id,
+        address indexed revenue_recipient,
+        address indexed fee_recipient,
+        uint256 revenue_amount,
+        uint256 fee_amount
+    );
     event ContractPaused(bool paused);
     event MintUpAuthorizationUsed(
         bytes32 indexed operation,
@@ -79,6 +86,7 @@ interface IMintUpEventPass {
     function setPaused(bool paused) external;
     function purchase(bytes32 event_id) external returns (uint64 pass_id);
     function claimRefund(uint64 pass_id) external;
+    function releaseFunds(bytes32 event_id) external;
     function transferPass(
         uint64 pass_id,
         address to,
@@ -107,7 +115,12 @@ interface IMintUpEventPass {
     function eventProtectionInfo(bytes32 event_id)
         external
         view
-        returns (uint64 funds_release_at, uint256 protected_balance, bool cancelled);
+        returns (
+            uint64 funds_release_at,
+            uint256 protected_balance,
+            bool cancelled,
+            bool funds_released
+        );
 
     function passRefundInfo(uint64 pass_id)
         external

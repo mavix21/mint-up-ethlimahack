@@ -20,6 +20,6 @@ _Avoid_: Create wallet, Create passkey, Create smart account, Kernel, EntryPoint
 The primary buyer action that starts or confirms acquiring one Event Pass after sign-in and Face ID, including any inline preparation.
 _Avoid_: Purchase, Mint, Buy ticket, Approve, Sponsor
 
-**Paid directly to organizer**:
-The one-line payment disclosure that the USDC amount goes directly to the Event's revenue recipient with no escrow or guaranteed refund. Full recipient and refund details live in a collapsed Details disclosure, not in the primary flow.
-_Avoid_: Revenue recipient, UserOperation, Transaction hash, Paymaster, gas sponsorship, no escrow paragraph
+**Protected payment**:
+The original Event Pass price held until the Event begins. If the Event is cancelled before then, the current holder can receive the full original price; otherwise, the organizer receives the price minus Mint Up's fee. The displayed price remains the buyer's total.
+_Avoid_: Escrow, smart contract balance, revenue recipient, UserOperation, transaction hash, Paymaster, gas sponsorship

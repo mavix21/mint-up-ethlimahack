@@ -1,4 +1,5 @@
 import { execFileSync } from "child_process";
+import * as fs from "fs";
 import * as path from "path";
 import { describe, expect, it } from "@jest/globals";
 import deployedContracts from "../../../nextjs/contracts/deployedContracts";
@@ -83,19 +84,33 @@ function stylusAbi(): AbiEntry[] {
   return JSON.parse(json) as AbiEntry[];
 }
 
+function checkedInAbi(): AbiEntry[] {
+  return JSON.parse(
+    fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../contracts/mint-up-event-pass/abi/IMintUpEventPass.abi",
+      ),
+      "utf8",
+    ),
+  ) as AbiEntry[];
+}
+
 describe("Event Pass ABI parity", () => {
   it("keeps source, Stylus export, and generated frontend signatures aligned", () => {
     const source = sourceAbi();
     const stylus = stylusAbi();
+    const checkedIn = checkedInAbi();
     const frontend = deployedContracts["412346"]["mint-up-event-pass"]
       .abi as readonly AbiEntry[];
 
     expect(signatures(stylus, ["function", "error"], false)).toEqual(
       signatures(source, ["function", "error"], false),
     );
-    expect(
-      signatures(frontend, ["function", "error", "event"], true),
-    ).toEqual(
+    expect(signatures(frontend, ["function", "error", "event"], true)).toEqual(
+      signatures(source, ["function", "error", "event"], true),
+    );
+    expect(signatures(checkedIn, ["function", "error", "event"], true)).toEqual(
       signatures(source, ["function", "error", "event"], true),
     );
   });
