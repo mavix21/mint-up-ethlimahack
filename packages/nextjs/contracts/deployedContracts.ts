@@ -157,6 +157,79 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "bytes32",
+              name: "operation",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "caller",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              internalType: "address",
+              name: "recipient",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+          ],
+          name: "authorizationDigest",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+          ],
+          name: "authorizationUsed",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "address",
               name: "owner",
               type: "address",
@@ -216,6 +289,11 @@ const deployedContracts = {
             {
               internalType: "address",
               name: "usdc",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "authorization_signer",
               type: "address",
             },
             {
@@ -689,6 +767,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "transferOperation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "uint64",
@@ -699,6 +790,36 @@ const deployedContracts = {
               internalType: "address",
               name: "to",
               type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "issued_at",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "deadline",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "v",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "r",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
             },
           ],
           name: "transferPass",
@@ -937,6 +1058,49 @@ const deployedContracts = {
             },
           ],
           name: "MetadataUpdate",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "operation",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "caller",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "pass_id",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "address",
+              name: "recipient",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "MintUpAuthorizationUsed",
           type: "event",
         },
         {

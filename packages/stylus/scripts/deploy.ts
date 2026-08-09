@@ -33,10 +33,17 @@ if (fs.existsSync(envPath)) {
 export default async function deployScript(deployOptions: DeployOptions) {
   const config = getDeploymentConfig(deployOptions);
   const eventPassAdministrator = process.env["EVENT_PASS_ADMINISTRATOR"];
+  const eventPassAuthorizationSigner =
+    process.env["EVENT_PASS_AUTHORIZATION_SIGNER"];
 
   if (!eventPassAdministrator) {
     throw new Error(
       "EVENT_PASS_ADMINISTRATOR must be set to deploy the Event Pass contract",
+    );
+  }
+  if (!eventPassAuthorizationSigner) {
+    throw new Error(
+      "EVENT_PASS_AUTHORIZATION_SIGNER must be set to deploy the Event Pass contract",
     );
   }
 
@@ -66,7 +73,12 @@ export default async function deployScript(deployOptions: DeployOptions) {
   //    so the Next.js frontend picks it up immediately.
   await deployStylusContract({
     contract: "mint-up-event-pass",
-    constructorArgs: [eventPassAdministrator, usdc, false],
+    constructorArgs: [
+      eventPassAdministrator,
+      usdc,
+      eventPassAuthorizationSigner,
+      false,
+    ],
     ...deployOptions,
   });
   if (localUsdc) {

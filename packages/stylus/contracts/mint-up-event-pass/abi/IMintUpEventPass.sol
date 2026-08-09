@@ -43,6 +43,14 @@ interface IMintUpEventPass {
         address indexed attendee
     );
     event ContractPaused(bool paused);
+    event MintUpAuthorizationUsed(
+        bytes32 indexed operation,
+        address indexed caller,
+        uint256 indexed nonce,
+        uint64 pass_id,
+        address recipient,
+        uint256 amount
+    );
 
     function registerEvent(
         bytes32 event_id,
@@ -62,13 +70,35 @@ interface IMintUpEventPass {
     function cancelEvent(bytes32 event_id) external;
     function setPaused(bool paused) external;
     function purchase(bytes32 event_id) external returns (uint64 pass_id);
-    function transferPass(uint64 pass_id, address to) external;
+    function transferPass(
+        uint64 pass_id,
+        address to,
+        uint256 nonce,
+        uint64 issued_at,
+        uint64 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
     function checkIn(bytes32 event_id, uint64 pass_id) external;
 
     function config()
         external
         view
-        returns (address administrator, address usdc, bool paused);
+        returns (address administrator, address usdc, address authorization_signer, bool paused);
+
+    function transferOperation() external view returns (bytes32);
+    function authorizationDigest(
+        bytes32 operation,
+        address caller,
+        uint64 pass_id,
+        address recipient,
+        uint256 amount,
+        uint256 nonce,
+        uint64 issued_at,
+        uint64 deadline
+    ) external view returns (bytes32);
+    function authorizationUsed(uint256 nonce) external view returns (bool);
 
     function eventInfo(bytes32 event_id)
         external

@@ -38,7 +38,10 @@ const TRANSFERS_DISABLED = 11;
 const PASS_NOT_ACTIVE = 12;
 const PAYMENT_FAILED = 14;
 const PAUSED = 15;
+const MOVEMENT_RESTRICTED = 18;
+const INVALID_AUTHORIZATION = 19;
 const chain = arbitrumNitro as Chain;
+const TRANSFER_OPERATION = keccak256(toHex("TRANSFER_PASS"));
 
 const usdcAbi = parseAbi([
   "function mint(address to, uint256 amount)",
@@ -53,7 +56,13 @@ const eventPassAbi = parseAbi([
   "function setPaused(bool paused)",
   "function purchase(bytes32 event_id) returns (uint64)",
   "function eventInfo(bytes32 event_id) view returns (address, uint64, uint32, uint32, uint64, uint64, bool, bool, bool, address)",
-  "function transferPass(uint64 pass_id, address to)",
+  "function config() view returns (address administrator, address usdc, address authorization_signer, bool paused)",
+  "function approve(address to, uint256 token_id)",
+  "function setApprovalForAll(address operator, bool approved)",
+  "function transferFrom(address from, address to, uint256 token_id)",
+  "function safeTransferFrom(address from, address to, uint256 token_id)",
+  "function safeTransferFrom(address from, address to, uint256 token_id, bytes data)",
+  "function transferPass(uint64 pass_id, address to, uint256 nonce, uint64 issued_at, uint64 deadline, uint8 v, bytes32 r, bytes32 s)",
   "function checkIn(bytes32 event_id, uint64 pass_id)",
   "function passInfo(uint64 pass_id) view returns (address, bytes32, uint8, bool)",
   "function ownerOf(uint256 token_id) view returns (address)",
@@ -62,6 +71,7 @@ const eventPassAbi = parseAbi([
   "event Transfer(address indexed from, address indexed to, uint256 indexed token_id)",
   "event EventPassPurchased(uint64 indexed pass_id, bytes32 indexed event_id, address indexed buyer)",
   "event EventPassTransferred(uint64 indexed pass_id, address indexed previous_owner, address indexed new_owner, bytes32 event_id)",
+  "event MintUpAuthorizationUsed(bytes32 indexed operation, address indexed caller, uint256 indexed nonce, uint64 pass_id, address recipient, uint256 amount)",
   "event EventPassCheckedIn(uint64 indexed pass_id, bytes32 indexed event_id, address indexed attendee)",
   "event EventCancelled(bytes32 indexed event_id)",
   "event ContractPaused(bool paused)",
@@ -89,6 +99,14 @@ function eventNames(logs: readonly { data: Hex; topics: readonly Hex[] }[]) {
       return [];
     }
   });
+}
+
+function splitSignature(signature: Hex) {
+  return {
+    r: `0x${signature.slice(2, 66)}` as Hex,
+    s: `0x${signature.slice(66, 130)}` as Hex,
+    v: Number.parseInt(signature.slice(130, 132), 16),
+  };
 }
 
 async function expectMintUpError(promise: Promise<unknown>, code: number) {
@@ -164,6 +182,16 @@ async function main() {
   assert(
     eventPassBytecode && eventPassBytecode !== "0x",
     "Event Pass is not deployed",
+  );
+  const [, , authorizationSigner] = await publicClient.readContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "config",
+  });
+  assert.equal(
+    authorizationSigner.toLowerCase(),
+    operator.address.toLowerCase(),
+    "Local deployment authorization signer must match OPERATOR_KEY",
   );
 
   const eventId = keccak256(toHex(`mint-up-local-${Date.now()}`));
@@ -379,7 +407,16 @@ async function main() {
       address: eventPass,
       abi: eventPassAbi as Abi,
       functionName: "transferPass",
-      args: [disabledTransferPass.args.pass_id, admin.address],
+      args: [
+        disabledTransferPass.args.pass_id,
+        admin.address,
+        1n,
+        saleStart,
+        saleEnd,
+        27,
+        toHex(0, { size: 32 }),
+        toHex(0, { size: 32 }),
+      ],
     }),
     TRANSFERS_DISABLED,
   );
@@ -390,21 +427,117 @@ async function main() {
       address: eventPass,
       abi: eventPassAbi as Abi,
       functionName: "transferPass",
-      args: [passId, admin.address],
+      args: [
+        passId,
+        admin.address,
+        2n,
+        saleStart,
+        saleEnd,
+        27,
+        toHex(0, { size: 32 }),
+        toHex(0, { size: 32 }),
+      ],
     }),
     NOT_PASS_OWNER,
+  );
+
+  for (const [functionName, args] of [
+    ["approve", [operator.address, passId]],
+    ["setApprovalForAll", [operator.address, true]],
+    ["transferFrom", [buyer.address, ATTENDEE, passId]],
+    ["safeTransferFrom", [buyer.address, ATTENDEE, passId]],
+    ["safeTransferFrom", [buyer.address, ATTENDEE, passId, "0x"]],
+  ] as const) {
+    await expectMintUpError(
+      publicClient.simulateContract({
+        account: buyer,
+        address: eventPass,
+        abi: eventPassAbi as Abi,
+        functionName,
+        args,
+      }),
+      MOVEMENT_RESTRICTED,
+    );
+  }
+
+  const transferNonce = 3n;
+  const transferIssuedAt = (await publicClient.getBlock()).timestamp;
+  const transferDeadline = transferIssuedAt + 60n;
+  const signature = splitSignature(
+    await operator.signTypedData({
+      domain: {
+        name: "Mint Up",
+        version: "1",
+        chainId: chain.id,
+        verifyingContract: eventPass,
+      },
+      types: {
+        MintUpAuthorization: [
+          { name: "operation", type: "bytes32" },
+          { name: "caller", type: "address" },
+          { name: "passId", type: "uint64" },
+          { name: "recipient", type: "address" },
+          { name: "amount", type: "uint256" },
+          { name: "nonce", type: "uint256" },
+          { name: "issuedAt", type: "uint64" },
+          { name: "deadline", type: "uint64" },
+        ],
+      },
+      primaryType: "MintUpAuthorization",
+      message: {
+        operation: TRANSFER_OPERATION,
+        caller: buyer.address,
+        passId,
+        recipient: ATTENDEE,
+        amount: 0n,
+        nonce: transferNonce,
+        issuedAt: transferIssuedAt,
+        deadline: transferDeadline,
+      },
+    }),
+  );
+
+  await expectMintUpError(
+    publicClient.simulateContract({
+      account: buyer,
+      address: eventPass,
+      abi: eventPassAbi as Abi,
+      functionName: "transferPass",
+      args: [
+        passId,
+        admin.address,
+        transferNonce,
+        transferIssuedAt,
+        transferDeadline,
+        Number(signature.v),
+        signature.r,
+        signature.s,
+      ],
+    }),
+    INVALID_AUTHORIZATION,
   );
 
   hash = await buyerWallet.writeContract({
     address: eventPass,
     abi: eventPassAbi,
     functionName: "transferPass",
-    args: [passId, ATTENDEE],
+    args: [
+      passId,
+      ATTENDEE,
+      transferNonce,
+      transferIssuedAt,
+      transferDeadline,
+      Number(signature.v),
+      signature.r,
+      signature.s,
+    ],
   });
   const transferReceipt = await publicClient.waitForTransactionReceipt({
     hash,
   });
+  assert(eventNames(transferReceipt.logs).includes("Transfer"));
   assert(eventNames(transferReceipt.logs).includes("EventPassTransferred"));
+  assert(eventNames(transferReceipt.logs).includes("MintUpAuthorizationUsed"));
   const transferred = transferReceipt.logs
     .map((entry) => {
       try {
@@ -430,6 +563,33 @@ async function main() {
     ATTENDEE.toLowerCase(),
   );
   assert.equal(transferred.args.event_id, eventId);
+  const authorizationUsed = transferReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "MintUpAuthorizationUsed");
+  assert(authorizationUsed);
+  assert(authorizationUsed.eventName === "MintUpAuthorizationUsed");
+  assert.equal(authorizationUsed.args.operation, TRANSFER_OPERATION);
+  assert.equal(
+    authorizationUsed.args.caller.toLowerCase(),
+    buyer.address.toLowerCase(),
+  );
+  assert.equal(authorizationUsed.args.nonce, transferNonce);
+  assert.equal(authorizationUsed.args.pass_id, passId);
+  assert.equal(
+    authorizationUsed.args.recipient.toLowerCase(),
+    ATTENDEE.toLowerCase(),
+  );
+  assert.equal(authorizationUsed.args.amount, 0n);
 
   await expectMintUpError(
     publicClient.simulateContract({
@@ -476,7 +636,16 @@ async function main() {
       address: eventPass,
       abi: eventPassAbi as Abi,
       functionName: "transferPass",
-      args: [passId, buyer.address],
+      args: [
+        passId,
+        buyer.address,
+        4n,
+        saleStart,
+        saleEnd,
+        27,
+        toHex(0, { size: 32 }),
+        toHex(0, { size: 32 }),
+      ],
     }),
     PASS_NOT_ACTIVE,
   );

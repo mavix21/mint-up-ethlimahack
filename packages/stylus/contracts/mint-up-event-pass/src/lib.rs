@@ -15,18 +15,22 @@ use openzeppelin_stylus::{
         extensions::{Erc721Metadata, Erc721UriStorage, IErc721Metadata},
         Erc721, IErc721,
     },
-    utils::introspection::erc165::IErc165,
+    utils::{
+        cryptography::{ecdsa, eip712::IEip712},
+        introspection::erc165::IErc165,
+    },
 };
 use stylus_sdk::{
     abi::Bytes,
-    alloy_primitives::{aliases::B32, Address, Uint, B256, U256},
-    alloy_sol_types::sol,
+    alloy_primitives::{aliases::B32, keccak256, Address, Uint, B256, U256},
+    alloy_sol_types::{sol, SolType},
     prelude::*,
     stylus_core::{calls::context::Call, log},
 };
 
 const ACTIVE: u8 = 1;
 const ATTENDED: u8 = 2;
+const MAX_AUTHORIZATION_LIFETIME: u64 = 300;
 
 type U32 = Uint<32, 1>;
 type U64 = Uint<64, 1>;
@@ -48,6 +52,14 @@ const PAYMENT_FAILED: u8 = 14;
 const PAUSED: u8 = 15;
 const REENTRANCY: u8 = 16;
 const ID_OVERFLOW: u8 = 17;
+const MOVEMENT_RESTRICTED: u8 = 18;
+const INVALID_AUTHORIZATION: u8 = 19;
+const AUTHORIZATION_EXPIRED: u8 = 20;
+const AUTHORIZATION_USED: u8 = 21;
+
+type AuthorizationHashTuple = sol! {
+    tuple(bytes32, bytes32, address, uint64, address, uint256, uint256, uint64, uint64)
+};
 
 sol! {
     #[derive(Debug)]
@@ -78,6 +90,14 @@ sol! {
         address indexed attendee
     );
     event ContractPaused(bool paused);
+    event MintUpAuthorizationUsed(
+        bytes32 indexed operation,
+        address indexed caller,
+        uint256 indexed nonce,
+        uint64 pass_id,
+        address recipient,
+        uint256 amount
+    );
 }
 
 #[derive(SolidityError, Debug)]
@@ -138,12 +158,14 @@ sol_storage! {
     #[entrypoint]
     pub struct MintUpEventPass {
         address administrator;
+        address authorization_signer;
         bool paused;
         bool entered;
         uint64 next_pass_id;
         address usdc;
         mapping(bytes32 => EventData) events;
         mapping(uint64 => PassData) passes;
+        mapping(uint256 => bool) used_authorizations;
         Erc721 erc721;
         Erc721Metadata metadata;
         Erc721UriStorage token_uris;
@@ -157,13 +179,20 @@ impl MintUpEventPass {
         &mut self,
         administrator: Address,
         usdc: Address,
+        authorization_signer: Address,
         paused: bool,
     ) -> Result<(), Error> {
-        if administrator.is_zero() || usdc.is_zero() {
+        if administrator.is_zero()
+            || usdc.is_zero()
+            || authorization_signer.is_zero()
+            || authorization_signer == administrator
+            || authorization_signer == usdc
+        {
             return Err(error(INVALID_INPUT));
         }
         self.administrator.set(administrator);
         self.usdc.set(usdc);
+        self.authorization_signer.set(authorization_signer);
         self.paused.set(paused);
         self.next_pass_id.set(U64::from(1));
         self.metadata
@@ -330,7 +359,18 @@ impl MintUpEventPass {
         Ok(pass_id)
     }
 
-    pub fn transfer_pass(&mut self, pass_id: u64, to: Address) -> Result<(), Error> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn transfer_pass(
+        &mut self,
+        pass_id: u64,
+        to: Address,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+        v: u8,
+        r: B256,
+        s: B256,
+    ) -> Result<(), Error> {
         if to.is_zero() {
             return Err(error(INVALID_INPUT));
         }
@@ -343,8 +383,33 @@ impl MintUpEventPass {
         if to == previous_owner {
             return Err(error(INVALID_INPUT));
         }
-        self.erc721.transfer_from(previous_owner, to, token_id)?;
+        self.validate_authorization(
+            Self::transfer_operation_hash(),
+            sender,
+            pass_id,
+            to,
+            U256::ZERO,
+            nonce,
+            issued_at,
+            deadline,
+            v,
+            r,
+            s,
+        )?;
+        self.used_authorizations.setter(nonce).set(true);
+        self.erc721._transfer(previous_owner, to, token_id)?;
         self.log_pass_transfer(token_id, previous_owner, to, event_id);
+        log(
+            self.vm(),
+            MintUpAuthorizationUsed {
+                operation: Self::transfer_operation_hash(),
+                caller: sender,
+                nonce,
+                pass_id,
+                recipient: to,
+                amount: U256::ZERO,
+            },
+        );
         Ok(())
     }
 
@@ -388,8 +453,13 @@ impl MintUpEventPass {
         Ok(())
     }
 
-    pub fn config(&self) -> (Address, Address, bool) {
-        (self.administrator.get(), self.usdc.get(), self.paused.get())
+    pub fn config(&self) -> (Address, Address, Address, bool) {
+        (
+            self.administrator.get(),
+            self.usdc.get(),
+            self.authorization_signer.get(),
+            self.paused.get(),
+        )
     }
 
     #[allow(clippy::type_complexity)]
@@ -443,6 +513,35 @@ impl MintUpEventPass {
             self.erc721._owner_of(U256::from(pass_id)) != Address::ZERO && !pass.attended.get();
         drop(pass);
         active && self.event_valid(event_id)
+    }
+
+    pub fn transfer_operation(&self) -> B256 {
+        Self::transfer_operation_hash()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn authorization_digest(
+        &self,
+        operation: B256,
+        caller: Address,
+        pass_id: u64,
+        recipient: Address,
+        amount: U256,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+    ) -> B256 {
+        let type_hash = keccak256(
+            "MintUpAuthorization(bytes32 operation,address caller,uint64 passId,address recipient,uint256 amount,uint256 nonce,uint64 issuedAt,uint64 deadline)",
+        );
+        let struct_hash = keccak256(AuthorizationHashTuple::abi_encode(&(
+            type_hash, operation, caller, pass_id, recipient, amount, nonce, issued_at, deadline,
+        )));
+        self.hash_typed_data_v4(struct_hash)
+    }
+
+    pub fn authorization_used(&self, nonce: U256) -> bool {
+        self.used_authorizations.get(nonce)
     }
 
     pub fn supports_interface(&self, interface_id: B32) -> bool {
@@ -538,42 +637,33 @@ impl IErc721 for MintUpEventPass {
 
     fn safe_transfer_from_with_data(
         &mut self,
-        from: Address,
-        to: Address,
-        token_id: U256,
-        data: Bytes,
+        _from: Address,
+        _to: Address,
+        _token_id: U256,
+        _data: Bytes,
     ) -> Result<(), Self::Error> {
-        let operator = self.vm().msg_sender();
-        <Self as IErc721>::transfer_from(self, from, to, token_id)?;
-        self.erc721
-            ._check_on_erc721_received(operator, from, to, token_id, &data)?;
-        Ok(())
+        Err(error(MOVEMENT_RESTRICTED))
     }
 
     fn transfer_from(
         &mut self,
-        from: Address,
-        to: Address,
-        token_id: U256,
+        _from: Address,
+        _to: Address,
+        _token_id: U256,
     ) -> Result<(), Self::Error> {
-        let (previous_owner, event_id) = self.require_transferable(token_id)?;
-        self.erc721.transfer_from(from, to, token_id)?;
-        self.log_pass_transfer(token_id, previous_owner, to, event_id);
-        Ok(())
+        Err(error(MOVEMENT_RESTRICTED))
     }
 
-    fn approve(&mut self, to: Address, token_id: U256) -> Result<(), Self::Error> {
-        self.erc721.approve(to, token_id).map_err(Into::into)
+    fn approve(&mut self, _to: Address, _token_id: U256) -> Result<(), Self::Error> {
+        Err(error(MOVEMENT_RESTRICTED))
     }
 
     fn set_approval_for_all(
         &mut self,
-        operator: Address,
-        approved: bool,
+        _operator: Address,
+        _approved: bool,
     ) -> Result<(), Self::Error> {
-        self.erc721
-            .set_approval_for_all(operator, approved)
-            .map_err(Into::into)
+        Err(error(MOVEMENT_RESTRICTED))
     }
 
     fn get_approved(&self, token_id: U256) -> Result<Address, Self::Error> {
@@ -601,6 +691,11 @@ impl IErc721Metadata for MintUpEventPass {
             .token_uri(token_id, &self.erc721, &self.metadata)
             .map_err(Into::into)
     }
+}
+
+impl IEip712 for MintUpEventPass {
+    const NAME: &'static str = "Mint Up";
+    const VERSION: &'static str = "1";
 }
 
 impl IErc165 for MintUpEventPass {
@@ -636,7 +731,9 @@ mod tests {
         test_host::install(&vm);
         vm.set_sender(address(1));
         let mut contract = MintUpEventPass::from(&vm);
-        contract.constructor(address(1), address(2), false).unwrap();
+        contract
+            .constructor(address(1), address(2), address(5), false)
+            .unwrap();
         (vm, contract)
     }
 
@@ -701,29 +798,50 @@ mod tests {
         B256::from(value.to_be_bytes::<32>())
     }
 
-    fn receiver_call(operator: Address, from: Address, token_id: U256, data: &[u8]) -> Vec<u8> {
-        let padded_len = data.len().div_ceil(32) * 32;
-        let mut call = vec![0; 4 + 32 * 5 + padded_len];
-        call[..4].copy_from_slice(erc721::RECEIVER_FN_SELECTOR.as_slice());
-        call[16..36].copy_from_slice(operator.as_slice());
-        call[48..68].copy_from_slice(from.as_slice());
-        call[68..100].copy_from_slice(&token_id.to_be_bytes::<32>());
-        call[100..132].copy_from_slice(&U256::from(128).to_be_bytes::<32>());
-        call[132..164].copy_from_slice(&U256::from(data.len()).to_be_bytes::<32>());
-        call[164..164 + data.len()].copy_from_slice(data);
-        call
-    }
-
-    fn receiver_response(selector: B32) -> Vec<u8> {
-        let mut response = vec![0; 32];
-        response[..4].copy_from_slice(selector.as_slice());
-        response
+    fn mock_authorization(
+        vm: &TestVM,
+        contract: &MintUpEventPass,
+        caller: Address,
+        pass_id: u64,
+        recipient: Address,
+        nonce: U256,
+        deadline: u64,
+    ) -> (u8, B256, B256) {
+        let v = 27;
+        let r = B256::with_last_byte(11);
+        let s = B256::with_last_byte(12);
+        let digest = contract.authorization_digest(
+            contract.transfer_operation(),
+            caller,
+            pass_id,
+            recipient,
+            U256::ZERO,
+            nonce,
+            150,
+            deadline,
+        );
+        let mut calldata = vec![0; 128];
+        calldata[..32].copy_from_slice(digest.as_slice());
+        calldata[63] = v;
+        calldata[64..96].copy_from_slice(r.as_slice());
+        calldata[96..].copy_from_slice(s.as_slice());
+        let mut recovered = vec![0; 32];
+        recovered[12..].copy_from_slice(address(5).as_slice());
+        vm.mock_static_call(
+            openzeppelin_stylus::utils::cryptography::ecdsa::ECRECOVER_ADDR,
+            calldata,
+            Ok(recovered),
+        );
+        (v, r, s)
     }
 
     #[test]
     fn constructor_and_event_administration_are_restricted() {
         let (vm, mut contract) = setup();
-        assert_eq!(contract.config(), (address(1), address(2), false));
+        assert_eq!(
+            contract.config(),
+            (address(1), address(2), address(5), false)
+        );
 
         vm.set_sender(address(9));
         assert_error(
@@ -774,6 +892,21 @@ mod tests {
             ),
             INVALID_INPUT,
         );
+    }
+
+    #[test]
+    fn constructor_requires_a_distinct_mint_up_authorization_signer() {
+        for signer in [Address::ZERO, address(1), address(2)] {
+            let vm = TestVM::default();
+            test_host::install(&vm);
+            vm.set_sender(address(1));
+            let mut contract = MintUpEventPass::from(&vm);
+
+            assert_error(
+                contract.constructor(address(1), address(2), signer, false),
+                INVALID_INPUT,
+            );
+        }
     }
 
     #[test]
@@ -860,155 +993,283 @@ mod tests {
     }
 
     #[test]
-    fn approvals_update_the_only_owner_ledger_and_preserve_pass_data() {
+    fn direct_erc721_movements_are_blocked_by_mint_up_policy() {
         let (vm, mut contract) = setup();
         let id = event_id(1);
         let owner = address(6);
         let operator = address(7);
         let recipient = address(8);
-        register(&mut contract, id, 2, true, address(4));
-        let pass_id = buy(&vm, &mut contract, id, owner);
-        let token_id = U256::from(pass_id);
+        register(&mut contract, id, 1, true, address(4));
+        let token_id = U256::from(buy(&vm, &mut contract, id, owner));
 
-        contract.approve(operator, token_id).unwrap();
-        assert_eq!(contract.get_approved(token_id).unwrap(), operator);
-        vm.clear_mocks();
-        vm.set_sender(operator);
-        contract.transfer_from(owner, recipient, token_id).unwrap();
-
-        assert_eq!(contract.owner_of(token_id).unwrap(), recipient);
-        assert_eq!(contract.balance_of(owner).unwrap(), U256::ZERO);
-        assert_eq!(contract.balance_of(recipient).unwrap(), U256::from(1));
-        assert_eq!(
-            contract.pass_info(pass_id).unwrap(),
-            (recipient, id, ACTIVE, true)
-        );
-        assert_eq!(contract.token_uri(token_id).unwrap(), METADATA_URI);
+        for result in [
+            contract.approve(operator, token_id),
+            contract.set_approval_for_all(operator, true),
+            contract.transfer_from(owner, recipient, token_id),
+            contract.safe_transfer_from(owner, recipient, token_id),
+            contract.safe_transfer_from_with_data(owner, recipient, token_id, vec![1].into()),
+        ] {
+            assert_error(result, MOVEMENT_RESTRICTED);
+        }
+        assert_eq!(contract.owner_of(token_id).unwrap(), owner);
         assert_eq!(contract.get_approved(token_id).unwrap(), Address::ZERO);
-        let event_topics: Vec<_> = vm
-            .get_emitted_logs()
-            .into_iter()
-            .map(|(topics, _)| topics[0])
-            .collect();
-        assert!(
-            event_topics.contains(&stylus_sdk::alloy_primitives::keccak256(
-                "Transfer(address,address,uint256)"
-            ))
-        );
-        assert!(
-            event_topics.contains(&stylus_sdk::alloy_primitives::keccak256(
-                "EventPassTransferred(uint64,address,address,bytes32)"
-            ))
-        );
+        assert!(!contract.is_approved_for_all(owner, operator));
 
-        let second_pass_id = buy(&vm, &mut contract, id, owner);
-        let second_token_id = U256::from(second_pass_id);
-        contract.set_approval_for_all(operator, true).unwrap();
-        assert!(contract.is_approved_for_all(owner, operator));
         vm.set_sender(operator);
-        contract
-            .transfer_from(owner, address(9), second_token_id)
-            .unwrap();
-        assert_eq!(contract.owner_of(second_token_id).unwrap(), address(9));
+        assert_error(
+            contract.transfer_from(owner, recipient, token_id),
+            MOVEMENT_RESTRICTED,
+        );
     }
 
     #[test]
-    fn safe_transfers_require_receiver_acceptance_for_both_variants() {
-        for data in [Vec::new(), vec![1, 2, 3]] {
+    fn exact_mint_up_authorization_transfers_once_and_emits_evidence() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let owner = address(6);
+        let recipient = address(8);
+        let nonce = U256::from(42);
+        let deadline = 180;
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, owner);
+        let (v, r, s) =
+            mock_authorization(&vm, &contract, owner, pass_id, recipient, nonce, deadline);
+        vm.clear_mocks();
+        mock_authorization(&vm, &contract, owner, pass_id, recipient, nonce, deadline);
+
+        contract
+            .transfer_pass(pass_id, recipient, nonce, 150, deadline, v, r, s)
+            .unwrap();
+
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), recipient);
+        assert!(contract.authorization_used(nonce));
+        let logs = vm.get_emitted_logs();
+        assert!(logs.iter().any(|(topics, _)| {
+            topics[0]
+                == stylus_sdk::alloy_primitives::keccak256("Transfer(address,address,uint256)")
+        }));
+        let authorization = logs
+            .iter()
+            .find(|(topics, _)| {
+                topics[0]
+                    == stylus_sdk::alloy_primitives::keccak256(
+                        "MintUpAuthorizationUsed(bytes32,address,uint256,uint64,address,uint256)",
+                    )
+            })
+            .expect("authorized transfer should emit Mint Up evidence");
+        assert_eq!(
+            authorization.0,
+            vec![
+                stylus_sdk::alloy_primitives::keccak256(
+                    "MintUpAuthorizationUsed(bytes32,address,uint256,uint64,address,uint256)",
+                ),
+                contract.transfer_operation(),
+                topic_address(owner),
+                topic_u256(nonce),
+            ]
+        );
+        let mut expected_data = vec![0; 96];
+        expected_data[..32].copy_from_slice(&U256::from(pass_id).to_be_bytes::<32>());
+        expected_data[44..64].copy_from_slice(recipient.as_slice());
+        assert_eq!(authorization.1, expected_data);
+
+        vm.set_sender(recipient);
+        assert_error(
+            contract.transfer_pass(pass_id, owner, nonce, 150, deadline, v, r, s),
+            AUTHORIZATION_USED,
+        );
+    }
+
+    #[test]
+    fn authorization_rejects_tampering_expiry_and_the_wrong_caller() {
+        let cases = ["recipient", "nonce", "issued_at", "deadline", "caller"];
+        for case in cases {
             let (vm, mut contract) = setup();
             let id = event_id(1);
             let owner = address(6);
-            let receiver = address(9);
+            let recipient = address(8);
+            let nonce = U256::from(42);
+            let deadline = 180;
             register(&mut contract, id, 1, true, address(4));
             let pass_id = buy(&vm, &mut contract, id, owner);
-            let token_id = U256::from(pass_id);
-            vm.set_code(receiver, vec![1]);
-            vm.mock_call(
-                receiver,
-                receiver_call(owner, owner, token_id, &data),
-                Ok(receiver_response(erc721::RECEIVER_FN_SELECTOR)),
-            );
+            let (v, r, s) =
+                mock_authorization(&vm, &contract, owner, pass_id, recipient, nonce, deadline);
 
-            if data.is_empty() {
-                contract
-                    .safe_transfer_from(owner, receiver, token_id)
-                    .unwrap();
+            let attempted_recipient = if case == "recipient" {
+                address(9)
             } else {
-                contract
-                    .safe_transfer_from_with_data(owner, receiver, token_id, data.into())
-                    .unwrap();
+                recipient
+            };
+            let attempted_nonce = if case == "nonce" {
+                nonce + U256::from(1)
+            } else {
+                nonce
+            };
+            let attempted_deadline = if case == "deadline" {
+                deadline + 1
+            } else {
+                deadline
+            };
+            let attempted_issued_at = if case == "issued_at" { 149 } else { 150 };
+            if case == "caller" {
+                vm.set_sender(address(7));
+                assert_error(
+                    contract.transfer_pass(
+                        pass_id,
+                        attempted_recipient,
+                        attempted_nonce,
+                        attempted_issued_at,
+                        attempted_deadline,
+                        v,
+                        r,
+                        s,
+                    ),
+                    NOT_PASS_OWNER,
+                );
+            } else {
+                assert_error(
+                    contract.transfer_pass(
+                        pass_id,
+                        attempted_recipient,
+                        attempted_nonce,
+                        attempted_issued_at,
+                        attempted_deadline,
+                        v,
+                        r,
+                        s,
+                    ),
+                    INVALID_AUTHORIZATION,
+                );
             }
-            assert_eq!(contract.owner_of(token_id).unwrap(), receiver);
-            let logs = vm.get_emitted_logs();
-            let transfer_topics = &logs[logs.len() - 2..];
-            assert_eq!(
-                transfer_topics[0].0[0],
-                stylus_sdk::alloy_primitives::keccak256("Transfer(address,address,uint256)")
-            );
-            assert_eq!(
-                transfer_topics[1].0[0],
-                stylus_sdk::alloy_primitives::keccak256(
-                    "EventPassTransferred(uint64,address,address,bytes32)"
-                )
-            );
+            assert!(!contract.authorization_used(attempted_nonce));
+            assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), owner);
         }
 
         let (vm, mut contract) = setup();
         let id = event_id(2);
         let owner = address(6);
-        let receiver = address(9);
         register(&mut contract, id, 1, true, address(4));
-        let token_id = U256::from(buy(&vm, &mut contract, id, owner));
-        vm.set_code(receiver, vec![1]);
-        vm.mock_call(
-            receiver,
-            receiver_call(owner, owner, token_id, &[]),
-            Ok(receiver_response(0x12345678_u32.into())),
+        let pass_id = buy(&vm, &mut contract, id, owner);
+        let nonce = U256::from(7);
+        let deadline = 149;
+        let (v, r, s) =
+            mock_authorization(&vm, &contract, owner, pass_id, address(8), nonce, deadline);
+        assert_error(
+            contract.transfer_pass(pass_id, address(8), nonce, 150, deadline, v, r, s),
+            AUTHORIZATION_EXPIRED,
         );
-        assert!(matches!(
-            contract.safe_transfer_from(owner, receiver, token_id),
-            Err(Error::InvalidReceiver(_))
-        ));
+        assert!(!contract.authorization_used(nonce));
+
+        vm.set_block_timestamp(150);
+        assert_error(
+            contract.transfer_pass(pass_id, address(8), U256::from(8), 150, 451, v, r, s),
+            INVALID_AUTHORIZATION,
+        );
     }
 
     #[test]
-    fn approvals_cannot_bypass_any_transfer_lifecycle_restriction() {
-        let cases = [
-            (false, false, false),
-            (true, false, false),
-            (false, true, false),
-            (false, false, true),
-        ];
-
-        for (paused, cancelled, attended) in cases {
+    fn authorization_is_bound_to_chain_contract_operation_and_amount() {
+        for domain in ["chain", "contract"] {
             let (vm, mut contract) = setup();
             let id = event_id(1);
             let owner = address(6);
-            let operator = address(7);
-            register(
-                &mut contract,
-                id,
-                1,
-                !(!paused && !cancelled && !attended),
-                address(4),
-            );
+            let recipient = address(8);
+            let nonce = U256::from(9);
+            let deadline = 180;
+            register(&mut contract, id, 1, true, address(4));
             let pass_id = buy(&vm, &mut contract, id, owner);
-            let token_id = U256::from(pass_id);
-            contract.approve(operator, token_id).unwrap();
-            if paused {
-                vm.set_sender(address(1));
-                contract.set_paused(true).unwrap();
-            } else if cancelled {
-                vm.set_sender(address(1));
-                contract.cancel_event(id).unwrap();
-            } else if attended {
-                vm.set_sender(address(4));
-                contract.check_in(id, pass_id).unwrap();
+            let (v, r, s) =
+                mock_authorization(&vm, &contract, owner, pass_id, recipient, nonce, deadline);
+            if domain == "chain" {
+                vm.set_chain_id(99_999);
+            } else {
+                vm.set_contract_address(address(10));
             }
-            vm.set_sender(operator);
 
-            assert!(contract.transfer_from(owner, address(8), token_id).is_err());
+            assert_error(
+                contract.transfer_pass(pass_id, recipient, nonce, 150, deadline, v, r, s),
+                INVALID_AUTHORIZATION,
+            );
+            assert!(!contract.authorization_used(nonce));
         }
+
+        let (_, contract) = setup();
+        let operation = contract.transfer_operation();
+        let digest = contract.authorization_digest(
+            operation,
+            address(6),
+            1,
+            address(8),
+            U256::ZERO,
+            U256::from(1),
+            150,
+            180,
+        );
+        assert_ne!(
+            digest,
+            contract.authorization_digest(
+                event_id(99),
+                address(6),
+                1,
+                address(8),
+                U256::ZERO,
+                U256::from(1),
+                150,
+                180,
+            )
+        );
+        assert_ne!(
+            digest,
+            contract.authorization_digest(
+                operation,
+                address(7),
+                1,
+                address(8),
+                U256::ZERO,
+                U256::from(1),
+                150,
+                180,
+            )
+        );
+        assert_ne!(
+            digest,
+            contract.authorization_digest(
+                operation,
+                address(6),
+                2,
+                address(8),
+                U256::ZERO,
+                U256::from(1),
+                150,
+                180,
+            )
+        );
+        assert_ne!(
+            digest,
+            contract.authorization_digest(
+                operation,
+                address(6),
+                1,
+                address(8),
+                U256::from(1),
+                U256::from(1),
+                150,
+                180,
+            )
+        );
+        assert_ne!(
+            digest,
+            contract.authorization_digest(
+                operation,
+                address(6),
+                1,
+                address(8),
+                U256::ZERO,
+                U256::from(1),
+                149,
+                180,
+            )
+        );
     }
 
     #[test]
@@ -1103,9 +1364,32 @@ mod tests {
         let pass_id = buy(&vm, &mut contract, id, address(6));
 
         vm.set_sender(address(7));
-        assert_error(contract.transfer_pass(pass_id, address(8)), NOT_PASS_OWNER);
+        assert_error(
+            contract.transfer_pass(
+                pass_id,
+                address(8),
+                U256::ZERO,
+                150,
+                180,
+                27,
+                B256::ZERO,
+                B256::ZERO,
+            ),
+            NOT_PASS_OWNER,
+        );
         vm.set_sender(address(6));
-        contract.transfer_pass(pass_id, address(7)).unwrap();
+        let (v, r, s) = mock_authorization(
+            &vm,
+            &contract,
+            address(6),
+            pass_id,
+            address(7),
+            U256::ZERO,
+            180,
+        );
+        contract
+            .transfer_pass(pass_id, address(7), U256::ZERO, 150, 180, v, r, s)
+            .unwrap();
         assert_eq!(contract.pass_info(pass_id).unwrap().0, address(7));
 
         vm.set_sender(address(5));
@@ -1118,7 +1402,19 @@ mod tests {
         );
         assert_error(contract.check_in(id, pass_id), PASS_NOT_ACTIVE);
         vm.set_sender(address(7));
-        assert_error(contract.transfer_pass(pass_id, address(8)), PASS_NOT_ACTIVE);
+        assert_error(
+            contract.transfer_pass(
+                pass_id,
+                address(8),
+                U256::from(1),
+                150,
+                180,
+                27,
+                B256::ZERO,
+                B256::ZERO,
+            ),
+            PASS_NOT_ACTIVE,
+        );
     }
 
     #[test]
@@ -1150,7 +1446,19 @@ mod tests {
         assert_error(contract.cancel_event(id), EVENT_CANCELLED);
 
         vm.set_sender(address(6));
-        assert_error(contract.transfer_pass(pass_id, address(7)), EVENT_CANCELLED);
+        assert_error(
+            contract.transfer_pass(
+                pass_id,
+                address(7),
+                U256::ZERO,
+                150,
+                180,
+                27,
+                B256::ZERO,
+                B256::ZERO,
+            ),
+            EVENT_CANCELLED,
+        );
         mock_payment(&vm, address(6), Ok(true_word()));
         assert_error(contract.purchase(id), EVENT_CANCELLED);
         vm.set_sender(address(4));
@@ -1164,14 +1472,35 @@ mod tests {
         register(&mut contract, id, 1, false, address(4));
         let pass_id = buy(&vm, &mut contract, id, address(6));
         assert_error(
-            contract.transfer_pass(pass_id, address(7)),
+            contract.transfer_pass(
+                pass_id,
+                address(7),
+                U256::ZERO,
+                150,
+                180,
+                27,
+                B256::ZERO,
+                B256::ZERO,
+            ),
             TRANSFERS_DISABLED,
         );
 
         vm.set_sender(address(1));
         contract.set_paused(true).unwrap();
         vm.set_sender(address(6));
-        assert_error(contract.transfer_pass(pass_id, address(7)), PAUSED);
+        assert_error(
+            contract.transfer_pass(
+                pass_id,
+                address(7),
+                U256::ZERO,
+                150,
+                180,
+                27,
+                B256::ZERO,
+                B256::ZERO,
+            ),
+            PAUSED,
+        );
         vm.set_sender(address(4));
         assert_error(contract.check_in(id, pass_id), PAUSED);
         assert!(!contract.is_valid_for_check_in(pass_id));
@@ -1179,6 +1508,49 @@ mod tests {
 }
 
 impl MintUpEventPass {
+    fn transfer_operation_hash() -> B256 {
+        keccak256("TRANSFER_PASS")
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn validate_authorization(
+        &self,
+        operation: B256,
+        caller: Address,
+        pass_id: u64,
+        recipient: Address,
+        amount: U256,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+        v: u8,
+        r: B256,
+        s: B256,
+    ) -> Result<(), Error> {
+        let now = self.vm().block_timestamp();
+        if now > deadline {
+            return Err(error(AUTHORIZATION_EXPIRED));
+        }
+        if issued_at > now
+            || deadline < issued_at
+            || deadline - issued_at > MAX_AUTHORIZATION_LIFETIME
+        {
+            return Err(error(INVALID_AUTHORIZATION));
+        }
+        if self.used_authorizations.get(nonce) {
+            return Err(error(AUTHORIZATION_USED));
+        }
+        let digest = self.authorization_digest(
+            operation, caller, pass_id, recipient, amount, nonce, issued_at, deadline,
+        );
+        let recovered =
+            ecdsa::recover(self, digest, v, r, s).map_err(|_| error(INVALID_AUTHORIZATION))?;
+        if recovered != self.authorization_signer.get() {
+            return Err(error(INVALID_AUTHORIZATION));
+        }
+        Ok(())
+    }
+
     fn only_admin(&self) -> Result<(), Error> {
         if self.vm().msg_sender() != self.administrator.get() {
             return Err(error(UNAUTHORIZED));
@@ -1261,7 +1633,7 @@ mod test_host {
 
     use stylus_sdk::{
         alloy_primitives::Address,
-        stylus_core::{host::AccountAccess, MessageAccess},
+        stylus_core::{host::AccountAccess, ChainAccess, MessageAccess},
         testing::TestVM,
     };
 
@@ -1280,6 +1652,19 @@ mod test_host {
         VM.with(|current| {
             let sender = current.borrow().as_ref().unwrap().msg_sender();
             ptr::copy_nonoverlapping(sender.as_ptr(), destination, 20);
+        });
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn chainid() -> u64 {
+        VM.with(|current| current.borrow().as_ref().unwrap().chain_id())
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn contract_address(destination: *mut u8) {
+        VM.with(|current| {
+            let address = current.borrow().as_ref().unwrap().contract_address();
+            ptr::copy_nonoverlapping(address.as_ptr(), destination, 20);
         });
     }
 
@@ -1358,14 +1743,32 @@ mod test_host {
 
     #[no_mangle]
     unsafe extern "C" fn static_call_contract(
-        _contract: *const u8,
-        _calldata: *const u8,
-        _calldata_len: usize,
+        contract: *const u8,
+        calldata: *const u8,
+        calldata_len: usize,
         _gas: u64,
         return_data_len: *mut usize,
     ) -> u8 {
-        *return_data_len = 0;
-        1
+        let contract = Address::from_slice(slice::from_raw_parts(contract, 20));
+        let calldata = slice::from_raw_parts(calldata, calldata_len).to_vec();
+        let result = VM.with(|current| {
+            current
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .snapshot()
+                .static_call_returns
+                .get(&(contract, calldata))
+                .cloned()
+                .unwrap_or_else(|| Ok(vec![0; 32]))
+        });
+        let (status, data) = match result {
+            Ok(data) => (0, data),
+            Err(data) => (1, data),
+        };
+        *return_data_len = data.len();
+        RETURN_DATA.with(|current| *current.borrow_mut() = data);
+        status
     }
 
     #[no_mangle]

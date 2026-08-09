@@ -2,12 +2,14 @@
 
 Paid Event Pass contract for Arbitrum Stylus. Each acquired Event Pass is an
 ERC-721 collectible backed by OpenZeppelin Stylus, with immutable per-Event
-IPFS metadata. ERC-721 enumeration, resale, refunds, and mutable metadata are
-not implemented.
+IPFS metadata. The collectible remains visible to wallets and indexers but
+cannot be approved, transferred, or sold outside Mint Up. ERC-721 enumeration,
+resale, refunds, and mutable metadata are not implemented.
 
 ## Model
 
-- OpenZeppelin ERC-721 is the sole ownership and approval ledger.
+- OpenZeppelin ERC-721 is the sole ownership ledger. Standard approval and
+  transfer calls remain ABI-compatible but always revert with policy error 18.
 - The ERC-721 collection is named `Mint Up Event Pass` with symbol `MUEP`.
 - Each global `uint64` Pass ID is also its ERC-721 token ID.
 - Event IDs are Mint Up supplied `bytes32` values.
@@ -24,15 +26,23 @@ Arbitrum Sepolia's official Circle USDC address is:
 
 `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
 
-Deploy with constructor arguments `(administrator, usdc, initiallyPaused)`.
+Deploy with constructor arguments
+`(administrator, usdc, authorizationSigner, initiallyPaused)`. The immutable
+Mint Up signer must be nonzero and distinct from the administrator and USDC.
 Stylus constructors are guarded by the SDK's reserved constructor slot and can
 only execute once.
 
 The collection supports ERC-165, ERC-721, and ERC-721 Metadata. Standard
-ownership reads, approvals, transfers, and both `safeTransferFrom` overloads
-are available. Every successful transfer also emits `EventPassTransferred` for
-Mint Up's ownership projection. Event cancellation, disabled transfers,
-check-in, and emergency pause apply to every public ERC-721 transfer path.
+ownership and metadata reads remain available. Approvals, marketplace
+operators, `transferFrom`, and both `safeTransferFrom` overloads cannot move an
+Event Pass. `transferPass` requires an exact, short-lived EIP-712 authorization
+from Mint Up in addition to a call by the current owner. The authorization
+binds the operation, caller, Pass ID, recipient, amount, nonce, issuance time,
+deadline, chain, and contract. The signed issuance/deadline interval cannot
+exceed five minutes and each nonce is single-use. Every successful transfer emits the
+standard `Transfer`, `EventPassTransferred`, and `MintUpAuthorizationUsed`
+events. Event cancellation, disabled transfers, check-in, and emergency pause
+remain enforced.
 
 ## Error Codes
 
@@ -55,6 +65,10 @@ check-in, and emergency pause apply to every public ERC-721 transfer path.
 | 15 | Contract paused |
 | 16 | Reentrant purchase |
 | 17 | Pass ID overflow |
+| 18 | Movement is restricted to an authorized Mint Up operation |
+| 19 | Invalid Mint Up authorization |
+| 20 | Mint Up authorization expired |
+| 21 | Mint Up authorization nonce already used |
 
 ## Commands
 
@@ -102,7 +116,7 @@ Deploy to Arbitrum Sepolia with:
 cargo stylus deploy \
   --endpoint https://sepolia-rollup.arbitrum.io/rpc \
   --private-key "$PRIVATE_KEY" \
-  --constructor-args "$ADMIN" 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d false \
+  --constructor-args "$ADMIN" 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d "$AUTHORIZATION_SIGNER" false \
   --no-verify
 ```
 
