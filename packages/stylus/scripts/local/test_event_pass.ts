@@ -29,6 +29,7 @@ const ATTENDEE_KEY =
 const OPERATOR_KEY =
   "0xc011740e64cd1bcefb4b5b869ac1169f79e8524cd7c6d409b3fe5b7dfd92afa6";
 const PRICE = 25_000_000n;
+const RESALE_PRICE = 30_000_001n;
 const METADATA_URI =
   "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/local-event.json";
 const UNAUTHORIZED = 1;
@@ -43,6 +44,7 @@ const MOVEMENT_RESTRICTED = 18;
 const INVALID_AUTHORIZATION = 19;
 const REFUND_ALREADY_CLAIMED = 24;
 const FUNDS_ALREADY_RELEASED = 27;
+const NOT_DESIGNATED_BUYER = 30;
 const chain = arbitrumNitro as Chain;
 const TRANSFER_OPERATION = keccak256(toHex("TRANSFER_PASS"));
 
@@ -64,6 +66,10 @@ const eventPassAbi = parseAbi([
   "function purchase(bytes32 event_id) returns (uint64)",
   "function claimRefund(uint64 pass_id)",
   "function releaseFunds(bytes32 event_id)",
+  "function createResaleOffer(uint64 pass_id, address designated_buyer, uint256 price)",
+  "function cancelResaleOffer(uint64 pass_id)",
+  "function purchaseResale(uint64 pass_id)",
+  "function resaleOffer(uint64 pass_id) view returns (address seller, address designated_buyer, uint256 price, bool eligible)",
   "function eventInfo(bytes32 event_id) view returns (address, uint64, uint32, uint32, uint64, uint64, bool, bool, bool, address)",
   "function eventProtectionInfo(bytes32 event_id) view returns (uint64 funds_release_at, uint256 protected_balance, bool cancelled, bool funds_released)",
   "function passRefundInfo(uint64 pass_id) view returns (uint64 original_price, bool refunded, bool refund_available)",
@@ -87,6 +93,9 @@ const eventPassAbi = parseAbi([
   "event EventCancelled(bytes32 indexed event_id)",
   "event EventPassRefunded(uint64 indexed pass_id, bytes32 indexed event_id, address indexed recipient, uint64 amount)",
   "event EventFundsReleased(bytes32 indexed event_id, address indexed revenue_recipient, address indexed fee_recipient, uint256 revenue_amount, uint256 fee_amount)",
+  "event EventPassResaleOffered(uint64 indexed pass_id, address indexed seller, address indexed designated_buyer, uint256 price)",
+  "event EventPassResaleOfferCancelled(uint64 indexed pass_id, address indexed seller)",
+  "event EventPassResold(uint64 indexed pass_id, address indexed seller, address indexed buyer, uint256 price, uint256 seller_amount, uint256 fee_amount)",
   "event ContractPaused(bool paused)",
 ]);
 
@@ -186,6 +195,11 @@ async function main() {
     chain,
     transport: http(RPC_URL),
   });
+  const attendeeWallet = createWalletClient({
+    account: attendee,
+    chain,
+    transport: http(RPC_URL),
+  });
 
   const usdcBytecode = await publicClient.getBytecode({ address: usdc });
   const eventPassBytecode = await publicClient.getBytecode({
@@ -212,19 +226,48 @@ async function main() {
   const cancelledEventId = keccak256(
     toHex(`mint-up-local-cancelled-${Date.now()}`),
   );
+  const resaleEventId = keccak256(toHex(`mint-up-local-resale-${Date.now()}`));
 
   let hash = await adminWallet.writeContract({
     address: usdc,
     abi: usdcAbi,
     functionName: "mint",
-    args: [buyer.address, PRICE * 2n],
+    args: [buyer.address, PRICE * 3n],
   });
   const mintReceipt = await publicClient.waitForTransactionReceipt({ hash });
+  hash = await adminWallet.writeContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "mint",
+    args: [attendee.address, RESALE_PRICE],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+
   const now = (
     await publicClient.getBlock({ blockHash: mintReceipt.blockHash })
   ).timestamp;
   const saleStart = now + 60n;
   const saleEnd = saleStart + 60n;
+
+  hash = await adminWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "registerEvent",
+    args: [
+      resaleEventId,
+      ATTENDEE,
+      PRICE,
+      1,
+      saleStart,
+      saleEnd + 3600n,
+      saleEnd + 7200n,
+      true,
+      true,
+      operator.address,
+      METADATA_URI,
+    ],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
 
   hash = await adminWallet.writeContract({
     address: eventPass,
@@ -288,7 +331,7 @@ async function main() {
     address: usdc,
     abi: usdcAbi,
     functionName: "approve",
-    args: [eventPass, PRICE * 2n],
+    args: [eventPass, PRICE * 3n],
   });
   await publicClient.waitForTransactionReceipt({ hash });
 
@@ -336,7 +379,7 @@ async function main() {
     address: eventPass,
     abi: eventPassAbi,
     functionName: "eventInfo",
-    args: [eventId],
+    args: [resaleEventId],
   });
   assert.equal(issuedSupply, 1);
 
@@ -390,6 +433,158 @@ async function main() {
       args: [passId],
     }),
     METADATA_URI,
+  );
+
+  hash = await buyerWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "purchase",
+    args: [eventId],
+    gas: 2_000_000n,
+  });
+  const resalePassPurchase = await publicClient.waitForTransactionReceipt({
+    hash,
+  });
+  const resalePassPurchased = resalePassPurchase.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "EventPassPurchased");
+  assert(resalePassPurchased && "pass_id" in resalePassPurchased.args);
+  const resalePassId = resalePassPurchased.args.pass_id;
+  hash = await buyerWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "createResaleOffer",
+    args: [resalePassId, attendee.address, RESALE_PRICE],
+  });
+  const offerReceipt = await publicClient.waitForTransactionReceipt({ hash });
+  assert(eventNames(offerReceipt.logs).includes("EventPassResaleOffered"));
+  assert.deepEqual(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "resaleOffer",
+      args: [resalePassId],
+    }),
+    [buyer.address, attendee.address, RESALE_PRICE, true],
+  );
+  await expectMintUpError(
+    publicClient.simulateContract({
+      account: admin,
+      address: eventPass,
+      abi: eventPassAbi as Abi,
+      functionName: "purchaseResale",
+      args: [resalePassId],
+    }),
+    NOT_DESIGNATED_BUYER,
+  );
+  hash = await attendeeWallet.writeContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "approve",
+    args: [eventPass, RESALE_PRICE],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  hash = await adminWallet.writeContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "setReentry",
+    args: [
+      eventPass,
+      encodeFunctionData({
+        abi: eventPassAbi,
+        functionName: "purchaseResale",
+        args: [resalePassId],
+      }),
+    ],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  const resaleFee = (RESALE_PRICE * 900n) / 10_000n;
+  const sellerAmount = RESALE_PRICE - resaleFee;
+  const sellerBalanceBeforeResale = await publicClient.readContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "balanceOf",
+    args: [buyer.address],
+  });
+  const feeBalanceBeforeResale = await publicClient.readContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "balanceOf",
+    args: [feeRecipient],
+  });
+  hash = await attendeeWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "purchaseResale",
+    args: [resalePassId],
+    gas: 2_000_000n,
+  });
+  const resaleReceipt = await publicClient.waitForTransactionReceipt({ hash });
+  assert(eventNames(resaleReceipt.logs).includes("EventPassResold"));
+  assert(eventNames(resaleReceipt.logs).includes("EventPassTransferred"));
+  assert.equal(
+    await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "reentryAttempted",
+    }),
+    true,
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "reentrySucceeded",
+    }),
+    false,
+  );
+  assert.equal(
+    (
+      await publicClient.readContract({
+        address: eventPass,
+        abi: eventPassAbi,
+        functionName: "ownerOf",
+        args: [resalePassId],
+      })
+    ).toLowerCase(),
+    attendee.address.toLowerCase(),
+  );
+  assert.equal(
+    (await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [buyer.address],
+    })) - sellerBalanceBeforeResale,
+    sellerAmount,
+  );
+  assert.equal(
+    (await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [feeRecipient],
+    })) - feeBalanceBeforeResale,
+    resaleFee,
+  );
+  assert.deepEqual(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "passRefundInfo",
+      args: [resalePassId],
+    }),
+    [PRICE, false, false],
   );
 
   hash = await buyerWallet.writeContract({
@@ -750,8 +945,39 @@ async function main() {
       functionName: "balanceOf",
       args: [eventPass],
     }),
-    PRICE,
+    PRICE * 2n,
     "Refund must preserve the other Event's protected payment",
+  );
+
+  hash = await adminWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "cancelEvent",
+    args: [resaleEventId],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  const attendeeBalanceBeforeRefund = await publicClient.readContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "balanceOf",
+    args: [attendee.address],
+  });
+  hash = await attendeeWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "claimRefund",
+    args: [resalePassId],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  assert.equal(
+    (await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [attendee.address],
+    })) - attendeeBalanceBeforeRefund,
+    PRICE,
+    "The resale buyer must receive the original protected price",
   );
 
   await expectMintUpError(
@@ -821,8 +1047,9 @@ async function main() {
     OUTSIDE_SALE_WINDOW,
   );
 
-  const feeAmount = (PRICE * 500n) / 10_000n;
-  const revenueAmount = PRICE - feeAmount;
+  const protectedEventBalance = PRICE;
+  const feeAmount = (protectedEventBalance * 500n) / 10_000n;
+  const revenueAmount = protectedEventBalance - feeAmount;
   const revenueBalanceBefore = await publicClient.readContract({
     address: usdc,
     abi: usdcAbi,
@@ -870,7 +1097,7 @@ async function main() {
       functionName: "eventProtectionInfo",
       args: [eventId],
     }),
-    [saleEnd, PRICE, false, false],
+    [saleEnd, protectedEventBalance, false, false],
   );
 
   hash = await adminWallet.writeContract({

@@ -64,6 +64,9 @@ const REFUND_ALREADY_CLAIMED: u8 = 24;
 const ACCOUNTING_ERROR: u8 = 25;
 const RELEASE_NOT_READY: u8 = 26;
 const FUNDS_ALREADY_RELEASED: u8 = 27;
+const RESALE_OFFER_NOT_FOUND: u8 = 28;
+const RESALE_UNAVAILABLE: u8 = 29;
+const NOT_DESIGNATED_BUYER: u8 = 30;
 
 type AuthorizationHashTuple = sol! {
     tuple(bytes32, bytes32, address, uint64, address, uint256, uint256, uint64, uint64)
@@ -109,6 +112,21 @@ sol! {
         address indexed revenue_recipient,
         address indexed fee_recipient,
         uint256 revenue_amount,
+        uint256 fee_amount
+    );
+    event EventPassResaleOffered(
+        uint64 indexed pass_id,
+        address indexed seller,
+        address indexed designated_buyer,
+        uint256 price
+    );
+    event EventPassResaleOfferCancelled(uint64 indexed pass_id, address indexed seller);
+    event EventPassResold(
+        uint64 indexed pass_id,
+        address indexed seller,
+        address indexed buyer,
+        uint256 price,
+        uint256 seller_amount,
         uint256 fee_amount
     );
     event ContractPaused(bool paused);
@@ -182,6 +200,13 @@ sol_storage! {
         bytes32 event_id;
     }
 
+    pub struct ResaleOffer {
+        address seller;
+        address designated_buyer;
+        uint256 price;
+        uint64 pause_generation;
+    }
+
     #[entrypoint]
     pub struct MintUpEventPass {
         address administrator;
@@ -189,10 +214,12 @@ sol_storage! {
         address fee_recipient;
         bool paused;
         bool entered;
+        uint64 pause_generation;
         uint64 next_pass_id;
         address usdc;
         mapping(bytes32 => EventData) events;
         mapping(uint64 => PassData) passes;
+        mapping(uint64 => ResaleOffer) resale_offers;
         mapping(uint256 => bool) used_authorizations;
         Erc721 erc721;
         Erc721Metadata metadata;
@@ -246,6 +273,7 @@ impl MintUpEventPass {
         check_in_operator: Address,
         metadata_uri: String,
     ) -> Result<(), Error> {
+        self.not_entered()?;
         self.only_admin()?;
         if event_id.is_zero()
             || revenue_recipient.is_zero()
@@ -287,6 +315,7 @@ impl MintUpEventPass {
     }
 
     pub fn set_event_sales(&mut self, event_id: B256, enabled: bool) -> Result<(), Error> {
+        self.not_entered()?;
         self.only_admin()?;
         self.require_event_live(event_id)?;
         self.events.setter(event_id).sales_enabled.set(enabled);
@@ -299,6 +328,7 @@ impl MintUpEventPass {
         event_id: B256,
         operator: Address,
     ) -> Result<(), Error> {
+        self.not_entered()?;
         self.only_admin()?;
         if operator.is_zero() {
             return Err(error(INVALID_INPUT));
@@ -310,6 +340,7 @@ impl MintUpEventPass {
     }
 
     pub fn cancel_event(&mut self, event_id: B256) -> Result<(), Error> {
+        self.not_entered()?;
         self.only_admin()?;
         self.require_event_live(event_id)?;
         if self.vm().block_timestamp()
@@ -330,7 +361,17 @@ impl MintUpEventPass {
     }
 
     pub fn set_paused(&mut self, paused: bool) -> Result<(), Error> {
+        self.not_entered()?;
         self.only_admin()?;
+        if paused && !self.paused.get() {
+            let next_generation = self
+                .pause_generation
+                .get()
+                .to::<u64>()
+                .checked_add(1)
+                .ok_or_else(|| error(ACCOUNTING_ERROR))?;
+            self.pause_generation.set(U64::from(next_generation));
+        }
         self.paused.set(paused);
         log(self.vm(), ContractPaused { paused });
         Ok(())
@@ -479,7 +520,7 @@ impl MintUpEventPass {
         let revenue_recipient = event.revenue_recipient.get();
         let fee_recipient = self.fee_recipient.get();
         drop(event);
-        let fee_amount = protected_balance * U256::from(PRIMARY_FEE_BPS) / U256::from(10_000);
+        let fee_amount = basis_points(protected_balance, PRIMARY_FEE_BPS);
         let revenue_amount = protected_balance - fee_amount;
 
         if !self.strict_usdc_call(&transfer_data(revenue_recipient, revenue_amount))
@@ -516,6 +557,7 @@ impl MintUpEventPass {
         r: B256,
         s: B256,
     ) -> Result<(), Error> {
+        self.not_entered()?;
         if to.is_zero() {
             return Err(error(INVALID_INPUT));
         }
@@ -542,6 +584,7 @@ impl MintUpEventPass {
             s,
         )?;
         self.used_authorizations.setter(nonce).set(true);
+        self.clear_resale_offer(pass_id);
         self.erc721._transfer(previous_owner, to, token_id)?;
         self.log_pass_transfer(token_id, previous_owner, to, event_id);
         log(
@@ -558,7 +601,142 @@ impl MintUpEventPass {
         Ok(())
     }
 
+    pub fn create_resale_offer(
+        &mut self,
+        pass_id: u64,
+        designated_buyer: Address,
+        price: U256,
+    ) -> Result<(), Error> {
+        self.not_entered()?;
+        if designated_buyer.is_zero() || price.is_zero() {
+            return Err(error(INVALID_INPUT));
+        }
+        let seller = self.vm().msg_sender();
+        let (owner, _) = self.require_resale_eligible(pass_id)?;
+        if owner != seller {
+            return Err(error(NOT_PASS_OWNER));
+        }
+        if designated_buyer == seller {
+            return Err(error(INVALID_INPUT));
+        }
+
+        let mut offer = self.resale_offers.setter(U64::from(pass_id));
+        offer.seller.set(seller);
+        offer.designated_buyer.set(designated_buyer);
+        offer.price.set(price);
+        offer.pause_generation.set(self.pause_generation.get());
+        log(
+            self.vm(),
+            EventPassResaleOffered {
+                pass_id,
+                seller,
+                designated_buyer,
+                price,
+            },
+        );
+        Ok(())
+    }
+
+    pub fn cancel_resale_offer(&mut self, pass_id: u64) -> Result<(), Error> {
+        self.not_entered()?;
+        let seller = self.vm().msg_sender();
+        let (owner, _) = self.require_resale_eligible(pass_id)?;
+        if owner != seller {
+            return Err(error(NOT_PASS_OWNER));
+        }
+        if self
+            .resale_offers
+            .getter(U64::from(pass_id))
+            .seller
+            .get()
+            .is_zero()
+        {
+            return Err(error(RESALE_OFFER_NOT_FOUND));
+        }
+
+        self.clear_resale_offer(pass_id);
+        log(self.vm(), EventPassResaleOfferCancelled { pass_id, seller });
+        Ok(())
+    }
+
+    pub fn purchase_resale(&mut self, pass_id: u64) -> Result<(), Error> {
+        self.not_paused()?;
+        if self.entered.get() {
+            return Err(error(REENTRANCY));
+        }
+
+        let buyer = self.vm().msg_sender();
+        let offer = self.resale_offers.getter(U64::from(pass_id));
+        let seller = offer.seller.get();
+        if seller.is_zero() {
+            return Err(error(RESALE_OFFER_NOT_FOUND));
+        }
+        let designated_buyer = offer.designated_buyer.get();
+        let price = offer.price.get();
+        let offer_pause_generation = offer.pause_generation.get();
+        drop(offer);
+        if buyer != designated_buyer {
+            return Err(error(NOT_DESIGNATED_BUYER));
+        }
+        if offer_pause_generation != self.pause_generation.get() {
+            return Err(error(RESALE_UNAVAILABLE));
+        }
+        let (current_owner, event_id) = self.require_resale_eligible(pass_id)?;
+        if current_owner != seller {
+            return Err(error(RESALE_UNAVAILABLE));
+        }
+
+        let fee_amount = basis_points(price, RESALE_FEE_BPS);
+        let seller_amount = price - fee_amount;
+        if !self.strict_usdc_call(&transfer_from_data_u256(
+            buyer,
+            self.vm().contract_address(),
+            price,
+        )) || !self.strict_usdc_call(&transfer_data(seller, seller_amount))
+            || !self.strict_usdc_call(&transfer_data(self.fee_recipient.get(), fee_amount))
+        {
+            return Err(error(PAYMENT_FAILED));
+        }
+
+        self.clear_resale_offer(pass_id);
+        self.erc721._transfer(seller, buyer, U256::from(pass_id))?;
+        self.log_pass_transfer(U256::from(pass_id), seller, buyer, event_id);
+        log(
+            self.vm(),
+            EventPassResold {
+                pass_id,
+                seller,
+                buyer,
+                price,
+                seller_amount,
+                fee_amount,
+            },
+        );
+        Ok(())
+    }
+
+    pub fn resale_offer(&self, pass_id: u64) -> Result<(Address, Address, U256, bool), Error> {
+        self.erc721
+            .owner_of(U256::from(pass_id))
+            .map_err(|_| error(PASS_NOT_FOUND))?;
+        let offer = self.resale_offers.getter(U64::from(pass_id));
+        let seller = offer.seller.get();
+        let designated_buyer = offer.designated_buyer.get();
+        let price = offer.price.get();
+        let offer_pause_generation = offer.pause_generation.get();
+        drop(offer);
+        Ok((
+            seller,
+            designated_buyer,
+            price,
+            !seller.is_zero()
+                && offer_pause_generation == self.pause_generation.get()
+                && self.resale_is_eligible(pass_id, seller),
+        ))
+    }
+
     pub fn check_in(&mut self, event_id: B256, pass_id: u64) -> Result<(), Error> {
+        self.not_entered()?;
         self.not_paused()?;
         let sender = self.vm().msg_sender();
         let event = self.events.getter(event_id);
@@ -586,6 +764,7 @@ impl MintUpEventPass {
         }
         drop(pass);
 
+        self.clear_resale_offer(pass_id);
         self.passes.setter(U64::from(pass_id)).attended.set(true);
         log(
             self.vm(),
@@ -1574,6 +1753,343 @@ mod tests {
     }
 
     #[test]
+    fn owner_creates_replaces_and_withdraws_one_private_resale_offer() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let owner = address(6);
+        let first_buyer = address(7);
+        let second_buyer = address(8);
+        let first_price = U256::from(30_000_000);
+        let second_price = U256::from(40_000_000);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, owner);
+
+        vm.set_sender(first_buyer);
+        assert_error(
+            contract.create_resale_offer(pass_id, first_buyer, first_price),
+            NOT_PASS_OWNER,
+        );
+        vm.set_sender(owner);
+        assert_error(
+            contract.create_resale_offer(pass_id, owner, first_price),
+            INVALID_INPUT,
+        );
+        assert_error(
+            contract.create_resale_offer(pass_id, first_buyer, U256::ZERO),
+            INVALID_INPUT,
+        );
+
+        contract
+            .create_resale_offer(pass_id, first_buyer, first_price)
+            .unwrap();
+        assert_eq!(
+            contract.resale_offer(pass_id).unwrap(),
+            (owner, first_buyer, first_price, true)
+        );
+
+        contract
+            .create_resale_offer(pass_id, second_buyer, second_price)
+            .unwrap();
+        assert_eq!(
+            contract.resale_offer(pass_id).unwrap(),
+            (owner, second_buyer, second_price, true)
+        );
+
+        contract.cancel_resale_offer(pass_id).unwrap();
+        assert_eq!(
+            contract.resale_offer(pass_id).unwrap(),
+            (Address::ZERO, Address::ZERO, U256::ZERO, false)
+        );
+        assert_error(
+            contract.cancel_resale_offer(pass_id),
+            RESALE_OFFER_NOT_FOUND,
+        );
+    }
+
+    #[test]
+    fn designated_buyer_accepts_for_exact_price_with_91_9_conservation() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let seller = address(6);
+        let buyer = address(7);
+        let resale_price = U256::from(30_000_001);
+        let fee_amount = U256::from(2_700_000);
+        let seller_amount = U256::from(27_300_001);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, seller);
+        contract
+            .create_resale_offer(pass_id, buyer, resale_price)
+            .unwrap();
+
+        assert_error(contract.purchase_resale(pass_id), NOT_DESIGNATED_BUYER);
+        vm.set_sender(buyer);
+        vm.mock_call(
+            address(2),
+            transfer_from_data_u256(buyer, vm.contract_address(), resale_price).to_vec(),
+            Ok(true_word()),
+        );
+        vm.mock_call(
+            address(2),
+            transfer_data(seller, seller_amount).to_vec(),
+            Ok(true_word()),
+        );
+        vm.mock_call(
+            address(2),
+            transfer_data(address(9), fee_amount).to_vec(),
+            Ok(true_word()),
+        );
+
+        contract.purchase_resale(pass_id).unwrap();
+
+        assert_eq!(seller_amount + fee_amount, resale_price);
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), buyer);
+        assert_eq!(
+            contract.resale_offer(pass_id).unwrap(),
+            (Address::ZERO, Address::ZERO, U256::ZERO, false)
+        );
+        assert_eq!(
+            contract.pass_refund_info(pass_id).unwrap(),
+            (PRICE, false, false)
+        );
+        assert_error(contract.purchase_resale(pass_id), RESALE_OFFER_NOT_FOUND);
+        assert!(vm.get_emitted_logs().iter().any(|(topics, _)| {
+            topics[0]
+                == stylus_sdk::alloy_primitives::keccak256(
+                    "EventPassResold(uint64,address,address,uint256,uint256,uint256)",
+                )
+        }));
+    }
+
+    #[test]
+    fn resale_is_open_until_event_start_and_rounds_small_fees_down() {
+        for (price, seller_amount, fee_amount) in [(1_u64, 1_u64, 0_u64), (11, 11, 0), (12, 11, 1)]
+        {
+            let (vm, mut contract) = setup();
+            let id = event_id(price as u8);
+            let seller = address(6);
+            let buyer = address(7);
+            register(&mut contract, id, 1, true, address(4));
+            let pass_id = buy(&vm, &mut contract, id, seller);
+            let price = U256::from(price);
+            contract.create_resale_offer(pass_id, buyer, price).unwrap();
+            vm.set_sender(buyer);
+            vm.set_block_timestamp(RELEASE - 1);
+            vm.mock_call(
+                address(2),
+                transfer_from_data_u256(buyer, vm.contract_address(), price).to_vec(),
+                Ok(true_word()),
+            );
+            vm.mock_call(
+                address(2),
+                transfer_data(seller, U256::from(seller_amount)).to_vec(),
+                Ok(true_word()),
+            );
+            vm.mock_call(
+                address(2),
+                transfer_data(address(9), U256::from(fee_amount)).to_vec(),
+                Ok(true_word()),
+            );
+
+            contract.purchase_resale(pass_id).unwrap();
+
+            assert_eq!(seller_amount + fee_amount, price.to::<u64>());
+            assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), buyer);
+        }
+    }
+
+    #[test]
+    fn resale_accepts_the_maximum_price_without_fee_overflow() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let seller = address(6);
+        let buyer = address(7);
+        let price = U256::MAX;
+        let fee_amount =
+            ((price - U256::from(35)) / U256::from(100)) * U256::from(9) + U256::from(3);
+        let seller_amount = price - fee_amount;
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, seller);
+        contract.create_resale_offer(pass_id, buyer, price).unwrap();
+        vm.set_sender(buyer);
+        vm.mock_call(
+            address(2),
+            transfer_from_data_u256(buyer, vm.contract_address(), price).to_vec(),
+            Ok(true_word()),
+        );
+        vm.mock_call(
+            address(2),
+            transfer_data(seller, seller_amount).to_vec(),
+            Ok(true_word()),
+        );
+        vm.mock_call(
+            address(2),
+            transfer_data(address(9), fee_amount).to_vec(),
+            Ok(true_word()),
+        );
+
+        contract.purchase_resale(pass_id).unwrap();
+
+        assert_eq!(seller_amount + fee_amount, price);
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), buyer);
+    }
+
+    #[test]
+    fn free_transfer_and_check_in_clear_the_previous_owners_offer() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let owner = address(6);
+        let recipient = address(7);
+        let buyer = address(8);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, owner);
+        contract
+            .create_resale_offer(pass_id, buyer, U256::from(30_000_000))
+            .unwrap();
+        let (v, r, s) = mock_authorization(
+            &vm,
+            &contract,
+            owner,
+            pass_id,
+            recipient,
+            U256::from(77),
+            180,
+        );
+
+        contract
+            .transfer_pass(pass_id, recipient, U256::from(77), 150, 180, v, r, s)
+            .unwrap();
+        assert_eq!(
+            contract.resale_offer(pass_id).unwrap(),
+            (Address::ZERO, Address::ZERO, U256::ZERO, false)
+        );
+
+        vm.set_sender(recipient);
+        contract
+            .create_resale_offer(pass_id, buyer, U256::from(31_000_000))
+            .unwrap();
+        vm.set_sender(address(4));
+        contract.check_in(id, pass_id).unwrap();
+        assert_eq!(
+            contract.resale_offer(pass_id).unwrap(),
+            (Address::ZERO, Address::ZERO, U256::ZERO, false)
+        );
+    }
+
+    #[test]
+    fn event_start_cancellation_and_pause_permanently_stale_existing_offers() {
+        for invalidation in ["start", "cancel", "pause"] {
+            let (vm, mut contract) = setup();
+            let id = event_id(1);
+            let owner = address(6);
+            let buyer = address(7);
+            register(&mut contract, id, 1, true, address(4));
+            let pass_id = buy(&vm, &mut contract, id, owner);
+            contract
+                .create_resale_offer(pass_id, buyer, U256::from(30_000_000))
+                .unwrap();
+
+            if invalidation == "start" {
+                vm.set_block_timestamp(RELEASE);
+            } else {
+                vm.set_sender(address(1));
+                if invalidation == "cancel" {
+                    contract.cancel_event(id).unwrap();
+                } else {
+                    contract.set_paused(true).unwrap();
+                    contract.set_paused(false).unwrap();
+                }
+            }
+
+            assert!(!contract.resale_offer(pass_id).unwrap().3);
+            vm.set_sender(buyer);
+            assert_error(contract.purchase_resale(pass_id), RESALE_UNAVAILABLE);
+        }
+    }
+
+    #[test]
+    fn failed_resale_payment_legs_preserve_owner_offer_and_original_price() {
+        let invalid_responses = [
+            Ok(vec![]),
+            Ok(vec![0; 32]),
+            Ok(vec![1]),
+            Ok(vec![2; 32]),
+            Ok(vec![0; 33]),
+            Err(vec![0xff]),
+        ];
+
+        for failed_leg in 0..3 {
+            for invalid_response in invalid_responses.clone() {
+                let (vm, mut contract) = setup();
+                let id = event_id(1);
+                let seller = address(6);
+                let buyer = address(7);
+                let resale_price = U256::from(30_000_000);
+                let seller_amount = U256::from(27_300_000);
+                let fee_amount = U256::from(2_700_000);
+                register(&mut contract, id, 1, true, address(4));
+                let pass_id = buy(&vm, &mut contract, id, seller);
+                contract
+                    .create_resale_offer(pass_id, buyer, resale_price)
+                    .unwrap();
+                vm.set_sender(buyer);
+                let responses = (0..3).map(|leg| {
+                    if leg == failed_leg {
+                        invalid_response.clone()
+                    } else {
+                        Ok(true_word())
+                    }
+                });
+                for (calldata, response) in [
+                    transfer_from_data_u256(buyer, vm.contract_address(), resale_price).to_vec(),
+                    transfer_data(seller, seller_amount).to_vec(),
+                    transfer_data(address(9), fee_amount).to_vec(),
+                ]
+                .into_iter()
+                .zip(responses)
+                {
+                    vm.mock_call(address(2), calldata, response);
+                }
+
+                assert_error(contract.purchase_resale(pass_id), PAYMENT_FAILED);
+                assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), seller);
+                assert_eq!(
+                    contract.resale_offer(pass_id).unwrap(),
+                    (seller, buyer, resale_price, true)
+                );
+                assert_eq!(
+                    contract.pass_refund_info(pass_id).unwrap(),
+                    (PRICE, false, false)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn resale_reentrancy_is_rejected_without_consuming_the_offer() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let seller = address(6);
+        let buyer = address(7);
+        let resale_price = U256::from(30_000_000);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, seller);
+        contract
+            .create_resale_offer(pass_id, buyer, resale_price)
+            .unwrap();
+        vm.set_sender(buyer);
+        contract.entered.set(true);
+
+        assert_error(contract.purchase_resale(pass_id), REENTRANCY);
+        vm.set_sender(address(4));
+        assert_error(contract.check_in(id, pass_id), REENTRANCY);
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), seller);
+        assert_eq!(
+            contract.resale_offer(pass_id).unwrap(),
+            (seller, buyer, resale_price, true)
+        );
+    }
+
+    #[test]
     fn failed_usdc_responses_never_issue() {
         for response in [
             Ok(vec![]),
@@ -2209,6 +2725,13 @@ impl MintUpEventPass {
         Ok(())
     }
 
+    fn not_entered(&self) -> Result<(), Error> {
+        if self.entered.get() {
+            return Err(error(REENTRANCY));
+        }
+        Ok(())
+    }
+
     fn require_event_live(&self, event_id: B256) -> Result<(), Error> {
         let event = self.events.getter(event_id);
         if !event.exists.get() {
@@ -2243,6 +2766,41 @@ impl MintUpEventPass {
             return Err(error(TRANSFERS_DISABLED));
         }
         Ok((owner, event_id))
+    }
+
+    fn require_resale_eligible(&self, pass_id: u64) -> Result<(Address, B256), Error> {
+        self.not_paused()?;
+        let owner = self
+            .erc721
+            .owner_of(U256::from(pass_id))
+            .map_err(|_| error(PASS_NOT_FOUND))?;
+        let pass = self.passes.getter(U64::from(pass_id));
+        if pass.attended.get() || pass.refunded.get() {
+            return Err(error(RESALE_UNAVAILABLE));
+        }
+        let event_id = pass.event_id.get();
+        drop(pass);
+        let event = self.events.getter(event_id);
+        if event.cancelled.get()
+            || !event.transfers_enabled.get()
+            || self.vm().block_timestamp() >= event.funds_release_at.get().to::<u64>()
+        {
+            return Err(error(RESALE_UNAVAILABLE));
+        }
+        Ok((owner, event_id))
+    }
+
+    fn resale_is_eligible(&self, pass_id: u64, seller: Address) -> bool {
+        self.require_resale_eligible(pass_id)
+            .is_ok_and(|(owner, _)| owner == seller)
+    }
+
+    fn clear_resale_offer(&mut self, pass_id: u64) {
+        let mut offer = self.resale_offers.setter(U64::from(pass_id));
+        offer.seller.set(Address::ZERO);
+        offer.designated_buyer.set(Address::ZERO);
+        offer.price.set(U256::ZERO);
+        offer.pause_generation.set(U64::ZERO);
     }
 
     fn log_pass_transfer(
@@ -2438,12 +2996,22 @@ mod test_host {
 }
 
 fn transfer_from_data(from: Address, to: Address, amount: u64) -> [u8; 100] {
+    transfer_from_data_u256(from, to, U256::from(amount))
+}
+
+fn transfer_from_data_u256(from: Address, to: Address, amount: U256) -> [u8; 100] {
     let mut data = [0; 100];
     data[..4].copy_from_slice(&[0x23, 0xb8, 0x72, 0xdd]);
     data[16..36].copy_from_slice(from.as_slice());
     data[48..68].copy_from_slice(to.as_slice());
-    data[68..].copy_from_slice(&U256::from(amount).to_be_bytes::<32>());
+    data[68..].copy_from_slice(&amount.to_be_bytes::<32>());
     data
+}
+
+fn basis_points(amount: U256, bps: u16) -> U256 {
+    let denominator = U256::from(10_000);
+    let bps = U256::from(bps);
+    amount / denominator * bps + amount % denominator * bps / denominator
 }
 
 fn transfer_data(to: Address, amount: U256) -> [u8; 68] {

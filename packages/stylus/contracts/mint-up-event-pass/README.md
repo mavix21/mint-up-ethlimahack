@@ -3,8 +3,8 @@
 Paid Event Pass contract for Arbitrum Stylus. Each acquired Event Pass is an
 ERC-721 collectible backed by OpenZeppelin Stylus, with immutable per-Event
 IPFS metadata. The collectible remains visible to wallets and indexers but
-cannot be approved, transferred, or sold outside Mint Up. ERC-721 enumeration,
-resale, and mutable metadata are not implemented.
+cannot be approved, transferred, or sold outside Mint Up. ERC-721 enumeration
+and mutable metadata are not implemented.
 
 ## Model
 
@@ -32,6 +32,14 @@ resale, and mutable metadata are not implemented.
   release a non-cancelled Event's protected balance once. The fee is rounded
   down to 5%, and the exact remainder goes to the Event's configured revenue
   recipient.
+- The active holder can create or replace one private resale offer for a
+  designated non-holder account, or withdraw it before the Event begins. Only
+  that account can accept it. Acceptance pulls the exact listed USDC amount,
+  sends 9% rounded down to Mint Up and the exact remainder to the seller, then
+  changes ownership and consumes the offer atomically. The original protected
+  price and refund right are unchanged.
+- Transfer, check-in, cancellation, Event start, ownership loss, and every pause
+  generation make an earlier offer unusable. Unpausing never revives an offer.
 
 Arbitrum Sepolia's official Circle USDC address is:
 
@@ -87,6 +95,9 @@ remain enforced.
 | 25 | Protected-payment accounting invariant failed |
 | 26 | Event funds are not ready for release |
 | 27 | Event funds were already released |
+| 28 | Resale offer not found |
+| 29 | Pass is unavailable for resale |
+| 30 | Caller is not the designated resale buyer |
 
 ## Commands
 

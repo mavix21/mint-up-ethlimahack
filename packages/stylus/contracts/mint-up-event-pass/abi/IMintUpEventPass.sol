@@ -56,6 +56,21 @@ interface IMintUpEventPass {
         uint256 revenue_amount,
         uint256 fee_amount
     );
+    event EventPassResaleOffered(
+        uint64 indexed pass_id,
+        address indexed seller,
+        address indexed designated_buyer,
+        uint256 price
+    );
+    event EventPassResaleOfferCancelled(uint64 indexed pass_id, address indexed seller);
+    event EventPassResold(
+        uint64 indexed pass_id,
+        address indexed seller,
+        address indexed buyer,
+        uint256 price,
+        uint256 seller_amount,
+        uint256 fee_amount
+    );
     event ContractPaused(bool paused);
     event MintUpAuthorizationUsed(
         bytes32 indexed operation,
@@ -87,6 +102,9 @@ interface IMintUpEventPass {
     function purchase(bytes32 event_id) external returns (uint64 pass_id);
     function claimRefund(uint64 pass_id) external;
     function releaseFunds(bytes32 event_id) external;
+    function createResaleOffer(uint64 pass_id, address designated_buyer, uint256 price) external;
+    function cancelResaleOffer(uint64 pass_id) external;
+    function purchaseResale(uint64 pass_id) external;
     function transferPass(
         uint64 pass_id,
         address to,
@@ -126,6 +144,11 @@ interface IMintUpEventPass {
         external
         view
         returns (uint64 original_price, bool refunded, bool refund_available);
+
+    function resaleOffer(uint64 pass_id)
+        external
+        view
+        returns (address seller, address designated_buyer, uint256 price, bool eligible);
 
     function transferOperation() external view returns (bytes32);
     function authorizationDigest(
