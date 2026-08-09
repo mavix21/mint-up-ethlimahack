@@ -28,6 +28,8 @@ const ATTENDEE_KEY =
 const OPERATOR_KEY =
   "0xc011740e64cd1bcefb4b5b869ac1169f79e8524cd7c6d409b3fe5b7dfd92afa6";
 const PRICE = 25_000_000n;
+const METADATA_URI =
+  "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/local-event.json";
 const UNAUTHORIZED = 1;
 const EVENT_CANCELLED = 5;
 const OUTSIDE_SALE_WINDOW = 7;
@@ -46,7 +48,7 @@ const usdcAbi = parseAbi([
 
 const eventPassAbi = parseAbi([
   "error MintUpError(uint8)",
-  "function registerEvent(bytes32 event_id, address revenue_recipient, uint64 price, uint32 maximum_supply, uint64 sale_start, uint64 sale_end, bool sales_enabled, bool transfers_enabled, address check_in_operator)",
+  "function registerEvent(bytes32 event_id, address revenue_recipient, uint64 price, uint32 maximum_supply, uint64 sale_start, uint64 sale_end, bool sales_enabled, bool transfers_enabled, address check_in_operator, string metadata_uri)",
   "function cancelEvent(bytes32 event_id)",
   "function setPaused(bool paused)",
   "function purchase(bytes32 event_id) returns (uint64)",
@@ -54,6 +56,10 @@ const eventPassAbi = parseAbi([
   "function transferPass(uint64 pass_id, address to)",
   "function checkIn(bytes32 event_id, uint64 pass_id)",
   "function passInfo(uint64 pass_id) view returns (address, bytes32, uint8, bool)",
+  "function ownerOf(uint256 token_id) view returns (address)",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function tokenURI(uint256 token_id) view returns (string)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed token_id)",
   "event EventPassPurchased(uint64 indexed pass_id, bytes32 indexed event_id, address indexed buyer)",
   "event EventPassTransferred(uint64 indexed pass_id, address indexed previous_owner, address indexed new_owner, bytes32 event_id)",
   "event EventPassCheckedIn(uint64 indexed pass_id, bytes32 indexed event_id, address indexed attendee)",
@@ -192,6 +198,7 @@ async function main() {
       true,
       true,
       operator.address,
+      METADATA_URI,
     ],
   });
   await publicClient.waitForTransactionReceipt({ hash });
@@ -210,6 +217,7 @@ async function main() {
       true,
       false,
       operator.address,
+      METADATA_URI,
     ],
   });
   await publicClient.waitForTransactionReceipt({ hash });
@@ -262,6 +270,7 @@ async function main() {
     saleStart,
   );
   assert(eventNames(purchaseReceipt.logs).includes("EventPassPurchased"));
+  assert(eventNames(purchaseReceipt.logs).includes("Transfer"));
   const purchased = purchaseReceipt.logs
     .map((entry) => {
       try {
@@ -311,6 +320,35 @@ async function main() {
     args: [passId],
   });
   assert.equal(purchasingOwner.toLowerCase(), buyer.address.toLowerCase());
+  assert.equal(
+    (
+      await publicClient.readContract({
+        address: eventPass,
+        abi: eventPassAbi,
+        functionName: "ownerOf",
+        args: [passId],
+      })
+    ).toLowerCase(),
+    buyer.address.toLowerCase(),
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "balanceOf",
+      args: [buyer.address],
+    }),
+    1n,
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "tokenURI",
+      args: [passId],
+    }),
+    METADATA_URI,
+  );
 
   hash = await buyerWallet.writeContract({
     address: eventPass,
@@ -367,11 +405,20 @@ async function main() {
     hash,
   });
   assert(eventNames(transferReceipt.logs).includes("EventPassTransferred"));
-  const transferred = decodeEventLog({
-    abi: eventPassAbi,
-    data: transferReceipt.logs[0]!.data,
-    topics: transferReceipt.logs[0]!.topics,
-  });
+  const transferred = transferReceipt.logs
+    .map((entry) => {
+      try {
+        return decodeEventLog({
+          abi: eventPassAbi,
+          data: entry.data,
+          topics: entry.topics,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+    .find((entry) => entry?.eventName === "EventPassTransferred");
+  assert(transferred);
   assert(transferred.eventName === "EventPassTransferred");
   assert.equal(transferred.args.pass_id, passId);
   assert.equal(

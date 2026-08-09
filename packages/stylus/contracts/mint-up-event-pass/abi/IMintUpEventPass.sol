@@ -3,6 +3,20 @@ pragma solidity ^0.8.23;
 
 interface IMintUpEventPass {
     error MintUpError(uint8 code);
+    error ERC721InvalidOwner(address owner);
+    error ERC721NonexistentToken(uint256 token_id);
+    error ERC721IncorrectOwner(address sender, uint256 token_id, address owner);
+    error ERC721InvalidSender(address sender);
+    error ERC721InvalidReceiver(address receiver);
+    error ERC721InsufficientApproval(address operator, uint256 token_id);
+    error ERC721InvalidApprover(address approver);
+    error ERC721InvalidOperator(address operator);
+    error InvalidReceiverWithReason(string reason);
+
+    event Transfer(address indexed from, address indexed to, uint256 indexed token_id);
+    event Approval(address indexed owner, address indexed approved, uint256 indexed token_id);
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
+    event MetadataUpdate(uint256 token_id);
 
     event EventRegistered(
         bytes32 indexed event_id,
@@ -39,7 +53,8 @@ interface IMintUpEventPass {
         uint64 sale_end,
         bool sales_enabled,
         bool transfers_enabled,
-        address check_in_operator
+        address check_in_operator,
+        string calldata metadata_uri
     ) external;
 
     function setEventSales(bytes32 event_id, bool enabled) external;
@@ -77,4 +92,18 @@ interface IMintUpEventPass {
         returns (address owner, bytes32 event_id, uint8 state, bool valid_for_check_in);
 
     function isValidForCheckIn(uint64 pass_id) external view returns (bool);
+
+    function supportsInterface(bytes4 interface_id) external view returns (bool);
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
+    function tokenURI(uint256 token_id) external view returns (string memory);
+    function balanceOf(address owner) external view returns (uint256);
+    function ownerOf(uint256 token_id) external view returns (address);
+    function safeTransferFrom(address from, address to, uint256 token_id) external;
+    function safeTransferFrom(address from, address to, uint256 token_id, bytes calldata data) external;
+    function transferFrom(address from, address to, uint256 token_id) external;
+    function approve(address to, uint256 token_id) external;
+    function setApprovalForAll(address operator, bool approved) external;
+    function getApproved(uint256 token_id) external view returns (address);
+    function isApprovedForAll(address owner, address operator) external view returns (bool);
 }

@@ -1,13 +1,18 @@
 # Mint Up Event Pass
 
-Minimal paid event-pass contract for Arbitrum Stylus. It deliberately does not
-implement ERC-721 approvals, enumeration, metadata, resale, refunds, or token
-configuration after deployment.
+Paid Event Pass contract for Arbitrum Stylus. Each acquired Event Pass is an
+ERC-721 collectible backed by OpenZeppelin Stylus, with immutable per-Event
+IPFS metadata. ERC-721 enumeration, resale, refunds, and mutable metadata are
+not implemented.
 
 ## Model
 
-- Ownership is one address per global `uint64` pass ID.
+- OpenZeppelin ERC-721 is the sole ownership and approval ledger.
+- The ERC-721 collection is named `Mint Up Event Pass` with symbol `MUEP`.
+- Each global `uint64` Pass ID is also its ERC-721 token ID.
 - Event IDs are Mint Up supplied `bytes32` values.
+- Event registration requires an `ipfs://` metadata URI with a valid CID. The
+  URI is captured for each Event Pass when it is acquired and cannot be changed.
 - Pass state is `1` (active) or `2` (attended).
 - Cancellation invalidates entry without deleting ownership or attendance.
 - The administrator is fixed and cannot transfer or check in user passes unless
@@ -22,6 +27,12 @@ Arbitrum Sepolia's official Circle USDC address is:
 Deploy with constructor arguments `(administrator, usdc, initiallyPaused)`.
 Stylus constructors are guarded by the SDK's reserved constructor slot and can
 only execute once.
+
+The collection supports ERC-165, ERC-721, and ERC-721 Metadata. Standard
+ownership reads, approvals, transfers, and both `safeTransferFrom` overloads
+are available. Every successful transfer also emits `EventPassTransferred` for
+Mint Up's ownership projection. Event cancellation, disabled transfers,
+check-in, and emergency pause apply to every public ERC-721 transfer path.
 
 ## Error Codes
 
@@ -98,12 +109,3 @@ cargo stylus deploy \
 This ticket does not deploy to Sepolia. After a later deployment, set the
 `ARBITRUM_SEPOLIA_EVENT_PASS` constant in
 `packages/nextjs/contracts/eventPassEnvironment.ts` to the deployed address.
-
-## Verified Size
-
-Measured locally with Rust `1.91.0`, `stylus-sdk 0.9.0`, and
-`cargo-stylus 0.10.8` against Arbitrum Sepolia:
-
-- Compressed deployment size: 22,832 bytes.
-- Decompressed WASM size: 73,572 bytes.
-- `cargo stylus check`: passed.

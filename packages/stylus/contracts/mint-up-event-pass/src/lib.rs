@@ -3,10 +3,23 @@
 
 extern crate alloc;
 
-use alloc::vec;
-use alloc::vec::Vec;
+use alloc::{
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
+use cid::Cid;
+use openzeppelin_stylus::{
+    token::erc721::{
+        self,
+        extensions::{Erc721Metadata, Erc721UriStorage, IErc721Metadata},
+        Erc721, IErc721,
+    },
+    utils::introspection::erc165::IErc165,
+};
 use stylus_sdk::{
-    alloy_primitives::{Address, Uint, B256, U256},
+    abi::Bytes,
+    alloy_primitives::{aliases::B32, Address, Uint, B256, U256},
     alloy_sol_types::sol,
     prelude::*,
     stylus_core::{calls::context::Call, log},
@@ -70,6 +83,31 @@ sol! {
 #[derive(SolidityError, Debug)]
 pub enum Error {
     MintUpError(MintUpError),
+    InvalidOwner(erc721::ERC721InvalidOwner),
+    NonexistentToken(erc721::ERC721NonexistentToken),
+    IncorrectOwner(erc721::ERC721IncorrectOwner),
+    InvalidSender(erc721::ERC721InvalidSender),
+    InvalidReceiver(erc721::ERC721InvalidReceiver),
+    InvalidReceiverWithReason(erc721::InvalidReceiverWithReason),
+    InsufficientApproval(erc721::ERC721InsufficientApproval),
+    InvalidApprover(erc721::ERC721InvalidApprover),
+    InvalidOperator(erc721::ERC721InvalidOperator),
+}
+
+impl From<erc721::Error> for Error {
+    fn from(value: erc721::Error) -> Self {
+        match value {
+            erc721::Error::InvalidOwner(err) => Self::InvalidOwner(err),
+            erc721::Error::NonexistentToken(err) => Self::NonexistentToken(err),
+            erc721::Error::IncorrectOwner(err) => Self::IncorrectOwner(err),
+            erc721::Error::InvalidSender(err) => Self::InvalidSender(err),
+            erc721::Error::InvalidReceiver(err) => Self::InvalidReceiver(err),
+            erc721::Error::InvalidReceiverWithReason(err) => Self::InvalidReceiverWithReason(err),
+            erc721::Error::InsufficientApproval(err) => Self::InsufficientApproval(err),
+            erc721::Error::InvalidApprover(err) => Self::InvalidApprover(err),
+            erc721::Error::InvalidOperator(err) => Self::InvalidOperator(err),
+        }
+    }
 }
 
 fn error(code: u8) -> Error {
@@ -89,10 +127,10 @@ sol_storage! {
         bool sales_enabled;
         bool transfers_enabled;
         bool cancelled;
+        string metadata_uri;
     }
 
     pub struct PassData {
-        address owner;
         bool attended;
         bytes32 event_id;
     }
@@ -106,6 +144,9 @@ sol_storage! {
         address usdc;
         mapping(bytes32 => EventData) events;
         mapping(uint64 => PassData) passes;
+        Erc721 erc721;
+        Erc721Metadata metadata;
+        Erc721UriStorage token_uris;
     }
 }
 
@@ -125,6 +166,8 @@ impl MintUpEventPass {
         self.usdc.set(usdc);
         self.paused.set(paused);
         self.next_pass_id.set(U64::from(1));
+        self.metadata
+            .constructor("Mint Up Event Pass".to_string(), "MUEP".to_string());
         Ok(())
     }
 
@@ -140,6 +183,7 @@ impl MintUpEventPass {
         sales_enabled: bool,
         transfers_enabled: bool,
         check_in_operator: Address,
+        metadata_uri: String,
     ) -> Result<(), Error> {
         self.only_admin()?;
         if event_id.is_zero()
@@ -148,6 +192,7 @@ impl MintUpEventPass {
             || price == 0
             || maximum_supply == 0
             || sale_start >= sale_end
+            || !valid_ipfs_uri(&metadata_uri)
         {
             return Err(error(INVALID_INPUT));
         }
@@ -165,6 +210,7 @@ impl MintUpEventPass {
         event.exists.set(true);
         event.sales_enabled.set(sales_enabled);
         event.transfers_enabled.set(transfers_enabled);
+        event.metadata_uri.set_str(metadata_uri);
         log(
             self.vm(),
             EventRegistered {
@@ -246,6 +292,7 @@ impl MintUpEventPass {
         }
         let recipient = event.revenue_recipient.get();
         let price = event.price.get().to::<u64>();
+        let metadata_uri = event.metadata_uri.get_string();
         drop(event);
 
         let pass_id = self.next_pass_id.get().to::<u64>();
@@ -267,8 +314,11 @@ impl MintUpEventPass {
             .set(U32::from(issued_supply + 1));
         self.next_pass_id.set(U64::from(next_pass_id));
         let mut pass = self.passes.setter(U64::from(pass_id));
-        pass.owner.set(buyer);
         pass.event_id.set(event_id);
+        drop(pass);
+        let token_id = U256::from(pass_id);
+        self.erc721._mint(buyer, token_id)?;
+        self.token_uris._set_token_uri(token_id, metadata_uri);
         log(
             self.vm(),
             EventPassPurchased {
@@ -281,46 +331,20 @@ impl MintUpEventPass {
     }
 
     pub fn transfer_pass(&mut self, pass_id: u64, to: Address) -> Result<(), Error> {
-        self.not_paused()?;
         if to.is_zero() {
             return Err(error(INVALID_INPUT));
         }
         let sender = self.vm().msg_sender();
-        let pass = self.passes.getter(U64::from(pass_id));
-        let previous_owner = pass.owner.get();
-        if previous_owner.is_zero() {
-            return Err(error(PASS_NOT_FOUND));
-        }
+        let token_id = U256::from(pass_id);
+        let (previous_owner, event_id) = self.require_transferable(token_id)?;
         if previous_owner != sender {
             return Err(error(NOT_PASS_OWNER));
         }
         if to == previous_owner {
             return Err(error(INVALID_INPUT));
         }
-        if pass.attended.get() {
-            return Err(error(PASS_NOT_ACTIVE));
-        }
-        let event_id = pass.event_id.get();
-        drop(pass);
-        let event = self.events.getter(event_id);
-        if event.cancelled.get() {
-            return Err(error(EVENT_CANCELLED));
-        }
-        if !event.transfers_enabled.get() {
-            return Err(error(TRANSFERS_DISABLED));
-        }
-        drop(event);
-
-        self.passes.setter(U64::from(pass_id)).owner.set(to);
-        log(
-            self.vm(),
-            EventPassTransferred {
-                pass_id,
-                previous_owner,
-                new_owner: to,
-                event_id,
-            },
-        );
+        self.erc721.transfer_from(previous_owner, to, token_id)?;
+        self.log_pass_transfer(token_id, previous_owner, to, event_id);
         Ok(())
     }
 
@@ -340,10 +364,10 @@ impl MintUpEventPass {
         drop(event);
 
         let pass = self.passes.getter(U64::from(pass_id));
-        let attendee = pass.owner.get();
-        if attendee.is_zero() {
-            return Err(error(PASS_NOT_FOUND));
-        }
+        let attendee = self
+            .erc721
+            .owner_of(U256::from(pass_id))
+            .map_err(|_| error(PASS_NOT_FOUND))?;
         if pass.event_id.get() != event_id {
             return Err(error(WRONG_EVENT));
         }
@@ -393,10 +417,10 @@ impl MintUpEventPass {
 
     pub fn pass_info(&self, pass_id: u64) -> Result<(Address, B256, u8, bool), Error> {
         let pass = self.passes.getter(U64::from(pass_id));
-        let owner = pass.owner.get();
-        if owner.is_zero() {
-            return Err(error(PASS_NOT_FOUND));
-        }
+        let owner = self
+            .erc721
+            .owner_of(U256::from(pass_id))
+            .map_err(|_| error(PASS_NOT_FOUND))?;
         let event_id = pass.event_id.get();
         let state = if pass.attended.get() {
             ATTENDED
@@ -415,9 +439,175 @@ impl MintUpEventPass {
     pub fn is_valid_for_check_in(&self, pass_id: u64) -> bool {
         let pass = self.passes.getter(U64::from(pass_id));
         let event_id = pass.event_id.get();
-        let active = !pass.owner.get().is_zero() && !pass.attended.get();
+        let active =
+            self.erc721._owner_of(U256::from(pass_id)) != Address::ZERO && !pass.attended.get();
         drop(pass);
         active && self.event_valid(event_id)
+    }
+
+    pub fn supports_interface(&self, interface_id: B32) -> bool {
+        <Self as IErc165>::supports_interface(self, interface_id)
+    }
+
+    pub fn name(&self) -> String {
+        <Self as IErc721Metadata>::name(self)
+    }
+
+    pub fn symbol(&self) -> String {
+        <Self as IErc721Metadata>::symbol(self)
+    }
+
+    #[selector(name = "tokenURI")]
+    pub fn token_uri(&self, token_id: U256) -> Result<String, Error> {
+        <Self as IErc721Metadata>::token_uri(self, token_id)
+    }
+
+    pub fn balance_of(&self, owner: Address) -> Result<U256, Error> {
+        <Self as IErc721>::balance_of(self, owner)
+    }
+
+    pub fn owner_of(&self, token_id: U256) -> Result<Address, Error> {
+        <Self as IErc721>::owner_of(self, token_id)
+    }
+
+    pub fn safe_transfer_from(
+        &mut self,
+        from: Address,
+        to: Address,
+        token_id: U256,
+    ) -> Result<(), Error> {
+        <Self as IErc721>::safe_transfer_from(self, from, to, token_id)
+    }
+
+    #[selector(name = "safeTransferFrom")]
+    pub fn safe_transfer_from_with_data(
+        &mut self,
+        from: Address,
+        to: Address,
+        token_id: U256,
+        data: Bytes,
+    ) -> Result<(), Error> {
+        <Self as IErc721>::safe_transfer_from_with_data(self, from, to, token_id, data)
+    }
+
+    pub fn transfer_from(
+        &mut self,
+        from: Address,
+        to: Address,
+        token_id: U256,
+    ) -> Result<(), Error> {
+        <Self as IErc721>::transfer_from(self, from, to, token_id)
+    }
+
+    pub fn approve(&mut self, to: Address, token_id: U256) -> Result<(), Error> {
+        <Self as IErc721>::approve(self, to, token_id)
+    }
+
+    pub fn set_approval_for_all(&mut self, operator: Address, approved: bool) -> Result<(), Error> {
+        <Self as IErc721>::set_approval_for_all(self, operator, approved)
+    }
+
+    pub fn get_approved(&self, token_id: U256) -> Result<Address, Error> {
+        <Self as IErc721>::get_approved(self, token_id)
+    }
+
+    pub fn is_approved_for_all(&self, owner: Address, operator: Address) -> bool {
+        <Self as IErc721>::is_approved_for_all(self, owner, operator)
+    }
+}
+
+impl IErc721 for MintUpEventPass {
+    type Error = Error;
+
+    fn balance_of(&self, owner: Address) -> Result<U256, Self::Error> {
+        self.erc721.balance_of(owner).map_err(Into::into)
+    }
+
+    fn owner_of(&self, token_id: U256) -> Result<Address, Self::Error> {
+        self.erc721.owner_of(token_id).map_err(Into::into)
+    }
+
+    fn safe_transfer_from(
+        &mut self,
+        from: Address,
+        to: Address,
+        token_id: U256,
+    ) -> Result<(), Self::Error> {
+        <Self as IErc721>::safe_transfer_from_with_data(self, from, to, token_id, vec![].into())
+    }
+
+    fn safe_transfer_from_with_data(
+        &mut self,
+        from: Address,
+        to: Address,
+        token_id: U256,
+        data: Bytes,
+    ) -> Result<(), Self::Error> {
+        let operator = self.vm().msg_sender();
+        <Self as IErc721>::transfer_from(self, from, to, token_id)?;
+        self.erc721
+            ._check_on_erc721_received(operator, from, to, token_id, &data)?;
+        Ok(())
+    }
+
+    fn transfer_from(
+        &mut self,
+        from: Address,
+        to: Address,
+        token_id: U256,
+    ) -> Result<(), Self::Error> {
+        let (previous_owner, event_id) = self.require_transferable(token_id)?;
+        self.erc721.transfer_from(from, to, token_id)?;
+        self.log_pass_transfer(token_id, previous_owner, to, event_id);
+        Ok(())
+    }
+
+    fn approve(&mut self, to: Address, token_id: U256) -> Result<(), Self::Error> {
+        self.erc721.approve(to, token_id).map_err(Into::into)
+    }
+
+    fn set_approval_for_all(
+        &mut self,
+        operator: Address,
+        approved: bool,
+    ) -> Result<(), Self::Error> {
+        self.erc721
+            .set_approval_for_all(operator, approved)
+            .map_err(Into::into)
+    }
+
+    fn get_approved(&self, token_id: U256) -> Result<Address, Self::Error> {
+        self.erc721.get_approved(token_id).map_err(Into::into)
+    }
+
+    fn is_approved_for_all(&self, owner: Address, operator: Address) -> bool {
+        self.erc721.is_approved_for_all(owner, operator)
+    }
+}
+
+impl IErc721Metadata for MintUpEventPass {
+    type Error = Error;
+
+    fn name(&self) -> String {
+        self.metadata.name()
+    }
+
+    fn symbol(&self) -> String {
+        self.metadata.symbol()
+    }
+
+    fn token_uri(&self, token_id: U256) -> Result<String, Self::Error> {
+        self.token_uris
+            .token_uri(token_id, &self.erc721, &self.metadata)
+            .map_err(Into::into)
+    }
+}
+
+impl IErc165 for MintUpEventPass {
+    fn supports_interface(&self, interface_id: B32) -> bool {
+        interface_id == <Self as IErc165>::interface_id()
+            || interface_id == <Self as IErc721>::interface_id()
+            || interface_id == <Self as IErc721Metadata>::interface_id()
     }
 }
 
@@ -430,6 +620,8 @@ mod tests {
     const START: u64 = 100;
     const END: u64 = 200;
     const PRICE: u64 = 25_000_000;
+    const METADATA_URI: &str =
+        "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/event.json";
 
     fn address(byte: u8) -> Address {
         Address::from([byte; 20])
@@ -441,6 +633,7 @@ mod tests {
 
     fn setup() -> (TestVM, MintUpEventPass) {
         let vm = TestVM::default();
+        test_host::install(&vm);
         vm.set_sender(address(1));
         let mut contract = MintUpEventPass::from(&vm);
         contract.constructor(address(1), address(2), false).unwrap();
@@ -465,6 +658,7 @@ mod tests {
                 true,
                 transfers,
                 operator,
+                METADATA_URI.into(),
             )
             .unwrap();
     }
@@ -497,6 +691,35 @@ mod tests {
         contract.purchase(id).unwrap()
     }
 
+    fn topic_address(value: Address) -> B256 {
+        let mut topic = [0; 32];
+        topic[12..].copy_from_slice(value.as_slice());
+        B256::from(topic)
+    }
+
+    fn topic_u256(value: U256) -> B256 {
+        B256::from(value.to_be_bytes::<32>())
+    }
+
+    fn receiver_call(operator: Address, from: Address, token_id: U256, data: &[u8]) -> Vec<u8> {
+        let padded_len = data.len().div_ceil(32) * 32;
+        let mut call = vec![0; 4 + 32 * 5 + padded_len];
+        call[..4].copy_from_slice(erc721::RECEIVER_FN_SELECTOR.as_slice());
+        call[16..36].copy_from_slice(operator.as_slice());
+        call[48..68].copy_from_slice(from.as_slice());
+        call[68..100].copy_from_slice(&token_id.to_be_bytes::<32>());
+        call[100..132].copy_from_slice(&U256::from(128).to_be_bytes::<32>());
+        call[132..164].copy_from_slice(&U256::from(data.len()).to_be_bytes::<32>());
+        call[164..164 + data.len()].copy_from_slice(data);
+        call
+    }
+
+    fn receiver_response(selector: B32) -> Vec<u8> {
+        let mut response = vec![0; 32];
+        response[..4].copy_from_slice(selector.as_slice());
+        response
+    }
+
     #[test]
     fn constructor_and_event_administration_are_restricted() {
         let (vm, mut contract) = setup();
@@ -514,6 +737,7 @@ mod tests {
                 true,
                 true,
                 address(4),
+                METADATA_URI.into(),
             ),
             UNAUTHORIZED,
         );
@@ -531,6 +755,7 @@ mod tests {
                 true,
                 true,
                 address(4),
+                METADATA_URI.into(),
             ),
             EVENT_EXISTS,
         );
@@ -545,9 +770,245 @@ mod tests {
                 true,
                 true,
                 address(4),
+                METADATA_URI.into(),
             ),
             INVALID_INPUT,
         );
+    }
+
+    #[test]
+    fn exposes_erc721_collection_and_metadata_interfaces() {
+        let (_, contract) = setup();
+
+        assert_eq!(contract.name(), "Mint Up Event Pass");
+        assert_eq!(contract.symbol(), "MUEP");
+        assert!(contract.supports_interface(0x01ffc9a7_u32.into()));
+        assert!(contract.supports_interface(0x80ac58cd_u32.into()));
+        assert!(contract.supports_interface(0x5b5e139f_u32.into()));
+        assert!(!contract.supports_interface(0x12345678_u32.into()));
+    }
+
+    #[test]
+    fn event_registration_requires_public_ipfs_metadata() {
+        let (_, mut contract) = setup();
+
+        for metadata_uri in [
+            "",
+            "https://example.com/event.json",
+            "ipfs://",
+            "ipfs:///event.json",
+            "ipfs://bad cid/event.json",
+            "ipfs://hello/event.json",
+        ] {
+            assert_error(
+                contract.register_event(
+                    event_id(9),
+                    address(3),
+                    PRICE,
+                    1,
+                    START,
+                    END,
+                    true,
+                    true,
+                    address(4),
+                    metadata_uri.into(),
+                ),
+                INVALID_INPUT,
+            );
+        }
+    }
+
+    #[test]
+    fn purchase_mints_erc721_with_pass_id_uri_balance_and_transfer_event() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let buyer = address(6);
+        register(&mut contract, id, 1, true, address(4));
+        vm.clear_mocks();
+
+        let pass_id = buy(&vm, &mut contract, id, buyer);
+
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), buyer);
+        assert_eq!(contract.balance_of(buyer).unwrap(), U256::from(1));
+        assert_eq!(
+            contract.token_uri(U256::from(pass_id)).unwrap(),
+            METADATA_URI
+        );
+        assert!(matches!(
+            contract.token_uri(U256::from(999)),
+            Err(Error::NonexistentToken(_))
+        ));
+        let transfer = vm
+            .get_emitted_logs()
+            .into_iter()
+            .find(|(topics, _)| {
+                topics.first()
+                    == Some(&stylus_sdk::alloy_primitives::keccak256(
+                        "Transfer(address,address,uint256)",
+                    ))
+            })
+            .expect("purchase should emit the ERC-721 Transfer event");
+        assert_eq!(
+            transfer.0,
+            vec![
+                stylus_sdk::alloy_primitives::keccak256("Transfer(address,address,uint256)"),
+                B256::ZERO,
+                topic_address(buyer),
+                topic_u256(U256::from(pass_id)),
+            ]
+        );
+    }
+
+    #[test]
+    fn approvals_update_the_only_owner_ledger_and_preserve_pass_data() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let owner = address(6);
+        let operator = address(7);
+        let recipient = address(8);
+        register(&mut contract, id, 2, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, owner);
+        let token_id = U256::from(pass_id);
+
+        contract.approve(operator, token_id).unwrap();
+        assert_eq!(contract.get_approved(token_id).unwrap(), operator);
+        vm.clear_mocks();
+        vm.set_sender(operator);
+        contract.transfer_from(owner, recipient, token_id).unwrap();
+
+        assert_eq!(contract.owner_of(token_id).unwrap(), recipient);
+        assert_eq!(contract.balance_of(owner).unwrap(), U256::ZERO);
+        assert_eq!(contract.balance_of(recipient).unwrap(), U256::from(1));
+        assert_eq!(
+            contract.pass_info(pass_id).unwrap(),
+            (recipient, id, ACTIVE, true)
+        );
+        assert_eq!(contract.token_uri(token_id).unwrap(), METADATA_URI);
+        assert_eq!(contract.get_approved(token_id).unwrap(), Address::ZERO);
+        let event_topics: Vec<_> = vm
+            .get_emitted_logs()
+            .into_iter()
+            .map(|(topics, _)| topics[0])
+            .collect();
+        assert!(
+            event_topics.contains(&stylus_sdk::alloy_primitives::keccak256(
+                "Transfer(address,address,uint256)"
+            ))
+        );
+        assert!(
+            event_topics.contains(&stylus_sdk::alloy_primitives::keccak256(
+                "EventPassTransferred(uint64,address,address,bytes32)"
+            ))
+        );
+
+        let second_pass_id = buy(&vm, &mut contract, id, owner);
+        let second_token_id = U256::from(second_pass_id);
+        contract.set_approval_for_all(operator, true).unwrap();
+        assert!(contract.is_approved_for_all(owner, operator));
+        vm.set_sender(operator);
+        contract
+            .transfer_from(owner, address(9), second_token_id)
+            .unwrap();
+        assert_eq!(contract.owner_of(second_token_id).unwrap(), address(9));
+    }
+
+    #[test]
+    fn safe_transfers_require_receiver_acceptance_for_both_variants() {
+        for data in [Vec::new(), vec![1, 2, 3]] {
+            let (vm, mut contract) = setup();
+            let id = event_id(1);
+            let owner = address(6);
+            let receiver = address(9);
+            register(&mut contract, id, 1, true, address(4));
+            let pass_id = buy(&vm, &mut contract, id, owner);
+            let token_id = U256::from(pass_id);
+            vm.set_code(receiver, vec![1]);
+            vm.mock_call(
+                receiver,
+                receiver_call(owner, owner, token_id, &data),
+                Ok(receiver_response(erc721::RECEIVER_FN_SELECTOR)),
+            );
+
+            if data.is_empty() {
+                contract
+                    .safe_transfer_from(owner, receiver, token_id)
+                    .unwrap();
+            } else {
+                contract
+                    .safe_transfer_from_with_data(owner, receiver, token_id, data.into())
+                    .unwrap();
+            }
+            assert_eq!(contract.owner_of(token_id).unwrap(), receiver);
+            let logs = vm.get_emitted_logs();
+            let transfer_topics = &logs[logs.len() - 2..];
+            assert_eq!(
+                transfer_topics[0].0[0],
+                stylus_sdk::alloy_primitives::keccak256("Transfer(address,address,uint256)")
+            );
+            assert_eq!(
+                transfer_topics[1].0[0],
+                stylus_sdk::alloy_primitives::keccak256(
+                    "EventPassTransferred(uint64,address,address,bytes32)"
+                )
+            );
+        }
+
+        let (vm, mut contract) = setup();
+        let id = event_id(2);
+        let owner = address(6);
+        let receiver = address(9);
+        register(&mut contract, id, 1, true, address(4));
+        let token_id = U256::from(buy(&vm, &mut contract, id, owner));
+        vm.set_code(receiver, vec![1]);
+        vm.mock_call(
+            receiver,
+            receiver_call(owner, owner, token_id, &[]),
+            Ok(receiver_response(0x12345678_u32.into())),
+        );
+        assert!(matches!(
+            contract.safe_transfer_from(owner, receiver, token_id),
+            Err(Error::InvalidReceiver(_))
+        ));
+    }
+
+    #[test]
+    fn approvals_cannot_bypass_any_transfer_lifecycle_restriction() {
+        let cases = [
+            (false, false, false),
+            (true, false, false),
+            (false, true, false),
+            (false, false, true),
+        ];
+
+        for (paused, cancelled, attended) in cases {
+            let (vm, mut contract) = setup();
+            let id = event_id(1);
+            let owner = address(6);
+            let operator = address(7);
+            register(
+                &mut contract,
+                id,
+                1,
+                !(!paused && !cancelled && !attended),
+                address(4),
+            );
+            let pass_id = buy(&vm, &mut contract, id, owner);
+            let token_id = U256::from(pass_id);
+            contract.approve(operator, token_id).unwrap();
+            if paused {
+                vm.set_sender(address(1));
+                contract.set_paused(true).unwrap();
+            } else if cancelled {
+                vm.set_sender(address(1));
+                contract.cancel_event(id).unwrap();
+            } else if attended {
+                vm.set_sender(address(4));
+                contract.check_in(id, pass_id).unwrap();
+            }
+            vm.set_sender(operator);
+
+            assert!(contract.transfer_from(owner, address(8), token_id).is_err());
+        }
     }
 
     #[test]
@@ -746,6 +1207,186 @@ impl MintUpEventPass {
     fn event_valid(&self, event_id: B256) -> bool {
         let event = self.events.getter(event_id);
         !self.paused.get() && event.exists.get() && !event.cancelled.get()
+    }
+
+    fn require_transferable(&self, token_id: U256) -> Result<(Address, B256), Error> {
+        self.not_paused()?;
+        let owner = self.erc721.owner_of(token_id)?;
+        let pass_id = token_id.to::<u64>();
+        let pass = self.passes.getter(U64::from(pass_id));
+        if pass.attended.get() {
+            return Err(error(PASS_NOT_ACTIVE));
+        }
+        let event_id = pass.event_id.get();
+        drop(pass);
+        let event = self.events.getter(event_id);
+        if event.cancelled.get() {
+            return Err(error(EVENT_CANCELLED));
+        }
+        if !event.transfers_enabled.get() {
+            return Err(error(TRANSFERS_DISABLED));
+        }
+        Ok((owner, event_id))
+    }
+
+    fn log_pass_transfer(
+        &self,
+        token_id: U256,
+        previous_owner: Address,
+        new_owner: Address,
+        event_id: B256,
+    ) {
+        log(
+            self.vm(),
+            EventPassTransferred {
+                pass_id: token_id.to::<u64>(),
+                previous_owner,
+                new_owner,
+                event_id,
+            },
+        );
+    }
+}
+
+fn valid_ipfs_uri(uri: &str) -> bool {
+    uri.strip_prefix("ipfs://").is_some_and(|location| {
+        let root = location.split('/').next().unwrap_or_default();
+        Cid::try_from(root).is_ok() && !location.chars().any(char::is_whitespace)
+    })
+}
+
+#[cfg(test)]
+mod test_host {
+    use std::{cell::RefCell, ptr, slice};
+
+    use stylus_sdk::{
+        alloy_primitives::Address,
+        stylus_core::{host::AccountAccess, MessageAccess},
+        testing::TestVM,
+    };
+
+    thread_local! {
+        static VM: RefCell<Option<TestVM>> = const { RefCell::new(None) };
+        static RETURN_DATA: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+    }
+
+    pub fn install(vm: &TestVM) {
+        VM.with(|current| *current.borrow_mut() = Some(vm.clone()));
+        RETURN_DATA.with(|data| data.borrow_mut().clear());
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn msg_sender(destination: *mut u8) {
+        VM.with(|current| {
+            let sender = current.borrow().as_ref().unwrap().msg_sender();
+            ptr::copy_nonoverlapping(sender.as_ptr(), destination, 20);
+        });
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn emit_log(data: *const u8, len: usize, topics: usize) {
+        let bytes = slice::from_raw_parts(data, len);
+        VM.with(|current| {
+            stylus_sdk::stylus_core::host::LogAccess::emit_log(
+                current.borrow().as_ref().unwrap(),
+                bytes,
+                topics,
+            );
+        });
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn account_code_size(address: *const u8) -> usize {
+        let address = Address::from_slice(slice::from_raw_parts(address, 20));
+        VM.with(|current| current.borrow().as_ref().unwrap().code_size(address))
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn account_codehash(address: *const u8, destination: *mut u8) {
+        let address = Address::from_slice(slice::from_raw_parts(address, 20));
+        VM.with(|current| {
+            let hash = current.borrow().as_ref().unwrap().code_hash(address);
+            ptr::copy_nonoverlapping(hash.as_ptr(), destination, 32);
+        });
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn storage_flush_cache(_clear: bool) {}
+
+    #[no_mangle]
+    unsafe extern "C" fn call_contract(
+        contract: *const u8,
+        calldata: *const u8,
+        calldata_len: usize,
+        _value: *const u8,
+        _gas: u64,
+        return_data_len: *mut usize,
+    ) -> u8 {
+        let contract = Address::from_slice(slice::from_raw_parts(contract, 20));
+        let calldata = slice::from_raw_parts(calldata, calldata_len).to_vec();
+        let result = VM.with(|current| {
+            current
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .snapshot()
+                .call_returns
+                .get(&(contract, calldata))
+                .cloned()
+                .unwrap_or(Ok(Vec::new()))
+        });
+        let (status, data) = match result {
+            Ok(data) => (0, data),
+            Err(data) => (1, data),
+        };
+        *return_data_len = data.len();
+        RETURN_DATA.with(|current| *current.borrow_mut() = data);
+        status
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn delegate_call_contract(
+        _contract: *const u8,
+        _calldata: *const u8,
+        _calldata_len: usize,
+        _gas: u64,
+        return_data_len: *mut usize,
+    ) -> u8 {
+        *return_data_len = 0;
+        1
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn static_call_contract(
+        _contract: *const u8,
+        _calldata: *const u8,
+        _calldata_len: usize,
+        _gas: u64,
+        return_data_len: *mut usize,
+    ) -> u8 {
+        *return_data_len = 0;
+        1
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn return_data_size() -> usize {
+        RETURN_DATA.with(|data| data.borrow().len())
+    }
+
+    #[no_mangle]
+    unsafe extern "C" fn read_return_data(
+        destination: *mut u8,
+        offset: usize,
+        size: usize,
+    ) -> usize {
+        RETURN_DATA.with(|data| {
+            let data = data.borrow();
+            let available = data.len().saturating_sub(offset).min(size);
+            if available != 0 {
+                ptr::copy_nonoverlapping(data.as_ptr().add(offset), destination, available);
+            }
+            available
+        })
     }
 }
 
