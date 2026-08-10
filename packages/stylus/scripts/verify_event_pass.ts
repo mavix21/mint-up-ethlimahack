@@ -14,12 +14,14 @@ const deployment = JSON.parse(
 ) as EventPassDemoDeployment;
 const rpcUrl =
   process.env["RPC_URL_SEPOLIA"] ?? "https://sepolia-rollup.arbitrum.io/rpc";
+const nativeVerification = process.env["STYLUS_VERIFY_NATIVE"] === "1";
 
 execFileSync(
   "cargo",
   [
     "stylus",
     "verify",
+    ...(nativeVerification ? ["--no-verify", "--skip-clean"] : []),
     `--endpoint=${rpcUrl}`,
     `--deployment-tx=${deployment.deploymentTransaction}`,
   ],

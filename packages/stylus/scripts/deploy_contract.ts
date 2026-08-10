@@ -35,6 +35,15 @@ export default async function deployStylusContract(
   console.log(`📄 Contract name: ${config.contractName}`);
 
   try {
+    if (config.chain.id !== arbitrumNitro.id && !deployOptions.estimateGas) {
+      // Remote deployments must not reuse artifacts produced by another host architecture.
+      await executeCommand(
+        "cargo clean --release",
+        path.join("contracts", deployOptions.contract!),
+        "Cleaning release artifacts before remote deployment",
+      );
+    }
+
     // Step 1: Deploy the contract using cargo stylus with contract address
     // --contract-address='${config.contractAddress}' deactivated for now as it's not working. Issue https://github.com/OffchainLabs/cargo-stylus/issues/171
     const deployCommand = await buildDeployCommand(config, deployOptions);
