@@ -1879,9 +1879,9 @@ const deployedContracts = {
   },
   "421614": {
     "mint-up-event-pass": {
-      address: "0x48e8f79d464909c4c6bb20f8341ef4054c274ffa",
+      address: "0x1311051d9209f6f37b2eb6f35963e1073b5d067c",
       txHash:
-        "0xf784633b30cdbc66f407589889167010a496297b4aceeed5aeda902488a6869c",
+        "0x557e5a8164abed7660ae271421c278f0041fe6bd303e8dbaf6c82518846c09c0",
       abi: [
         {
           inputs: [
