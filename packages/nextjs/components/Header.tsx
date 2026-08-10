@@ -30,6 +30,10 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/",
   },
   {
+    label: "Ask Minti",
+    href: "/chat",
+  },
+  {
     label: "My Passes",
     href: "/my-passes",
   },
