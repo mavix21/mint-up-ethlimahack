@@ -4,11 +4,16 @@ import { parseAbi } from "viem";
 
 import { eventPassEnvironment } from "../contracts/eventPassEnvironment";
 import { fetchAuthQuery } from "./auth-server";
-import { getEventPassResale } from "./event-pass-resale-api";
+import {
+  getEventPassResale,
+  listPrivateResalePurchases,
+} from "./event-pass-resale-api";
 import { createEventPassPublicClient } from "./event-pass-public-client";
 import {
+  privateResalePurchaseOffersSchema,
   privateResaleOfferSchema,
   type PrivateResaleOffer,
+  type PrivateResalePurchaseOffer,
 } from "./event-pass-resale-schema";
 
 const configAbi = parseAbi([
@@ -43,4 +48,12 @@ export async function fetchPrivateResaleOffer(
   } catch {
     return null;
   }
+}
+
+export async function fetchPrivateResalePurchases(): Promise<
+  PrivateResalePurchaseOffer[]
+> {
+  return privateResalePurchaseOffersSchema.parse(
+    await fetchAuthQuery(listPrivateResalePurchases, {}),
+  );
 }

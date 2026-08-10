@@ -2,7 +2,9 @@ import { type FunctionReference, anyApi } from "convex/server";
 
 import type {
   PrivateResaleOffer,
+  PrivateResalePurchaseOffer,
   ResalePreparation,
+  ResalePurchasePreparation,
   ResaleWithdrawalPreparation,
 } from "./event-pass-resale-schema";
 
@@ -45,5 +47,33 @@ export const reconcileEventPassResale = anyApi.eventPassResales
   "action",
   "public",
   { resaleId: string },
+  null
+>;
+
+export const listPrivateResalePurchases = anyApi.eventPassResales
+  .listForBuyer as FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  PrivateResalePurchaseOffer[]
+>;
+
+export const prepareEventPassResalePurchase = anyApi.eventPassResalePurchases
+  .prepare as FunctionReference<
+  "mutation",
+  "public",
+  {
+    passId: string;
+    chainId: number;
+    idempotencyKey: string;
+  },
+  ResalePurchasePreparation
+>;
+
+export const reconcileEventPassResalePurchase = anyApi.eventPassResalePurchases
+  .reconcile as FunctionReference<
+  "action",
+  "public",
+  { resalePurchaseId: string },
   null
 >;

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { CalendarDays, MapPin, Ticket } from "lucide-react";
+import { erc20Abi } from "viem";
 
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
 
@@ -18,14 +20,18 @@ import {
 import { EventPassTransfer } from "~~/components/passes/event-pass-transfer";
 import { EventPassResale } from "~~/components/passes/event-pass-resale";
 import { EventPassResaleContent } from "~~/components/passes/event-pass-resale-content";
+import { PrivateResalePurchases } from "~~/components/passes/private-resale-purchases";
+import { eventPassEnvironment } from "~~/contracts/eventPassEnvironment";
 import { fetchAuthQuery } from "~~/lib/auth-server";
 import {
   fetchPrivateResaleOffer,
+  fetchPrivateResalePurchases,
   getEventPassResaleNow,
   isEventPassResaleContractActive,
 } from "~~/lib/event-pass-resale-data";
 import { isEventPassResaleEligible } from "~~/lib/event-pass-resale-eligibility";
 import type { PrivateResaleOffer } from "~~/lib/event-pass-resale-schema";
+import { createEventPassPublicClient } from "~~/lib/event-pass-public-client";
 import { isEventPassTransferEligible } from "~~/lib/event-pass-transfer-eligibility";
 import {
   fetchMyPasses,
@@ -213,22 +219,46 @@ function PassGroupSection({
 }
 
 async function MyPassesContent() {
-  const [passes, account, resaleContractActive, now] = await Promise.all([
-    fetchMyPasses(),
-    fetchAuthQuery(getWalletPasskeyAccount, {}).catch(() => null),
-    isEventPassResaleContractActive(),
-    getEventPassResaleNow(),
-  ]);
+  await connection();
+  const [passes, account, resaleContractActive, now, purchaseOffersResult] =
+    await Promise.all([
+      fetchMyPasses(),
+      fetchAuthQuery(getWalletPasskeyAccount, {}).catch(() => null),
+      isEventPassResaleContractActive(),
+      getEventPassResaleNow(),
+      fetchPrivateResalePurchases()
+        .then(offers => ({ offers, unavailable: false }))
+        .catch(() => ({ offers: [], unavailable: true })),
+    ]);
+  const { offers: purchaseOffers, unavailable: purchaseOffersUnavailable } =
+    purchaseOffersResult;
   const groups = groupPassesByEvent(passes);
-  const resaleEntries = await Promise.all(
-    passes.map(
-      async pass =>
-        [pass.passId, await fetchPrivateResaleOffer(pass.passId)] as const,
+  const [resaleEntries, initialUsdcBalance] = await Promise.all([
+    Promise.all(
+      passes.map(
+        async pass =>
+          [pass.passId, await fetchPrivateResaleOffer(pass.passId)] as const,
+      ),
     ),
-  );
+    account && purchaseOffers.length > 0
+      ? createEventPassPublicClient(eventPassEnvironment.chainId)
+          .readContract({
+            address: eventPassEnvironment.usdcAddress,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [account.address],
+          })
+          .then(value => value.toString())
+          .catch(() => null)
+      : Promise.resolve(null),
+  ]);
   const resales = new Map(resaleEntries);
 
-  if (groups.length === 0) {
+  if (
+    groups.length === 0 &&
+    purchaseOffers.length === 0 &&
+    !purchaseOffersUnavailable
+  ) {
     return (
       <Empty className="min-h-72 border bg-card">
         <EmptyHeader>
@@ -253,12 +283,20 @@ async function MyPassesContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {passes.length} pass{passes.length === 1 ? "" : "es"} across{" "}
-          {groups.length} event{groups.length === 1 ? "" : "s"}
-        </p>
-      </div>
+      <PrivateResalePurchases
+        offers={purchaseOffers}
+        account={account}
+        initialUsdcBalance={initialUsdcBalance}
+        unavailable={purchaseOffersUnavailable}
+      />
+      {groups.length > 0 ? (
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            {passes.length} pass{passes.length === 1 ? "" : "es"} across{" "}
+            {groups.length} event{groups.length === 1 ? "" : "s"}
+          </p>
+        </div>
+      ) : null}
       {groups.map((group, index) => (
         <PassGroupSection
           key={group.key}

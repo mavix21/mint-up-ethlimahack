@@ -50,11 +50,53 @@ export const privateResaleOfferSchema = z
   })
   .strict();
 
+const displayedUsdcSchema = z
+  .object({
+    amountSubunits: z.string().regex(/^[1-9]\d*$/),
+    denomination: z.literal("USDC"),
+  })
+  .strict();
+
+export const privateResalePurchaseOfferSchema = z
+  .object({
+    passId: z.string().min(1).max(100),
+    status: z.enum(["actionable", "unavailable"]),
+    event: z
+      .object({
+        name: z.string().min(1).max(300),
+        startTime: z.number().finite(),
+      })
+      .strict(),
+    seller: z.object({ name: z.string().min(1).max(200) }).strict(),
+    price: displayedUsdcSchema,
+    originalProtectedPrice: displayedUsdcSchema,
+    protection: z.literal("original_price_only"),
+  })
+  .strict();
+
+export const privateResalePurchaseOffersSchema = z.array(
+  privateResalePurchaseOfferSchema,
+);
+
+export const resalePurchasePreparationSchema = z
+  .object({
+    resalePurchaseId: z.string().min(1).max(200),
+    priceAmountSubunits: z.string().regex(/^[1-9]\d*$/),
+    expiresAt: z.number().int().positive(),
+  })
+  .strict();
+
 export type ResalePreparation = z.infer<typeof resalePreparationSchema>;
 export type ResaleWithdrawalPreparation = z.infer<
   typeof resaleWithdrawalPreparationSchema
 >;
 export type PrivateResaleOffer = z.infer<typeof privateResaleOfferSchema>;
+export type PrivateResalePurchaseOffer = z.infer<
+  typeof privateResalePurchaseOfferSchema
+>;
+export type ResalePurchasePreparation = z.infer<
+  typeof resalePurchasePreparationSchema
+>;
 
 export const resaleRecipientUnavailableMessage =
   "Ask them to secure their passes, then check the email and try again.";

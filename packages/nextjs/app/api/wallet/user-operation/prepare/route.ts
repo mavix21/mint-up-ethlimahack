@@ -22,11 +22,16 @@ export async function POST(request: Request) {
   const purchaseId = value.purchaseId;
   const transferId = value.transferId;
   const resaleId = value.resaleId;
+  const resalePurchaseId = value.resalePurchaseId;
   const hasPurchaseId = typeof purchaseId === "string";
   const hasTransferId = typeof transferId === "string";
   const hasResaleId = typeof resaleId === "string";
+  const hasResalePurchaseId = typeof resalePurchaseId === "string";
   if (
-    Number(hasPurchaseId) + Number(hasTransferId) + Number(hasResaleId) !==
+    Number(hasPurchaseId) +
+      Number(hasTransferId) +
+      Number(hasResaleId) +
+      Number(hasResalePurchaseId) !==
     1
   ) {
     return Response.json(
@@ -38,7 +43,9 @@ export async function POST(request: Request) {
     ? { purchaseId }
     : hasTransferId
       ? { transferId: transferId as string }
-      : { resaleId: resaleId as string };
+      : hasResaleId
+        ? { resaleId: resaleId as string }
+        : { resalePurchaseId: resalePurchaseId as string };
   try {
     const prepared = await fetchAuthAction(preparePimlicoUserOperation, intent);
     return Response.json(prepareUserOperationResultSchema.parse(prepared));
