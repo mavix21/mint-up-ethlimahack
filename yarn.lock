@@ -19,6 +19,43 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ai-sdk/gateway@npm:4.0.47":
+  version: 4.0.47
+  resolution: "@ai-sdk/gateway@npm:4.0.47"
+  dependencies:
+    "@ai-sdk/provider": 4.0.7
+    "@ai-sdk/provider-utils": 5.0.26
+    "@vercel/oidc": 3.2.0
+  peerDependencies:
+    zod: ^3.25.76 || ^4.1.8
+  checksum: 410a1e4464b55723559a6b529cb7327c042869ea635c6bc227fdff2c65236c7ea74e191c789355a34b20c81866e6ca43525b84cd8b22cef66b316fb9dca1a042
+  languageName: node
+  linkType: hard
+
+"@ai-sdk/provider-utils@npm:5.0.26":
+  version: 5.0.26
+  resolution: "@ai-sdk/provider-utils@npm:5.0.26"
+  dependencies:
+    "@ai-sdk/provider": 4.0.7
+    "@standard-schema/spec": ^1.1.0
+    "@workflow/serde": 4.1.0
+    eventsource-parser: ^3.0.8
+    undici: ^7.28.0
+  peerDependencies:
+    zod: ^3.25.76 || ^4.1.8
+  checksum: a2db55920377ee8e30bdcaa05762ca562e1b3ff69aa6ec31c6368ebcc917a49c1b745b94634a73f2e853c9399f643572da5437640ed4e222cb8d1e4561848d0d
+  languageName: node
+  linkType: hard
+
+"@ai-sdk/provider@npm:4.0.7":
+  version: 4.0.7
+  resolution: "@ai-sdk/provider@npm:4.0.7"
+  dependencies:
+    json-schema: ^0.4.0
+  checksum: 95ef6f8edade2695a46d2630e5136c9349b93f4bb9d7438d621bdd8e0dbfa3ab241c3f2d4e2c69e7da9c623382e3bfb86c6faa0c1ba56fbd9c393bd35b507bbd
+  languageName: node
+  linkType: hard
+
 "@alloc/quick-lru@npm:^5.2.0":
   version: 5.2.0
   resolution: "@alloc/quick-lru@npm:5.2.0"
@@ -5040,6 +5077,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@shadcn/react@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@shadcn/react@npm:0.3.0"
+  peerDependencies:
+    "@types/react": ">=19"
+    react: ">=19"
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    react:
+      optional: true
+  checksum: 1416b8da0b2fbb4da12f7ab70b17f6d9da0b63bf3e06871c969428dead6e857a74222ea61545f96ac1343f7609e8638431037037aea48230930d6ebc324a2705
+  languageName: node
+  linkType: hard
+
 "@signinwithethereum/siwe-parser@npm:^4.2.0":
   version: 4.2.0
   resolution: "@signinwithethereum/siwe-parser@npm:4.2.0"
@@ -6346,6 +6398,7 @@ __metadata:
     "@heroicons/react": ^2.2.0
     "@playwright/test": ^1.62.1
     "@rainbow-me/rainbowkit": 2.2.9
+    "@shadcn/react": ^0.3.0
     "@simplewebauthn/browser": 13.3.0
     "@tailwindcss/postcss": ^4.2.4
     "@tanstack/react-query": ^5.59.15
@@ -8388,6 +8441,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@workflow/serde@npm:4.1.0":
+  version: 4.1.0
+  resolution: "@workflow/serde@npm:4.1.0"
+  checksum: eb07267e28d75ca86e8bb4186326b25e6bc50b78d324abdf3fbd8723c33b157655c0e30261f8f4e5c7a0fc68bf1182f263d2dbd85aa43e3cbab5825c462e88a3
+  languageName: node
+  linkType: hard
+
 "@x402/core@npm:^2.21.0, @x402/core@npm:~2.21.0":
   version: 2.21.0
   resolution: "@x402/core@npm:2.21.0"
@@ -8656,6 +8716,19 @@ __metadata:
   version: 7.1.4
   resolution: "agent-base@npm:7.1.4"
   checksum: 86a7f542af277cfbd77dd61e7df8422f90bac512953709003a1c530171a9d019d072e2400eab2b59f84b49ab9dd237be44315ca663ac73e82b3922d10ea5eafa
+  languageName: node
+  linkType: hard
+
+"ai@npm:^7.0.59":
+  version: 7.0.59
+  resolution: "ai@npm:7.0.59"
+  dependencies:
+    "@ai-sdk/gateway": 4.0.47
+    "@ai-sdk/provider": 4.0.7
+    "@ai-sdk/provider-utils": 5.0.26
+  peerDependencies:
+    zod: ^3.25.76 || ^4.1.8
+  checksum: b9d5345adc36730f49e2080431a0b2a982889b32758241c5b81d1d57e8cb1e9b787d652d2a51f01466a04359e402d775d07f9c98132cb4733ad1cef131630975
   languageName: node
   linkType: hard
 
@@ -12034,6 +12107,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eventsource-parser@npm:^3.0.8":
+  version: 3.1.1
+  resolution: "eventsource-parser@npm:3.1.1"
+  checksum: ab220722d2ae82818b92e0d92a2fd333102f384a0314190ad1d469dc9598ade8047bb83644e3b09f7766becbda9b84a265508b66272aa57d8c76d2afd5c29fa8
+  languageName: node
+  linkType: hard
+
 "eventsource@npm:^3.0.2":
   version: 3.0.7
   resolution: "eventsource@npm:3.0.7"
@@ -14954,6 +15034,13 @@ __metadata:
   version: 8.0.2
   resolution: "json-schema-typed@npm:8.0.2"
   checksum: 8ddb3c2b1bad406507ea077d4d8cfe6dae5b920f642efab145e4bd6e0d3984f01034ee4467bbeabd51e129b17d7446ceb357a6b1648857fdfaf61ba8ef621ff6
+  languageName: node
+  linkType: hard
+
+"json-schema@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "json-schema@npm:0.4.0"
+  checksum: 66389434c3469e698da0df2e7ac5a3281bcff75e797a5c127db7c5b56270e01ae13d9afa3c03344f76e32e81678337a8c912bdbb75101c62e487dc3778461d72
   languageName: node
   linkType: hard
 
@@ -19629,6 +19716,7 @@ __metadata:
   resolution: "ss@workspace:."
   dependencies:
     "@xstate/react": ^6.1.0
+    ai: ^7.0.59
     husky: ^8.0.1
     lint-staged: ^13.0.3
     xstate: ^5.32.5
@@ -20876,7 +20964,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:^7.11.0, undici@npm:^7.16.0, undici@npm:^7.27.2":
+"undici@npm:^7.11.0, undici@npm:^7.16.0, undici@npm:^7.27.2, undici@npm:^7.28.0":
   version: 7.29.0
   resolution: "undici@npm:7.29.0"
   checksum: b3327e05259e66c61d3e05242bf63899c68d277302208f4fc1c7c0b880a9ba82651b8b3215584ffd424d8c8410f0114b6c3a89e6af604c703dc33009daa99ed3

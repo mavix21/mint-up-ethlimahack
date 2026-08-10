@@ -46,6 +46,7 @@
   "packageManager": "yarn@3.2.3",
   "dependencies": {
     "@xstate/react": "^6.1.0",
+    "ai": "^7.0.59",
     "xstate": "^5.32.5"
   }
 }
