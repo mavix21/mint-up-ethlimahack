@@ -113,8 +113,9 @@ describe("purchase preparation route", () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
-      message:
-        "This Event Pass is no longer available. Refresh the offer and try again.",
+      code: "event_pass_sold_out",
+      message: "This Event Pass is sold out.",
+      stage: "backend_preparation",
     });
   });
 
