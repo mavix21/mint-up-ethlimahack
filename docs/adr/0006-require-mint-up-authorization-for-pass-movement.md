@@ -1,0 +1,3 @@
+# Require Mint Up authorization for Event Pass movement
+
+ERC-721 compatibility makes Event Passes externally visible but does not make standard approvals or transfers available: those entry points always reject, while Mint Up transfer and resale operations require both the holder's authorization and a short-lived EIP-712 authorization from Mint Up bound to the exact action, parties, Pass, price, nonce, chain, and contract. This prevents owners and third-party marketplaces from moving or selling an Event Pass outside platform eligibility and fee rules while preserving standard ownership reads and `Transfer` events for collection indexers.
