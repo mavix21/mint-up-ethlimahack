@@ -91,10 +91,10 @@ export function EventPassPurchaseError({ onRetry }: { onRetry?: () => void }) {
 
 export function EventPassPurchaseSuccess({ eventName }: { eventName: string }) {
   return (
-    <p>
+    <span>
       <strong>{eventName}</strong>
       <br />
       Your Event Pass is confirmed.
-    </p>
+    </span>
   );
 }

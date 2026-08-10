@@ -71,6 +71,7 @@ describe("Get Pass rendered states", () => {
 
     expect(html).toContain("ETH Lima 2026");
     expect(html).toContain("Your Event Pass is confirmed.");
+    expect(html).not.toContain("<p>");
     expectBuyerSafe(html);
   });
 });
