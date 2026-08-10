@@ -21,7 +21,7 @@ export function WalletEmptyState() {
       </div>
 
       <p className="mt-6 max-w-xs text-xs leading-5 text-muted-foreground">
-        No seed phrase. No private key to save. Your device keeps it safe.
+        Nothing extra to remember. Your device keeps it safe.
       </p>
     </div>
   );

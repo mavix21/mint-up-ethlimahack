@@ -83,8 +83,8 @@ export default function Home({ searchParams }: HomePageProps) {
           </h1>
         </div>
         <p className="text-base leading-7 text-muted-foreground">
-          Browse eligible Mint Up events and secure one onchain Event Pass, paid
-          directly to the organizer in USDC.
+          Browse eligible Mint Up events and secure an Event Pass with your
+          original USDC payment protected until the Event begins.
         </p>
       </header>
 

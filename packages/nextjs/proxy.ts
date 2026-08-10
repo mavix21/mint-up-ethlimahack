@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "~~/lib/auth-server";
 
-const protectedPrefixes = ["/account", "/wallet", "/my-passes", "/check-in"];
+const protectedPrefixes = ["/account", "/my-passes", "/check-in"];
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -25,10 +25,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/account/:path*",
-    "/wallet/:path*",
-    "/my-passes/:path*",
-    "/check-in/:path*",
-  ],
+  matcher: ["/account/:path*", "/my-passes/:path*", "/check-in/:path*"],
 };
