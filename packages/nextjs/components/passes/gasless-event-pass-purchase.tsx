@@ -35,6 +35,7 @@ import {
   arbitrumSepolia,
 } from "~~/utils/scaffold-stylus/supportedChains";
 import { getEarlyBirdsRedirectUrl } from "~~/lib/early-birds-return";
+import { fetchWithTimeout } from "~~/lib/fetch-with-timeout";
 import { SuccessDialog } from "./success-dialog";
 import {
   BiometricUnavailable,
@@ -92,8 +93,7 @@ function isWebAuthnCancellation(error: unknown): boolean {
     classified.kind === "locked" ||
     classified.kind === "missing_credential" ||
     classified.kind === "unavailable_transport" ||
-    classified.kind === "unsupported" ||
-    classified.kind === "unknown"
+    classified.kind === "unsupported"
   );
 }
 
@@ -279,11 +279,16 @@ export function GaslessEventPassPurchase(props: Props) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (abortRef.current?.signal.aborted)
         throw new DOMException("Polling stopped", "AbortError");
-      const res = await fetch("/api/wallet/user-operation/status", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userOperationHash: hash }),
-      });
+      const res = await fetchWithTimeout(
+        fetch,
+        "/api/wallet/user-operation/status",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ userOperationHash: hash }),
+          signal: abortRef.current?.signal,
+        },
+      );
       if (!res.ok) {
         // 503 is retryable, others are terminal for sponsorship layer but we continue with backoff
         if (res.status === 503 || res.status >= 500) {
@@ -334,7 +339,13 @@ export function GaslessEventPassPurchase(props: Props) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (abortRef.current?.signal.aborted)
         throw new DOMException("Polling stopped", "AbortError");
-      const res = await fetch(`/api/purchases/${purchaseId}`);
+      const res = await fetchWithTimeout(
+        fetch,
+        `/api/purchases/${purchaseId}`,
+        {
+          signal: abortRef.current?.signal,
+        },
+      );
       if (!res.ok) {
         await wait(backoff(attempt));
         continue;
@@ -367,7 +378,10 @@ export function GaslessEventPassPurchase(props: Props) {
     // Try to fetch purchase status if we have a purchaseId (from localStorage)
     if (persisted?.purchaseId) {
       try {
-        const res = await fetch(`/api/purchases/${persisted.purchaseId}`);
+        const res = await fetchWithTimeout(
+          fetch,
+          `/api/purchases/${persisted.purchaseId}`,
+        );
         if (res.ok) {
           const status = await responseJson(res, purchaseStatusSchema);
           if (status.status === "confirmed" && status.pass) {
@@ -496,9 +510,13 @@ export function GaslessEventPassPurchase(props: Props) {
 
     // Also try global pending UserOperation resume (covers cleared localStorage case)
     try {
-      const res = await fetch("/api/wallet/user-operation/resume", {
-        method: "POST",
-      });
+      const res = await fetchWithTimeout(
+        fetch,
+        "/api/wallet/user-operation/resume",
+        {
+          method: "POST",
+        },
+      );
       if (res.ok) {
         const body = (await res.json()) as {
           userOperationHash?: string;
@@ -563,7 +581,7 @@ export function GaslessEventPassPurchase(props: Props) {
 
   const prepareMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/purchases", {
+      const res = await fetchWithTimeout(fetch, "/api/purchases", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -744,11 +762,16 @@ export function GaslessEventPassPurchase(props: Props) {
         await prepareSignAndSubmitUserOperation({
           prepare: async () => {
             setStage("sponsoring");
-            const res = await fetch("/api/wallet/user-operation/prepare", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ purchaseId: frozenSnapshot.purchaseId }),
-            });
+            const res = await fetchWithTimeout(
+              fetch,
+              "/api/wallet/user-operation/prepare",
+              {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ purchaseId: frozenSnapshot.purchaseId }),
+                signal: abortRef.current?.signal,
+              },
+            );
             if (!res.ok) {
               const body = (await res.json().catch(() => ({}))) as {
                 message?: string;
@@ -796,11 +819,16 @@ export function GaslessEventPassPurchase(props: Props) {
           signUserOperation: op => kernel.signUserOperation(op as never),
           submit: async payload => {
             setStage("submitting");
-            const res = await fetch("/api/wallet/user-operation/submit", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify(payload),
-            });
+            const res = await fetchWithTimeout(
+              fetch,
+              "/api/wallet/user-operation/submit",
+              {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(payload),
+                signal: abortRef.current?.signal,
+              },
+            );
             if (!res.ok) {
               const body = (await res.json().catch(() => ({}))) as {
                 message?: string;
@@ -952,11 +980,16 @@ export function GaslessEventPassPurchase(props: Props) {
     let accepted = false;
     for (let attempt = 0; attempt < 5 && !accepted; attempt++) {
       try {
-        const res = await fetch(`/api/purchases/${purchaseId}`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ userOperationHash, transactionHash }),
-        });
+        const res = await fetchWithTimeout(
+          fetch,
+          `/api/purchases/${purchaseId}`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ userOperationHash, transactionHash }),
+            signal: abortRef.current?.signal,
+          },
+        );
         accepted = res.ok;
         if (!accepted && res.status < 500) {
           const body = (await res.json().catch(() => ({}))) as {
@@ -976,7 +1009,13 @@ export function GaslessEventPassPurchase(props: Props) {
     for (let attempt = 0; attempt < 20; attempt++) {
       if (abortRef.current?.signal.aborted)
         throw new DOMException("Polling stopped", "AbortError");
-      const res = await fetch(`/api/purchases/${purchaseId}`);
+      const res = await fetchWithTimeout(
+        fetch,
+        `/api/purchases/${purchaseId}`,
+        {
+          signal: abortRef.current?.signal,
+        },
+      );
       const status = await responseJson(res, purchaseStatusSchema);
       if (status.status === "confirmed") return status;
       if (status.status === "rejected")
