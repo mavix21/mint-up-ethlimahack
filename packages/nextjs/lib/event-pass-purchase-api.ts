@@ -3,19 +3,21 @@ import { z } from "zod";
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 const hash = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 
-export const preparedPurchaseSchema = z.object({
-  purchaseId: z.string().min(1),
-  chainId: z.number().int().positive(),
-  contractAddress: address,
-  paymentAssetAddress: address,
-  eventIdentifier: hash,
-  buyerAddress: address,
-  revenueRecipient: address,
-  priceAmountSubunits: z.string().regex(/^\d+$/),
-  remaining: z.number().int().positive(),
-  expiresAt: z.number().finite(),
-  entryPointAddress: address.optional(),
-});
+export const preparedPurchaseSchema = z
+  .object({
+    purchaseId: z.string().min(1),
+    chainId: z.number().int().positive(),
+    contractAddress: address,
+    paymentAssetAddress: address,
+    eventIdentifier: hash,
+    buyerAddress: address,
+    revenueRecipient: address,
+    priceAmountSubunits: z.string().regex(/^[1-9]\d*$/),
+    remaining: z.number().int().positive(),
+    expiresAt: z.number().int().positive(),
+    entryPointAddress: address.optional(),
+  })
+  .strict();
 
 export const purchaseStatusSchema = z.object({
   status: z.enum([
@@ -64,6 +66,18 @@ export const purchaseLifecycleStage = z.enum([
 ]);
 
 export type PurchaseLifecycleStage = z.infer<typeof purchaseLifecycleStage>;
+
+export function initialPurchaseLifecycleStage(
+  persistedStage: string | undefined,
+  hasPurchaseId: boolean,
+): PurchaseLifecycleStage {
+  const stage = persistedStage === "confirming" ? "signing" : persistedStage;
+  if (stage === "confirmed") return hasPurchaseId ? "reconciling" : "idle";
+  if (stage === "included" || stage === "reconciling") return "reconciling";
+  if (stage === "submitted") return "submitted";
+  const parsed = purchaseLifecycleStage.safeParse(stage);
+  return parsed.success ? parsed.data : "idle";
+}
 
 export function mapBackendStatusToLifecycle(
   status: z.infer<typeof purchaseStatusSchema>["status"],

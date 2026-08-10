@@ -9,7 +9,12 @@ import type { PreparedPurchase } from "./event-pass-purchase-api";
 const availabilityAbi = parseAbi([
   "function config() view returns (address administrator, address usdc, address authorization_signer, address fee_recipient, uint16 primary_fee_bps, uint16 resale_fee_bps, bool paused)",
   "function eventInfo(bytes32 event_id) view returns (address revenue_recipient, uint64 price, uint32 maximum_supply, uint32 issued_supply, uint64 sale_start, uint64 sale_end, bool sales_enabled, bool transfers_enabled, bool cancelled, address check_in_operator)",
+  "function eventProtectionInfo(bytes32 event_id) view returns (uint64 funds_release_at, uint256 protected_balance, bool cancelled, bool funds_released)",
 ]);
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const PRIMARY_FEE_BPS = 500n;
+const RESALE_FEE_BPS = 900n;
 
 const eventPassPurchaseAbi = parseAbi([
   "function passInfo(uint64 pass_id) view returns (address owner, bytes32 event_id, uint8 state, bool valid_for_check_in)",
@@ -31,8 +36,16 @@ export type EventPassPurchaseVerification = {
   passId: string;
 };
 
+export type ProtectedOfferSnapshot = {
+  eventIdentifier: string;
+  priceAmountSubunits: string;
+  revenueRecipient: string;
+  fundsReleaseAt: number;
+};
+
 export async function verifyPreparedPurchaseAvailability(
   purchase: PreparedPurchase,
+  offer: ProtectedOfferSnapshot,
 ) {
   if (
     purchase.chainId !== eventPassEnvironment.chainId ||
@@ -43,8 +56,19 @@ export async function verifyPreparedPurchaseAvailability(
   ) {
     throw new Error("Prepared purchase uses an unsupported network");
   }
+  if (
+    purchase.eventIdentifier.toLowerCase() !==
+      offer.eventIdentifier.toLowerCase() ||
+    purchase.priceAmountSubunits !== offer.priceAmountSubunits ||
+    getAddress(purchase.revenueRecipient) !==
+      getAddress(offer.revenueRecipient) ||
+    !Number.isSafeInteger(offer.fundsReleaseAt) ||
+    offer.fundsReleaseAt % 1_000 !== 0
+  ) {
+    throw new Error("Prepared purchase does not match the protected offer");
+  }
   const client = createEventPassPublicClient(purchase.chainId);
-  const [config, event, block] = await Promise.all([
+  const [config, event, protection, block] = await Promise.all([
     client.readContract({
       address: purchase.contractAddress,
       abi: availabilityAbi,
@@ -56,9 +80,24 @@ export async function verifyPreparedPurchaseAvailability(
       functionName: "eventInfo",
       args: [purchase.eventIdentifier as `0x${string}`],
     }),
+    client.readContract({
+      address: purchase.contractAddress,
+      abi: availabilityAbi,
+      functionName: "eventProtectionInfo",
+      args: [purchase.eventIdentifier as `0x${string}`],
+    }),
     client.getBlock(),
   ]);
-  const [, usdc, , , , , paused] = config;
+  const [, usdc, , feeRecipient, primaryFeeBps, resaleFeeBps, paused] = config;
+  if (
+    getAddress(feeRecipient) === getAddress(ZERO_ADDRESS) ||
+    BigInt(primaryFeeBps) !== PRIMARY_FEE_BPS ||
+    BigInt(resaleFeeBps) !== RESALE_FEE_BPS
+  ) {
+    throw new Error(
+      "Prepared purchase has an incompatible protected payment configuration",
+    );
+  }
   const [
     revenueRecipient,
     price,
@@ -70,6 +109,17 @@ export async function verifyPreparedPurchaseAvailability(
     ,
     cancelled,
   ] = event;
+  const [fundsReleaseAt, , protectionCancelled, fundsReleased] = protection;
+  if (
+    fundsReleaseAt < saleEnd ||
+    fundsReleaseAt !== BigInt(offer.fundsReleaseAt / 1_000) ||
+    protectionCancelled !== cancelled ||
+    fundsReleased
+  ) {
+    throw new Error(
+      "Prepared purchase has an incompatible protected payment configuration",
+    );
+  }
   if (
     getAddress(usdc) !== getAddress(purchase.paymentAssetAddress) ||
     getAddress(revenueRecipient) !== getAddress(purchase.revenueRecipient) ||

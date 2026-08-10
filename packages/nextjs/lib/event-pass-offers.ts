@@ -32,8 +32,18 @@ const offerSchema = z
     saleEndsAt: z.number().finite(),
     capacity: z.number().int().positive(),
     remaining: z.number().int().nonnegative(),
+    availability: z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("available") }).strict(),
+      z
+        .object({
+          kind: z.literal("unavailable"),
+          reason: z.string().min(1),
+        })
+        .strict(),
+    ]),
     revenueRecipient: address,
   })
+  .strict()
   .superRefine((offer, context) => {
     if (offer.remaining > offer.capacity)
       context.addIssue({
@@ -64,7 +74,7 @@ const offerSchema = z
     }
   });
 
-const catalogSchema = z.object({ offers: z.array(offerSchema) });
+const catalogSchema = z.object({ offers: z.array(offerSchema) }).strict();
 
 type RawOffer = z.infer<typeof offerSchema>;
 
@@ -81,6 +91,20 @@ function availability(
   offer: RawOffer,
   now: number,
 ): EventPassOffer["availability"] {
+  if (offer.availability.kind === "unavailable") {
+    const reasons: Record<string, string> = {
+      cancelled: "This event was cancelled",
+      sales_disabled: "Pass sales are not active",
+      sale_not_started: "Sales have not started",
+      sale_ended: "Sales have ended",
+      sold_out: "This Event Pass is sold out",
+    };
+    return {
+      kind: "unavailable",
+      reason:
+        reasons[offer.availability.reason] ?? "This Event Pass is unavailable",
+    };
+  }
   let reason: string | undefined;
   if (offer.publication !== "published") reason = "Event is not published";
   else if (offer.lifecycle === "cancelled") reason = "This event was cancelled";

@@ -56,13 +56,13 @@ describe("passes detail terse view", () => {
       "../../../components/passes/event-pass-details-disclosure.tsx",
     );
     const disclosureSource = readFileSync(disclosurePath, "utf8");
-    expect(disclosureSource).toContain("Paid directly to organizer");
+    expect(disclosureSource).toContain("ProtectedPaymentExplanation");
     expect(disclosureSource).toContain("Sales window");
     expect(disclosureSource).toContain("Remaining");
     expect(disclosureSource).toContain("Event status");
     expect(disclosureSource).toContain("Availability");
-    expect(disclosureSource).toContain("revenueRecipient");
-    expect(disclosureSource).toContain("does not escrow funds");
-    expect(disclosureSource).toContain("aria-expanded");
+    expect(disclosureSource).not.toContain("revenueRecipient");
+    expect(disclosureSource).not.toContain("Paid directly to organizer");
+    expect(disclosureSource).not.toContain('"use client"');
   });
 });

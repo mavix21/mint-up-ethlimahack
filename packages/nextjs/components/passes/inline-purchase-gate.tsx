@@ -7,6 +7,7 @@ import { authClient } from "~~/lib/auth-client";
 import { getEventPassHref } from "~~/lib/early-birds-return";
 import type { WalletPasskeyAccount } from "~~/lib/kernel-account";
 import { GaslessEventPassPurchase } from "./gasless-event-pass-purchase";
+import { BiometricUnavailable } from "./event-pass-purchase-content";
 import { InlineSecureStep } from "./inline-secure-step";
 import { GoogleSignInButton } from "~~/components/auth/google-sign-in-button";
 import {
@@ -26,6 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 type Props = {
   eventId: string;
   eventName: string;
+  eventIdentifier: `0x${string}`;
   passkeyAccount: WalletPasskeyAccount | null;
   authenticated: boolean;
   chainId: 412346 | 421614;
@@ -89,53 +91,11 @@ export function InlinePurchaseGate(props: Props) {
 
   // Has passkey: show purchase flow directly inline
   if (props.passkeyAccount) {
-    // If blocking, show terse single line instead of full gate
-    if (availabilityQuery.isSuccess && blocking) {
-      return (
-        <div className="mt-6 space-y-3">
-          <div
-            role="alert"
-            className="rounded-2xl border bg-amber-500/10 p-4 text-sm"
-          >
-            <p className="font-bold">Face ID not available</p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => availabilityQuery.refetch()}
-                className="rounded-xl border bg-background px-4 py-2 text-xs font-bold"
-              >
-                Retry
-              </button>
-              <a
-                href="/wallet"
-                className="rounded-xl border px-4 py-2 text-xs font-semibold"
-              >
-                Help
-              </a>
-            </div>
-          </div>
-          <GaslessEventPassPurchase
-            eventId={props.eventId}
-            eventName={props.eventName}
-            passkeyAccount={props.passkeyAccount}
-            chainId={props.chainId}
-            chainName={props.chainName}
-            contractAddress={props.contractAddress}
-            usdcAddress={props.usdcAddress}
-            priceAmountSubunits={props.priceAmountSubunits}
-            remaining={props.remaining}
-            revenueRecipient={props.revenueRecipient}
-            initialUsdcBalance={props.initialUsdcBalance}
-            fixtureMode={props.fixtureMode}
-            mintUpReturnTo={props.mintUpReturnTo}
-          />
-        </div>
-      );
-    }
     return (
       <GaslessEventPassPurchase
         eventId={props.eventId}
         eventName={props.eventName}
+        eventIdentifier={props.eventIdentifier}
         passkeyAccount={props.passkeyAccount}
         chainId={props.chainId}
         chainName={props.chainName}
@@ -189,27 +149,9 @@ export function InlinePurchaseGate(props: Props) {
               </SheetHeader>
               <div className="p-6 pt-2">
                 {blocking ? (
-                  <div
-                    role="alert"
-                    className="rounded-2xl border bg-amber-500/10 p-4 text-sm"
-                  >
-                    <p className="font-bold">Face ID not available</p>
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => availabilityQuery.refetch()}
-                        className="rounded-xl border bg-background px-4 py-2 text-xs font-bold"
-                      >
-                        Retry
-                      </button>
-                      <a
-                        href="/wallet"
-                        className="rounded-xl border px-4 py-2 text-xs font-semibold"
-                      >
-                        Help
-                      </a>
-                    </div>
-                  </div>
+                  <BiometricUnavailable
+                    onRetry={() => availabilityQuery.refetch()}
+                  />
                 ) : (
                   <GoogleSignInButton callbackUrl={callbackUrl} />
                 )}

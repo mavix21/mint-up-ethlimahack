@@ -1,18 +1,5 @@
 "use client";
 
-// Coverage anchor: NotAllowedError, AbortError, TimeoutError, InvalidStateError, NotSupportedError
-// These strings are intentionally retained for resilient-purchase-lifecycle and interruption-scenarios tests.
-// Additional coverage for jargon-free spec while preserving resilient-purchase-lifecycle expectations:
-// preparation sponsorship signing submission bundler acceptance inclusion reconciliation confirmation rejection expiry dropped unknown UserOperation Transaction
-// prepared purchase is safe to retry Nothing was submitted Never persist raw signatures assertions
-// Retry confirmation (prepared purchase still valid) timed out Sponsorship was denied or simulation failed No purchase was confirmed preparation expiry
-// Status is unknown hashes remain Hashes remain available UserOperation: Transaction: data-testid="user-operation-hash" data-testid="transaction-hash" data-testid="user-operation-hash" data-testid="transaction-hash"
-// resume from backend reconcile delayed operation lifecycle Coverage: preparation → sponsorship → signing → submission → bundler acceptance → inclusion → reconciliation → confirmation
-// Gasless flow legacy disclosures retained for coverage: Chain smart account Exact price Spender Action: Remaining Revenue recipient No ETH required no escrow revert-on-failure One biometric frozen Frozen intent Chain smart account Exact price Spender Action: Remaining Revenue recipient no escrow revert-on-failure One biometric frozen Frozen intent
-// Interruption scenarios: Sponsorship was denied preparation expiry limit Operation dropped Event Pass # no signatures exposed raw signatures are never stored passkey response data Passkey response data and raw signatures are never stored
-// Hash diagnostics: UserOperation: Transaction: data-testid="user-operation-hash" data-testid="transaction-hash"
-// retry preserves idempotency retry preserves idempotency
-
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, CircleAlert, LoaderCircle } from "lucide-react";
@@ -24,6 +11,7 @@ import {
   preparedPurchaseSchema,
   purchaseStatusSchema,
   responseJson,
+  initialPurchaseLifecycleStage,
   type PreparedPurchase,
 } from "~~/lib/event-pass-purchase-api";
 import {
@@ -34,10 +22,8 @@ import {
 import { canFundPurchase } from "~~/lib/event-pass-transactions";
 import type { WalletPasskeyAccount } from "~~/lib/kernel-account";
 import { reconstructKernelAccount } from "~~/lib/kernel-account";
-import type {
-  PrepareUserOperationResult,
-  UserOperationStatusResult,
-} from "~~/lib/pimlico-user-operation-api";
+import type { UserOperationStatusResult } from "~~/lib/pimlico-user-operation-api";
+import { prepareUserOperationResultSchema } from "~~/lib/pimlico-user-operation-schema";
 import { prepareSignAndSubmitUserOperation } from "~~/lib/pimlico-user-operation";
 import {
   getPasskeyAvailability,
@@ -50,10 +36,16 @@ import {
 } from "~~/utils/scaffold-stylus/supportedChains";
 import { getEarlyBirdsRedirectUrl } from "~~/lib/early-birds-return";
 import { SuccessDialog } from "./success-dialog";
+import {
+  BiometricUnavailable,
+  EventPassPurchaseError,
+  EventPassPurchaseReview,
+} from "./event-pass-purchase-content";
 
 type Props = {
   eventId: string;
   eventName: string;
+  eventIdentifier: `0x${string}`;
   passkeyAccount: WalletPasskeyAccount;
   chainId: 412346 | 421614;
   chainName: string;
@@ -87,32 +79,6 @@ type Stage =
 // backwards compat alias: "confirming" maps to signing stage
 type LegacyStage = Stage | "confirming";
 
-function normalizeStage(value: string | undefined): Stage {
-  if (value === "confirming") return "signing";
-  if (
-    [
-      "idle",
-      "preparing",
-      "prepared",
-      "sponsoring",
-      "signing",
-      "submitting",
-      "submitted",
-      "included",
-      "reconciling",
-      "confirmed",
-      "rejected",
-      "expired",
-      "dropped",
-      "unknown",
-      "failed",
-      "cancelled",
-    ].includes(value ?? "")
-  )
-    return value as Stage;
-  return "idle";
-}
-
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 function backoff(attempt: number, base = 1500, max = 8000) {
   return Math.min(base * 2 ** attempt, max);
@@ -132,8 +98,8 @@ function isWebAuthnCancellation(error: unknown): boolean {
 }
 
 function actionableSponsorshipMessage(message: string): string {
-  // Terse: hide sponsorship tails, keep base message only
-  return message;
+  void message;
+  return "We couldn't get your Event Pass. Try again.";
 }
 
 function isFundsRelatedMessage(message: string): boolean {
@@ -194,24 +160,10 @@ export function GaslessEventPassPurchase(props: Props) {
   const [shouldCelebrate, setShouldCelebrate] = useState(false);
 
   const [stage, setStage] = useState<Stage>(() => {
-    const raw = initialPersisted?.stage;
-    const mapped = normalizeStage(raw);
-    if (mapped === "included" || mapped === "reconciling") return "reconciling";
-    if (mapped === "submitted") return "submitted";
-    if (
-      [
-        "unknown",
-        "dropped",
-        "expired",
-        "confirmed",
-        "rejected",
-        "failed",
-        "cancelled",
-        "prepared",
-      ].includes(mapped)
-    )
-      return mapped;
-    return "idle";
+    return initialPurchaseLifecycleStage(
+      initialPersisted?.stage,
+      Boolean(initialPersisted?.purchaseId),
+    );
   });
   const [userOperationHash, setUserOperationHash] = useState<
     `0x${string}` | null
@@ -642,6 +594,10 @@ export function GaslessEventPassPurchase(props: Props) {
         preparedPurchase.priceAmountSubunits !== props.priceAmountSubunits
           ? "price"
           : null,
+        preparedPurchase.eventIdentifier.toLowerCase() !==
+        props.eventIdentifier.toLowerCase()
+          ? "event"
+          : null,
       ].filter(Boolean);
       if (mismatches.length > 0) {
         throw new Error(
@@ -804,37 +760,36 @@ export function GaslessEventPassPurchase(props: Props) {
                 ),
               );
             }
-            const preparedOp = (await res.json()) as PrepareUserOperationResult;
-            const opCallData = (preparedOp.operation.callData ??
-              preparedOp.operation.calldata) as string | undefined;
-            if (opCallData) {
-              validateSponsoredPurchaseBatch({
-                callData: opCallData as `0x${string}`,
-                snapshot: {
-                  chainId: frozenSnapshot.chainId,
-                  contractAddress:
-                    frozenSnapshot.contractAddress as `0x${string}`,
-                  paymentAssetAddress:
-                    frozenSnapshot.paymentAssetAddress as `0x${string}`,
-                  eventIdentifier:
-                    frozenSnapshot.eventIdentifier as `0x${string}`,
-                  priceAmountSubunits: frozenSnapshot.priceAmountSubunits,
-                  buyerAddress: frozenSnapshot.buyerAddress as `0x${string}`,
-                  entryPointAddress: frozenSnapshot.entryPointAddress as
-                    `0x${string}` | undefined,
-                  expiresAt: frozenSnapshot.expiresAt,
-                },
-                sender: props.passkeyAccount.address,
+            const preparedOp = await responseJson(
+              res,
+              prepareUserOperationResultSchema,
+            );
+            validateSponsoredPurchaseBatch({
+              callData: preparedOp.operation.callData as `0x${string}`,
+              snapshot: {
+                chainId: frozenSnapshot.chainId,
+                contractAddress:
+                  frozenSnapshot.contractAddress as `0x${string}`,
+                paymentAssetAddress:
+                  frozenSnapshot.paymentAssetAddress as `0x${string}`,
+                eventIdentifier:
+                  frozenSnapshot.eventIdentifier as `0x${string}`,
+                priceAmountSubunits: frozenSnapshot.priceAmountSubunits,
+                buyerAddress: frozenSnapshot.buyerAddress as `0x${string}`,
+                entryPointAddress: frozenSnapshot.entryPointAddress as
+                  `0x${string}` | undefined,
+                expiresAt: frozenSnapshot.expiresAt,
+              },
+              sender: props.passkeyAccount.address,
+              chainId: props.chainId,
+              entryPointAddress: props.passkeyAccount.entryPointAddress,
+              allowlist: {
                 chainId: props.chainId,
                 entryPointAddress: props.passkeyAccount.entryPointAddress,
-                allowlist: {
-                  chainId: props.chainId,
-                  entryPointAddress: props.passkeyAccount.entryPointAddress,
-                  usdcAddress: props.usdcAddress,
-                  eventPassAddress: props.contractAddress,
-                },
-              });
-            }
+                usdcAddress: props.usdcAddress,
+                eventPassAddress: props.contractAddress,
+              },
+            });
             setStage("signing");
             return preparedOp;
           },
@@ -1184,37 +1139,23 @@ export function GaslessEventPassPurchase(props: Props) {
   return (
     <div className="mt-6 space-y-4">
       {availabilityChecked && blocking && (
-        <div
-          role="alert"
-          className="rounded-2xl border bg-amber-500/10 p-4 text-sm"
-        >
-          <p className="font-bold">Face ID not available</p>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => availabilityQuery.refetch()}
-              className="rounded-xl border bg-background px-4 py-2 text-xs font-bold"
-            >
-              Retry
-            </button>
-            <a
-              href="/wallet"
-              className="rounded-xl border px-4 py-2 text-xs font-semibold"
-            >
-              Help
-            </a>
-          </div>
-        </div>
+        <BiometricUnavailable onRetry={() => availabilityQuery.refetch()} />
       )}
 
-      {stage === "idle" && (
+      {stage === "idle" && !availabilityChecked && (
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          Checking device...
+        </p>
+      )}
+
+      {stage === "idle" && availabilityChecked && !blocking && (
         <button
           type="button"
           onClick={preparePurchase}
-          disabled={blocking || prepareMutation.isPending}
+          disabled={prepareMutation.isPending}
           className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
         >
-          {blocking ? "Face ID not available" : "Get Pass"}
+          Get Pass
         </button>
       )}
 
@@ -1225,56 +1166,33 @@ export function GaslessEventPassPurchase(props: Props) {
       )}
 
       {stage === "prepared" && prepared && (
-        <div className="space-y-3 rounded-2xl border bg-card p-4">
-          <p className="font-bold">Review</p>
-          <p className="text-sm font-semibold">{props.eventName}</p>
-          <p className="text-lg font-black">
-            {formatUsdc(prepared.priceAmountSubunits)}
-          </p>
-          <p className="text-sm leading-6">
-            Paid directly to organizer{" "}
-            <a
-              href="#event-pass-details"
-              className="font-semibold underline underline-offset-2"
-            >
-              Details
-            </a>
-          </p>
-          {isInsufficient && (
-            <div
-              role="alert"
-              className="rounded-xl border bg-amber-500/10 p-3 text-sm font-semibold"
-            >
-              <p>{addUsdcMessage}</p>
-              <button
-                type="button"
-                onClick={handleFaucet}
-                className="mt-2 w-full rounded-xl border bg-background px-4 py-2 text-sm font-bold"
+        <EventPassPurchaseReview
+          eventName={props.eventName}
+          priceAmountSubunits={prepared.priceAmountSubunits}
+          confirmDisabled={confirmDisabled}
+          onConfirm={confirmPurchase}
+          onCancel={() => {
+            setPrepared(null);
+            setStage("idle");
+          }}
+          fundsWarning={
+            isInsufficient ? (
+              <div
+                role="alert"
+                className="rounded-xl border bg-amber-500/10 p-3 text-sm font-semibold"
               >
-                Add USDC to continue
-              </button>
-            </div>
-          )}
-          <button
-            type="button"
-            disabled={confirmDisabled}
-            onClick={confirmPurchase}
-            className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
-            aria-disabled={confirmDisabled}
-          >
-            {blocking ? "Face ID not available" : "Confirm with Face ID"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPrepared(null);
-              setStage("idle");
-            }}
-            className="w-full rounded-xl border px-5 py-3 font-semibold"
-          >
-            Cancel
-          </button>
-        </div>
+                <p>{addUsdcMessage}</p>
+                <button
+                  type="button"
+                  onClick={handleFaucet}
+                  className="mt-2 w-full rounded-xl border bg-background px-4 py-2 text-sm font-bold"
+                >
+                  Add USDC to continue
+                </button>
+              </div>
+            ) : null
+          }
+        />
       )}
 
       {isConfirming && (
@@ -1292,7 +1210,7 @@ export function GaslessEventPassPurchase(props: Props) {
             <CheckCircle2 className="size-5" /> Confirmed
           </p>
           {shouldCelebrate ? (
-            <SuccessDialog passId={passId} eventName={props.eventName} />
+            <SuccessDialog eventName={props.eventName} />
           ) : (
             <Link
               href="/my-passes"
@@ -1310,7 +1228,8 @@ export function GaslessEventPassPurchase(props: Props) {
         stage === "expired" ||
         stage === "dropped" ||
         stage === "unknown") &&
-        error && (
+        error &&
+        isFundsError && (
           <p
             role="alert"
             className={`flex gap-2 rounded-xl p-3 text-sm font-semibold ${isFundsError ? "bg-amber-500/10 text-amber-900" : "bg-destructive/10 text-destructive"}`}
@@ -1318,58 +1237,31 @@ export function GaslessEventPassPurchase(props: Props) {
             <CircleAlert className="mt-0.5 size-4 shrink-0" /> {error}
           </p>
         )}
+      {error &&
+        !isFundsError &&
+        (stage === "failed" ||
+          stage === "rejected" ||
+          stage === "cancelled" ||
+          stage === "expired" ||
+          stage === "dropped" ||
+          stage === "unknown") && (
+          <EventPassPurchaseError onRetry={handleRetry} />
+        )}
+
       {isFundsError &&
         (stage === "failed" ||
           stage === "rejected" ||
-          stage === "expired" ||
           stage === "unknown" ||
-          stage === "dropped") && (
+          stage === "dropped" ||
+          stage === "expired") && (
           <button
             type="button"
-            onClick={handleFaucet}
-            className="w-full rounded-xl border bg-background px-5 py-3 font-semibold"
-          >
-            Add USDC to continue
-          </button>
-        )}
-
-      {(stage === "failed" ||
-        stage === "rejected" ||
-        stage === "unknown" ||
-        stage === "dropped" ||
-        stage === "expired") && (
-        <button
-          type="button"
-          onClick={handleRetry}
-          className="w-full rounded-xl border px-5 py-3 font-semibold"
-        >
-          Retry
-        </button>
-      )}
-
-      {stage === "cancelled" && (
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              if (prepared) setStage("prepared");
-              else void preparePurchase();
-            }}
-            disabled={!prepared && !frozen}
-            className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
+            onClick={handleRetry}
+            className="w-full rounded-xl border px-5 py-3 font-semibold"
           >
             Retry
           </button>
-          <button
-            type="button"
-            onClick={preparePurchase}
-            className="w-full rounded-xl border px-5 py-3 font-semibold"
-          >
-            Prepare again
-          </button>
-        </div>
-      )}
+        )}
     </div>
   );
 }

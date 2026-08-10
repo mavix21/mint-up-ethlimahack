@@ -12,7 +12,6 @@ import {
   eventPassEnvironment,
 } from "~~/contracts/eventPassEnvironment";
 import { fetchAuthQuery, isAuthenticated } from "~~/lib/auth-server";
-import { getEventPassHref } from "~~/lib/early-birds-return";
 import { getEventPassOffer } from "~~/lib/event-pass-offer-data";
 import { formatUsdc } from "~~/lib/event-pass-offers";
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
@@ -155,6 +154,7 @@ async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
           <InlinePurchaseGate
             eventId={offer.eventId}
             eventName={offer.name}
+            eventIdentifier={offer.eventIdentifier as `0x${string}`}
             passkeyAccount={passkeyAccount}
             authenticated={authenticated}
             chainId={eventPassEnvironment.chainId}
@@ -181,7 +181,6 @@ async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
                 ? offer.availability.reason
                 : null
             }
-            revenueRecipient={offer.revenueRecipient}
           />
         </aside>
       </div>

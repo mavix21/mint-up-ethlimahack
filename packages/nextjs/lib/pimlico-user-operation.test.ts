@@ -1,9 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { PrepareUserOperationResult } from "./pimlico-user-operation-api";
+import { userOperationSchema } from "./pimlico-user-operation-schema";
 import { prepareSignAndSubmitUserOperation } from "./pimlico-user-operation";
 
 describe("sponsored user operation authorization", () => {
+  it("rejects empty numeric quantities", () => {
+    expect(() =>
+      userOperationSchema.parse({
+        sender: "0x1111111111111111111111111111111111111111",
+        nonce: "0x",
+        callData: "0x",
+        callGasLimit: "0x1",
+        verificationGasLimit: "0x2",
+        preVerificationGas: "0x3",
+        maxFeePerGas: "0x4",
+        maxPriorityFeePerGas: "0x5",
+        signature: "0x",
+        paymaster: "0x2222222222222222222222222222222222222222",
+        paymasterData: "0x",
+        paymasterVerificationGasLimit: "0x6",
+        paymasterPostOpGasLimit: "0x7",
+      }),
+    ).toThrow();
+  });
+
   it("waits for preparation before signing and submits only the signature with the unchanged operation", async () => {
     let resolvePrepare!: (value: PrepareUserOperationResult) => void;
     const operation = {
@@ -16,6 +37,10 @@ describe("sponsored user operation authorization", () => {
       maxFeePerGas: "0x4",
       maxPriorityFeePerGas: "0x5",
       signature: "0x",
+      paymaster: "0x2222222222222222222222222222222222222222",
+      paymasterData: "0x",
+      paymasterVerificationGasLimit: "0x6",
+      paymasterPostOpGasLimit: "0x7",
     } as const;
     const prepare = vi.fn(
       () =>

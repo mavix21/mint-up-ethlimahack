@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { startRegistration } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/browser";
 import { useRouter } from "next/navigation";
+import { BiometricUnavailable } from "./event-pass-purchase-content";
 import { useMachine } from "@xstate/react";
 import { fromPromise } from "xstate";
 
@@ -132,7 +133,6 @@ export function InlineSecureStep({ onSuccess }: Props) {
     snapshot.matches("creating") || snapshot.value === "checkingAvailability";
   const isUnavailable = snapshot.matches("unavailable");
   const isError = snapshot.matches("registrationError");
-  const isIdle = snapshot.matches("idle");
   const isChecking = snapshot.matches("checkingAvailability");
   const isSuccess = snapshot.matches("success");
 
@@ -150,31 +150,8 @@ export function InlineSecureStep({ onSuccess }: Props) {
     }
   }
 
-  // Terse blocking: single line Face ID not available with Retry/Help, no verbose jargon
   if (showAvailabilityBlock) {
-    return (
-      <div
-        role="alert"
-        className="rounded-2xl border bg-amber-500/10 p-4 text-sm"
-      >
-        <p className="font-bold">Face ID not available</p>
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={() => send({ type: "RETRY" })}
-            className="rounded-xl border bg-background px-4 py-2 text-xs font-bold"
-          >
-            Retry
-          </button>
-          <a
-            href="/wallet"
-            className="rounded-xl border px-4 py-2 text-xs font-semibold"
-          >
-            Help
-          </a>
-        </div>
-      </div>
-    );
+    return <BiometricUnavailable onRetry={() => send({ type: "RETRY" })} />;
   }
 
   if (isChecking) {

@@ -2,6 +2,7 @@ import { type FunctionReference, anyApi } from "convex/server";
 import { z } from "zod";
 
 import { fetchAuthMutation, isAuthenticated } from "~~/lib/auth-server";
+import { getEventPassOffer } from "~~/lib/event-pass-offer-data";
 import {
   type PreparedPurchase,
   preparedPurchaseSchema,
@@ -51,9 +52,17 @@ export async function POST(request: Request) {
     );
   }
   try {
+    const offer = await getEventPassOffer(parsed.data.eventId);
+    if (!offer || offer.availability.kind !== "available")
+      throw new Error("Protected offer is unavailable");
     const prepared = await fetchAuthMutation(preparePurchase, parsed.data);
     const validated = preparedPurchaseSchema.parse(prepared);
-    await verifyPreparedPurchaseAvailability(validated);
+    await verifyPreparedPurchaseAvailability(validated, {
+      eventIdentifier: offer.eventIdentifier,
+      priceAmountSubunits: offer.price.amountSubunits,
+      revenueRecipient: offer.revenueRecipient,
+      fundsReleaseAt: offer.startTime,
+    });
     return Response.json(validated);
   } catch {
     return Response.json(

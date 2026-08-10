@@ -32,7 +32,27 @@ describe("prepare sponsored user operation API", () => {
     expect(fetchAuthAction).not.toHaveBeenCalled();
   });
   it("forwards the purchaseId", async () => {
-    fetchAuthAction.mockResolvedValue({ preparationId: "p" });
+    fetchAuthAction.mockResolvedValue({
+      preparationId: "p",
+      chainId: 421614,
+      entryPoint: "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+      operation: {
+        sender: "0x1111111111111111111111111111111111111111",
+        nonce: "0x0",
+        callData: "0x1234",
+        callGasLimit: "0x1",
+        verificationGasLimit: "0x2",
+        preVerificationGas: "0x3",
+        maxFeePerGas: "0x4",
+        maxPriorityFeePerGas: "0x5",
+        signature: "0x",
+        paymaster: "0x2222222222222222222222222222222222222222",
+        paymasterData: "0x",
+        paymasterVerificationGasLimit: "0x6",
+        paymasterPostOpGasLimit: "0x7",
+      },
+      expiresAt: Date.UTC(2030, 0, 1),
+    });
     expect(
       (
         await POST(
@@ -45,6 +65,18 @@ describe("prepare sponsored user operation API", () => {
     expect(fetchAuthAction).toHaveBeenCalledWith(expect.anything(), {
       purchaseId: "wn77amvf1xcsn49m9a8ttzhhq98c0cnf",
     });
+  });
+  it("rejects an incompatible prepared operation response", async () => {
+    fetchAuthAction.mockResolvedValue({
+      preparationId: "p",
+      operation: { callData: "0x1234" },
+    });
+    const response = await POST(
+      request(
+        JSON.stringify({ purchaseId: "wn77amvf1xcsn49m9a8ttzhhq98c0cnf" }),
+      ),
+    );
+    expect(response.status).toBe(409);
   });
   it("sanitizes backend failures", async () => {
     fetchAuthAction.mockRejectedValue(new Error("PIMLICO_API_KEY=secret"));

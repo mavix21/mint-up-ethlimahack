@@ -2,6 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const isAuthenticated = vi.fn(async () => true);
 const verifyPreparedPurchaseAvailability = vi.fn(async () => undefined);
+const getEventPassOffer = vi.fn(
+  async (): Promise<{
+    eventIdentifier: string;
+    price: { amountSubunits: string; asset: string; decimals: number };
+    revenueRecipient: string;
+    startTime: number;
+    availability: { kind: "available" | "unavailable"; reason?: string };
+  } | null> => ({
+    eventIdentifier: `0x${"3".repeat(64)}`,
+    price: { amountSubunits: "25000000", asset: "USDC", decimals: 6 },
+    revenueRecipient: "0x5555555555555555555555555555555555555555",
+    startTime: 1_786_000_000_000,
+    availability: { kind: "available" },
+  }),
+);
 const fetchAuthMutation = vi.fn(async () => ({
   purchaseId: "purchase-1",
   chainId: 421614,
@@ -22,6 +37,7 @@ vi.mock("~~/lib/auth-server", () => ({
 vi.mock("../../../lib/event-pass-purchase-server", () => ({
   verifyPreparedPurchaseAvailability,
 }));
+vi.mock("~~/lib/event-pass-offer-data", () => ({ getEventPassOffer }));
 
 const buyerAddress = "0x4444444444444444444444444444444444444444";
 
@@ -54,7 +70,15 @@ describe("purchase preparation route", () => {
       buyerAddress,
       idempotencyKey: "purchase-request-1",
     });
-    expect(verifyPreparedPurchaseAvailability).toHaveBeenCalledOnce();
+    expect(verifyPreparedPurchaseAvailability).toHaveBeenCalledWith(
+      expect.objectContaining({ priceAmountSubunits: "25000000" }),
+      {
+        eventIdentifier: `0x${"3".repeat(64)}`,
+        priceAmountSubunits: "25000000",
+        revenueRecipient: "0x5555555555555555555555555555555555555555",
+        fundsReleaseAt: 1_786_000_000_000,
+      },
+    );
     expect(await response.json()).toMatchObject({
       priceAmountSubunits: "25000000",
       revenueRecipient: "0x5555555555555555555555555555555555555555",
@@ -92,6 +116,27 @@ describe("purchase preparation route", () => {
       message:
         "This Event Pass is no longer available. Refresh the offer and try again.",
     });
+  });
+
+  it("does not reserve inventory when the protected offer is unavailable", async () => {
+    getEventPassOffer.mockResolvedValueOnce({
+      eventIdentifier: `0x${"3".repeat(64)}`,
+      price: { amountSubunits: "25000000", asset: "USDC", decimals: 6 },
+      revenueRecipient: "0x5555555555555555555555555555555555555555",
+      startTime: 1_786_000_000_000,
+      availability: { kind: "unavailable", reason: "Sales have ended" },
+    });
+    const { POST } = await import("./route");
+    const response = await POST(
+      request({
+        eventId: "event-1",
+        buyerAddress,
+        idempotencyKey: "purchase-request-1",
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(fetchAuthMutation).not.toHaveBeenCalled();
   });
 
   it("fails closed when live contract state changed after backend preparation", async () => {

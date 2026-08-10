@@ -13,13 +13,13 @@ import {
   DialogTitle,
 } from "~~/components/ui/dialog";
 import { Button } from "~~/components/ui/button";
+import { EventPassPurchaseSuccess } from "./event-pass-purchase-content";
 
 type Props = {
-  passId: string | null;
-  eventName?: string;
+  eventName: string;
 };
 
-export function SuccessDialog({ passId, eventName }: Props) {
+export function SuccessDialog({ eventName }: Props) {
   const router = useRouter();
   const [state, send] = useMachine(successDialogMachine);
 
@@ -59,18 +59,9 @@ export function SuccessDialog({ passId, eventName }: Props) {
         <DialogHeader>
           <DialogTitle>You&apos;re in!</DialogTitle>
           <DialogDescription>
-            {passId
-              ? `Event Pass #${passId}`
-              : eventName
-                ? eventName
-                : "Your Event Pass is confirmed."}
+            <EventPassPurchaseSuccess eventName={eventName} />
           </DialogDescription>
         </DialogHeader>
-        {passId ? (
-          <p className="rounded-xl bg-muted px-3 py-2 text-center font-mono text-sm font-semibold">
-            Event Pass #{passId}
-          </p>
-        ) : null}
         <div className="flex justify-end">
           <Button
             type="button"

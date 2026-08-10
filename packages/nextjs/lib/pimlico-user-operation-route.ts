@@ -1,19 +1,16 @@
 import { z } from "zod";
+import { userOperationSchema } from "./pimlico-user-operation-schema";
 
 const MAX_BODY_BYTES = 16_384;
 const hex = z
   .string()
   .regex(/^0x[0-9a-fA-F]+$/)
   .max(12_000);
-const operation = z
-  .record(z.string().min(1).max(64), z.string().max(12_000))
-  .refine(value => Object.keys(value).length <= 24);
-
 export const submittedOperationSchema = z
   .object({
     preparationId: z.string().min(1).max(200),
     signature: hex,
-    operation: operation.optional(),
+    operation: userOperationSchema.optional(),
   })
   .strict();
 

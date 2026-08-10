@@ -27,6 +27,7 @@ export const eligibleOfferPayload = {
   saleEndsAt: Date.UTC(2026, 7, 8, 14),
   capacity: 250,
   remaining: 37,
+  availability: { kind: "available" },
   revenueRecipient: "0x2222222222222222222222222222222222222222",
 } as const;
 

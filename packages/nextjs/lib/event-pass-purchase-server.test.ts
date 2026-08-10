@@ -47,6 +47,12 @@ const purchase = {
   remaining: 10,
   expiresAt: Date.now() + 60_000,
 };
+const protectedOffer = {
+  eventIdentifier: purchase.eventIdentifier,
+  priceAmountSubunits: purchase.priceAmountSubunits,
+  revenueRecipient: purchase.revenueRecipient,
+  fundsReleaseAt: 200_000,
+};
 
 describe("live Event Pass purchase availability", () => {
   beforeEach(() => {
@@ -72,7 +78,8 @@ describe("live Event Pass purchase availability", () => {
         true,
         false,
         "0x7777777777777777777777777777777777777777",
-      ]);
+      ])
+      .mockResolvedValueOnce([200n, 50_000_000n, false, false]);
     getBlock.mockReset().mockResolvedValue({ timestamp: 100n });
     getTransactionReceipt.mockReset();
     getTransaction.mockReset();
@@ -80,15 +87,73 @@ describe("live Event Pass purchase availability", () => {
 
   it("accepts sale start inclusively after matching live price and capacity", async () => {
     await expect(
-      verifyPreparedPurchaseAvailability(purchase),
+      verifyPreparedPurchaseAvailability(purchase, protectedOffer),
     ).resolves.toBeUndefined();
   });
 
   it("rejects the exclusive sale end", async () => {
     getBlock.mockResolvedValue({ timestamp: 200n });
-    await expect(verifyPreparedPurchaseAvailability(purchase)).rejects.toThrow(
-      "no longer available onchain",
-    );
+    await expect(
+      verifyPreparedPurchaseAvailability(purchase, protectedOffer),
+    ).rejects.toThrow("no longer available onchain");
+  });
+
+  it("rejects an incompatible direct-payment contract configuration", async () => {
+    readContract
+      .mockReset()
+      .mockResolvedValueOnce([
+        "0x6666666666666666666666666666666666666666",
+        purchase.paymentAssetAddress,
+        "0x8888888888888888888888888888888888888888",
+        "0x0000000000000000000000000000000000000000",
+        0,
+        0,
+        false,
+      ]);
+
+    await expect(
+      verifyPreparedPurchaseAvailability(purchase, protectedOffer),
+    ).rejects.toThrow("protected payment configuration");
+  });
+
+  it("rejects an Event whose protection ends before sales", async () => {
+    readContract.mockReset();
+    readContract
+      .mockResolvedValueOnce([
+        "0x6666666666666666666666666666666666666666",
+        purchase.paymentAssetAddress,
+        "0x8888888888888888888888888888888888888888",
+        "0x9999999999999999999999999999999999999999",
+        500,
+        900,
+        false,
+      ])
+      .mockResolvedValueOnce([
+        purchase.revenueRecipient,
+        25_000_000n,
+        10,
+        2,
+        100n,
+        200n,
+        true,
+        true,
+        false,
+        "0x7777777777777777777777777777777777777777",
+      ])
+      .mockResolvedValueOnce([199n, 50_000_000n, false, false]);
+
+    await expect(
+      verifyPreparedPurchaseAvailability(purchase, protectedOffer),
+    ).rejects.toThrow("protected payment configuration");
+  });
+
+  it("rejects a prepared snapshot that differs from the server offer", async () => {
+    await expect(
+      verifyPreparedPurchaseAvailability(purchase, {
+        ...protectedOffer,
+        priceAmountSubunits: "1",
+      }),
+    ).rejects.toThrow("does not match the protected offer");
   });
 });
 
@@ -262,6 +327,7 @@ describe("Event Pass purchase reconciliation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    readContract.mockReset();
   });
 
   it("accepts a valid ERC-4337 purchase without requiring outer sender/destination", async () => {

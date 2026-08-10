@@ -67,6 +67,20 @@ describe("Mint Up Event Pass consumer contract", () => {
     expect(offer.availability).toEqual({ kind: "available" });
   });
 
+  it("never upgrades production-unavailable offers", () => {
+    const offer = parseOffer(
+      offerPayload({
+        availability: { kind: "unavailable", reason: "sale_ended" },
+      }),
+      NOW,
+    );
+
+    expect(offer.availability).toEqual({
+      kind: "unavailable",
+      reason: "Sales have ended",
+    });
+  });
+
   it("fails safely for malformed or incompatible responses", () => {
     expect(() =>
       parseOffer({ ...eligibleOfferPayload, remaining: -1 }, NOW),
@@ -84,5 +98,13 @@ describe("Mint Up Event Pass consumer contract", () => {
     expect(() =>
       parseOffer(offerPayload({ timezone: "Not/A_Timezone" }), NOW),
     ).toThrow();
+    const legacyOffer: Record<string, unknown> = { ...eligibleOfferPayload };
+    delete legacyOffer.availability;
+    expect(() => parseOffer(legacyOffer, NOW)).toThrow(
+      "Invalid Mint Up Event Pass response",
+    );
+    expect(() =>
+      parseOffer(offerPayload({ directPayment: true }), NOW),
+    ).toThrow("Invalid Mint Up Event Pass response");
   });
 });

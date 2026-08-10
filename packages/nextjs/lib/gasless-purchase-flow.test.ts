@@ -4,7 +4,6 @@ import { encodeFunctionData, erc20Abi } from "viem";
 import {
   buildPurchaseBatchCalls,
   encodePurchaseBatch,
-  eventPassPurchaseAbi,
   validateSponsoredPurchaseBatch,
 } from "./event-pass-purchase-batch";
 
@@ -131,31 +130,5 @@ describe("gasless purchase acceptance seam", () => {
     expect(() =>
       validateSponsoredPurchaseBatch({ ...base, callData: extra }),
     ).toThrow("exactly approval and purchase");
-  });
-
-  it("browser UI must disclose chain, account, price, spender, action, remaining, recipient, no-escrow", async () => {
-    const fs = await import("node:fs");
-    const file = fs.readFileSync(
-      "components/passes/gasless-event-pass-purchase.tsx",
-      "utf8",
-    );
-    const required = [
-      "Chain",
-      "smart account",
-      "Exact price",
-      "Spender",
-      "Action:",
-      "Remaining",
-      "Revenue recipient",
-      "No ETH required",
-      "no escrow",
-      "revert-on-failure",
-      "One biometric",
-      "frozen",
-      "Frozen intent",
-    ];
-    for (const phrase of required) {
-      expect(file.toLowerCase()).toContain(phrase.toLowerCase());
-    }
   });
 });

@@ -1,5 +1,6 @@
 import { fetchAuthAction, isAuthenticated } from "~~/lib/auth-server";
 import { preparePimlicoUserOperation } from "../../../../../lib/pimlico-user-operation-api";
+import { prepareUserOperationResultSchema } from "../../../../../lib/pimlico-user-operation-schema";
 import { readBoundedJson } from "../../../../../lib/pimlico-user-operation-route";
 
 export async function POST(request: Request) {
@@ -25,9 +26,10 @@ export async function POST(request: Request) {
   const purchaseId = (body.value as Record<string, unknown>)
     .purchaseId as string;
   try {
-    return Response.json(
-      await fetchAuthAction(preparePimlicoUserOperation, { purchaseId }),
-    );
+    const prepared = await fetchAuthAction(preparePimlicoUserOperation, {
+      purchaseId,
+    });
+    return Response.json(prepareUserOperationResultSchema.parse(prepared));
   } catch {
     return Response.json(
       { message: "The sponsored action could not be prepared." },

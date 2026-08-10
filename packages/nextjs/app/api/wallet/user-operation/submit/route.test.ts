@@ -17,6 +17,10 @@ const operation = {
   maxFeePerGas: "0x4",
   maxPriorityFeePerGas: "0x5",
   signature: "0x",
+  paymaster: "0x2222222222222222222222222222222222222222",
+  paymasterData: "0x",
+  paymasterVerificationGasLimit: "0x6",
+  paymasterPostOpGasLimit: "0x7",
 };
 describe("submit sponsored user operation API", () => {
   beforeEach(() => {

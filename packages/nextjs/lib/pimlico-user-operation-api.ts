@@ -1,16 +1,15 @@
 import { type FunctionReference, anyApi } from "convex/server";
+import type {
+  PrepareUserOperationResult,
+  UserOperationDto,
+} from "./pimlico-user-operation-schema";
+
+export type {
+  PrepareUserOperationResult,
+  UserOperationDto,
+} from "./pimlico-user-operation-schema";
 
 export type Hex = `0x${string}`;
-
-export type UserOperationDto = Record<string, string>;
-
-export type PrepareUserOperationResult = {
-  preparationId: string;
-  chainId: 421614;
-  entryPoint: Hex;
-  operation: UserOperationDto;
-  expiresAt: number;
-};
 
 export type UserOperationStatusResult =
   | { status: "pending" }
