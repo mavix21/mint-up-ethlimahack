@@ -15,12 +15,16 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "~~/components/ui/empty";
-import { CopyPassIdButton } from "~~/components/passes/copy-pass-id-button";
+import { EventPassTransfer } from "~~/components/passes/event-pass-transfer";
+import { fetchAuthQuery } from "~~/lib/auth-server";
+import { isEventPassTransferEligible } from "~~/lib/event-pass-transfer-eligibility";
 import {
   fetchMyPasses,
   groupPassesByEvent,
   type PassGroup,
 } from "~~/lib/event-pass-ownerships";
+import type { WalletPasskeyAccount } from "~~/lib/kernel-account";
+import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
 
 export const metadata: Metadata = {
   title: "My Passes",
@@ -40,24 +44,22 @@ function formatEventDate(value?: number, timezone?: string) {
   }
 }
 
-function PassCard({ pass }: { pass: PassGroup["passes"][number] }) {
+function PassCard({
+  pass,
+  eventName,
+  account,
+}: {
+  pass: PassGroup["passes"][number];
+  eventName: string;
+  account: WalletPasskeyAccount | null;
+}) {
   const isValid = pass.validity.status === "valid";
   const isCancelled = pass.cancellation.status === "cancelled";
-  const isTransferred = pass.transfer.status === "transferred";
+  const transferEligible = isEventPassTransferEligible(pass, account !== null);
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Pass #{pass.passId}
-          </p>
-          <p className="mt-1 break-all font-mono text-sm font-medium">
-            {pass.owner.address}
-          </p>
-        </div>
-        <CopyPassIdButton passId={pass.passId} />
-      </div>
+      <p className="text-sm font-bold">Event Pass</p>
 
       <div className="flex flex-wrap gap-1.5">
         <Badge variant={isValid ? "default" : "destructive"}>
@@ -66,23 +68,36 @@ function PassCard({ pass }: { pass: PassGroup["passes"][number] }) {
         <Badge variant={isCancelled ? "destructive" : "secondary"}>
           {isCancelled ? "Cancelled" : "Active"}
         </Badge>
-        <Badge variant={isTransferred ? "outline" : "secondary"}>
-          {isTransferred ? "Transferred" : "Transferable"}
+        <Badge variant="outline">
+          {pass.transfer.status === "transferable"
+            ? "Transferable"
+            : "Transferred"}
         </Badge>
-        {/* hashes hidden per spec: no transaction/UserOperation hash or explorer link in My Passes */}
       </div>
+      {transferEligible && account ? (
+        <EventPassTransfer
+          passId={pass.passId}
+          eventName={eventName}
+          account={account}
+        />
+      ) : null}
     </div>
   );
 }
 
-function PassGroupSection({ group }: { group: PassGroup }) {
+function PassGroupSection({
+  group,
+  sectionId,
+  account,
+}: {
+  group: PassGroup;
+  sectionId: string;
+  account: WalletPasskeyAccount | null;
+}) {
   const dateLabel = formatEventDate(group.startTime, group.timezone);
 
   return (
-    <Card
-      aria-labelledby={`event-${group.key}`}
-      className="gap-0 overflow-hidden p-0"
-    >
+    <Card aria-labelledby={sectionId} className="gap-0 overflow-hidden p-0">
       <div className="flex flex-col sm:flex-row">
         {group.imageUrl ? (
           <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-muted sm:w-52 md:w-64 lg:w-72">
@@ -100,7 +115,7 @@ function PassGroupSection({ group }: { group: PassGroup }) {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <h2
-                id={`event-${group.key}`}
+                id={sectionId}
                 className="font-heading text-xl font-bold leading-tight sm:text-2xl"
               >
                 {group.name}
@@ -124,11 +139,6 @@ function PassGroupSection({ group }: { group: PassGroup }) {
                   {group.passes.length === 1 ? "" : "es"}
                 </span>
               </div>
-              {group.eventId ? (
-                <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
-                  {group.eventId}
-                </p>
-              ) : null}
             </div>
             {group.eventId ? (
               <Link
@@ -142,7 +152,12 @@ function PassGroupSection({ group }: { group: PassGroup }) {
 
           <div className="mt-6 grid gap-3 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
             {group.passes.map(pass => (
-              <PassCard key={pass.passId} pass={pass} />
+              <PassCard
+                key={pass.passId}
+                pass={pass}
+                eventName={group.name}
+                account={account}
+              />
             ))}
           </div>
         </CardContent>
@@ -152,7 +167,10 @@ function PassGroupSection({ group }: { group: PassGroup }) {
 }
 
 async function MyPassesContent() {
-  const passes = await fetchMyPasses();
+  const [passes, account] = await Promise.all([
+    fetchMyPasses(),
+    fetchAuthQuery(getWalletPasskeyAccount, {}).catch(() => null),
+  ]);
   const groups = groupPassesByEvent(passes);
 
   if (groups.length === 0) {
@@ -186,8 +204,13 @@ async function MyPassesContent() {
           {groups.length} event{groups.length === 1 ? "" : "s"}
         </p>
       </div>
-      {groups.map(group => (
-        <PassGroupSection key={group.key} group={group} />
+      {groups.map((group, index) => (
+        <PassGroupSection
+          key={group.key}
+          group={group}
+          sectionId={`owned-event-${index + 1}`}
+          account={account}
+        />
       ))}
     </div>
   );

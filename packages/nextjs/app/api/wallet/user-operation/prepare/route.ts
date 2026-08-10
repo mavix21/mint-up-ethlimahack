@@ -12,23 +12,28 @@ export async function POST(request: Request) {
   const body = await readBoundedJson(request);
   if ("oversized" in body)
     return Response.json({ message: "Request is too large." }, { status: 413 });
-  if (
-    typeof body.value !== "object" ||
-    body.value === null ||
-    !("purchaseId" in (body.value as Record<string, unknown>)) ||
-    typeof (body.value as Record<string, unknown>).purchaseId !== "string"
-  ) {
+  if (typeof body.value !== "object" || body.value === null) {
     return Response.json(
       { message: "Invalid preparation request." },
       { status: 400 },
     );
   }
-  const purchaseId = (body.value as Record<string, unknown>)
-    .purchaseId as string;
+  const value = body.value as Record<string, unknown>;
+  const purchaseId = value.purchaseId;
+  const transferId = value.transferId;
+  const hasPurchaseId = typeof purchaseId === "string";
+  const hasTransferId = typeof transferId === "string";
+  if (hasPurchaseId === hasTransferId) {
+    return Response.json(
+      { message: "Invalid preparation request." },
+      { status: 400 },
+    );
+  }
+  const intent = hasPurchaseId
+    ? { purchaseId }
+    : { transferId: transferId as string };
   try {
-    const prepared = await fetchAuthAction(preparePimlicoUserOperation, {
-      purchaseId,
-    });
+    const prepared = await fetchAuthAction(preparePimlicoUserOperation, intent);
     return Response.json(prepareUserOperationResultSchema.parse(prepared));
   } catch {
     return Response.json(
