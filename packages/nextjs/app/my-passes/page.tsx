@@ -16,7 +16,16 @@ import {
   EmptyTitle,
 } from "~~/components/ui/empty";
 import { EventPassTransfer } from "~~/components/passes/event-pass-transfer";
+import { EventPassResale } from "~~/components/passes/event-pass-resale";
+import { EventPassResaleContent } from "~~/components/passes/event-pass-resale-content";
 import { fetchAuthQuery } from "~~/lib/auth-server";
+import {
+  fetchPrivateResaleOffer,
+  getEventPassResaleNow,
+  isEventPassResaleContractActive,
+} from "~~/lib/event-pass-resale-data";
+import { isEventPassResaleEligible } from "~~/lib/event-pass-resale-eligibility";
+import type { PrivateResaleOffer } from "~~/lib/event-pass-resale-schema";
 import { isEventPassTransferEligible } from "~~/lib/event-pass-transfer-eligibility";
 import {
   fetchMyPasses,
@@ -48,14 +57,27 @@ function PassCard({
   pass,
   eventName,
   account,
+  resale,
+  resaleContractActive,
+  now,
 }: {
   pass: PassGroup["passes"][number];
   eventName: string;
   account: WalletPasskeyAccount | null;
+  resale: PrivateResaleOffer | null;
+  resaleContractActive: boolean;
+  now: number;
 }) {
   const isValid = pass.validity.status === "valid";
   const isCancelled = pass.cancellation.status === "cancelled";
   const transferEligible = isEventPassTransferEligible(pass, account !== null);
+  const resaleEligible = isEventPassResaleEligible(
+    pass,
+    account !== null,
+    now,
+    resaleContractActive,
+  );
+  const sellerOffer = resale?.role === "seller" ? resale : null;
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm">
@@ -81,6 +103,21 @@ function PassCard({
           account={account}
         />
       ) : null}
+      {account && resaleEligible && sellerOffer?.status !== "unavailable" ? (
+        <EventPassResale
+          key={`resale-${pass.passId}-${now}`}
+          passId={pass.passId}
+          eventName={eventName}
+          account={account}
+          offer={sellerOffer}
+        />
+      ) : sellerOffer ? (
+        <EventPassResaleContent
+          state="unavailable"
+          eventName={eventName}
+          price={sellerOffer.price.amount}
+        />
+      ) : null}
     </div>
   );
 }
@@ -89,10 +126,16 @@ function PassGroupSection({
   group,
   sectionId,
   account,
+  resales,
+  resaleContractActive,
+  now,
 }: {
   group: PassGroup;
   sectionId: string;
   account: WalletPasskeyAccount | null;
+  resales: Map<string, PrivateResaleOffer | null>;
+  resaleContractActive: boolean;
+  now: number;
 }) {
   const dateLabel = formatEventDate(group.startTime, group.timezone);
 
@@ -157,6 +200,9 @@ function PassGroupSection({
                 pass={pass}
                 eventName={group.name}
                 account={account}
+                resale={resales.get(pass.passId) ?? null}
+                resaleContractActive={resaleContractActive}
+                now={now}
               />
             ))}
           </div>
@@ -167,11 +213,20 @@ function PassGroupSection({
 }
 
 async function MyPassesContent() {
-  const [passes, account] = await Promise.all([
+  const [passes, account, resaleContractActive, now] = await Promise.all([
     fetchMyPasses(),
     fetchAuthQuery(getWalletPasskeyAccount, {}).catch(() => null),
+    isEventPassResaleContractActive(),
+    getEventPassResaleNow(),
   ]);
   const groups = groupPassesByEvent(passes);
+  const resaleEntries = await Promise.all(
+    passes.map(
+      async pass =>
+        [pass.passId, await fetchPrivateResaleOffer(pass.passId)] as const,
+    ),
+  );
+  const resales = new Map(resaleEntries);
 
   if (groups.length === 0) {
     return (
@@ -210,6 +265,9 @@ async function MyPassesContent() {
           group={group}
           sectionId={`owned-event-${index + 1}`}
           account={account}
+          resales={resales}
+          resaleContractActive={resaleContractActive}
+          now={now}
         />
       ))}
     </div>

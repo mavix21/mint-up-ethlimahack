@@ -21,9 +21,14 @@ export async function POST(request: Request) {
   const value = body.value as Record<string, unknown>;
   const purchaseId = value.purchaseId;
   const transferId = value.transferId;
+  const resaleId = value.resaleId;
   const hasPurchaseId = typeof purchaseId === "string";
   const hasTransferId = typeof transferId === "string";
-  if (hasPurchaseId === hasTransferId) {
+  const hasResaleId = typeof resaleId === "string";
+  if (
+    Number(hasPurchaseId) + Number(hasTransferId) + Number(hasResaleId) !==
+    1
+  ) {
     return Response.json(
       { message: "Invalid preparation request." },
       { status: 400 },
@@ -31,7 +36,9 @@ export async function POST(request: Request) {
   }
   const intent = hasPurchaseId
     ? { purchaseId }
-    : { transferId: transferId as string };
+    : hasTransferId
+      ? { transferId: transferId as string }
+      : { resaleId: resaleId as string };
   try {
     const prepared = await fetchAuthAction(preparePimlicoUserOperation, intent);
     return Response.json(prepareUserOperationResultSchema.parse(prepared));
