@@ -166,6 +166,38 @@ describe("prepare sponsored user operation API", () => {
       resalePurchaseId: "private-resale-purchase-0001",
     });
   });
+  it("forwards a refundId", async () => {
+    fetchAuthAction.mockResolvedValue({
+      preparationId: "p",
+      chainId: 421614,
+      entryPoint: "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+      operation: {
+        sender: "0x1111111111111111111111111111111111111111",
+        nonce: "0x0",
+        callData: "0x1234",
+        callGasLimit: "0x1",
+        verificationGasLimit: "0x2",
+        preVerificationGas: "0x3",
+        maxFeePerGas: "0x4",
+        maxPriorityFeePerGas: "0x5",
+        signature: "0x",
+        paymaster: "0x2222222222222222222222222222222222222222",
+        paymasterData: "0x",
+        paymasterVerificationGasLimit: "0x6",
+        paymasterPostOpGasLimit: "0x7",
+      },
+      expiresAt: Date.UTC(2030, 0, 1),
+    });
+
+    const response = await POST(
+      request(JSON.stringify({ refundId: "event-pass-refund-0001" })),
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchAuthAction).toHaveBeenCalledWith(expect.anything(), {
+      refundId: "event-pass-refund-0001",
+    });
+  });
   it("rejects ambiguous intent references", async () => {
     const response = await POST(
       request(
@@ -192,6 +224,14 @@ describe("prepare sponsored user operation API", () => {
           resalePurchaseId: "resale-purchase",
         }),
       ),
+    );
+
+    expect(response.status).toBe(400);
+    expect(fetchAuthAction).not.toHaveBeenCalled();
+  });
+  it("rejects an ambiguous refund intent reference", async () => {
+    const response = await POST(
+      request(JSON.stringify({ transferId: "transfer", refundId: "refund" })),
     );
 
     expect(response.status).toBe(400);

@@ -17,6 +17,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "~~/components/ui/empty";
+import { EventPassRefundPanel } from "~~/components/passes/event-pass-refund-panel";
 import { EventPassTransfer } from "~~/components/passes/event-pass-transfer";
 import { EventPassResale } from "~~/components/passes/event-pass-resale";
 import { EventPassResaleContent } from "~~/components/passes/event-pass-resale-content";
@@ -32,6 +33,7 @@ import {
 import { isEventPassResaleEligible } from "~~/lib/event-pass-resale-eligibility";
 import type { PrivateResaleOffer } from "~~/lib/event-pass-resale-schema";
 import { createEventPassPublicClient } from "~~/lib/event-pass-public-client";
+import { fetchEventPassRefundAmount } from "~~/lib/event-pass-refund-data";
 import { isEventPassTransferEligible } from "~~/lib/event-pass-transfer-eligibility";
 import {
   fetchMyPasses,
@@ -64,6 +66,7 @@ function PassCard({
   eventName,
   account,
   resale,
+  refundAmountSubunits,
   resaleContractActive,
   now,
 }: {
@@ -71,6 +74,7 @@ function PassCard({
   eventName: string;
   account: WalletPasskeyAccount | null;
   resale: PrivateResaleOffer | null;
+  refundAmountSubunits: string | null;
   resaleContractActive: boolean;
   now: number;
 }) {
@@ -102,6 +106,12 @@ function PassCard({
             : "Transferred"}
         </Badge>
       </div>
+      <EventPassRefundPanel
+        pass={pass}
+        eventName={eventName}
+        originalAmountSubunits={refundAmountSubunits}
+        account={account}
+      />
       {transferEligible && account ? (
         <EventPassTransfer
           passId={pass.passId}
@@ -133,6 +143,7 @@ function PassGroupSection({
   sectionId,
   account,
   resales,
+  refundAmounts,
   resaleContractActive,
   now,
 }: {
@@ -140,6 +151,7 @@ function PassGroupSection({
   sectionId: string;
   account: WalletPasskeyAccount | null;
   resales: Map<string, PrivateResaleOffer | null>;
+  refundAmounts: Map<string, string | null>;
   resaleContractActive: boolean;
   now: number;
 }) {
@@ -207,6 +219,7 @@ function PassGroupSection({
                 eventName={group.name}
                 account={account}
                 resale={resales.get(pass.passId) ?? null}
+                refundAmountSubunits={refundAmounts.get(pass.passId) ?? null}
                 resaleContractActive={resaleContractActive}
                 now={now}
               />
@@ -233,26 +246,39 @@ async function MyPassesContent() {
   const { offers: purchaseOffers, unavailable: purchaseOffersUnavailable } =
     purchaseOffersResult;
   const groups = groupPassesByEvent(passes);
-  const [resaleEntries, initialUsdcBalance] = await Promise.all([
-    Promise.all(
-      passes.map(
-        async pass =>
-          [pass.passId, await fetchPrivateResaleOffer(pass.passId)] as const,
+  const [resaleEntries, refundAmountEntries, initialUsdcBalance] =
+    await Promise.all([
+      Promise.all(
+        passes.map(
+          async pass =>
+            [pass.passId, await fetchPrivateResaleOffer(pass.passId)] as const,
+        ),
       ),
-    ),
-    account && purchaseOffers.length > 0
-      ? createEventPassPublicClient(eventPassEnvironment.chainId)
-          .readContract({
-            address: eventPassEnvironment.usdcAddress,
-            abi: erc20Abi,
-            functionName: "balanceOf",
-            args: [account.address],
-          })
-          .then(value => value.toString())
-          .catch(() => null)
-      : Promise.resolve(null),
-  ]);
+      Promise.all(
+        passes.map(
+          async pass =>
+            [
+              pass.passId,
+              pass.refund.status === "available"
+                ? await fetchEventPassRefundAmount(pass.passId)
+                : null,
+            ] as const,
+        ),
+      ),
+      account && purchaseOffers.length > 0
+        ? createEventPassPublicClient(eventPassEnvironment.chainId)
+            .readContract({
+              address: eventPassEnvironment.usdcAddress,
+              abi: erc20Abi,
+              functionName: "balanceOf",
+              args: [account.address],
+            })
+            .then(value => value.toString())
+            .catch(() => null)
+        : Promise.resolve(null),
+    ]);
   const resales = new Map(resaleEntries);
+  const refundAmounts = new Map(refundAmountEntries);
 
   if (
     groups.length === 0 &&
@@ -304,6 +330,7 @@ async function MyPassesContent() {
           sectionId={`owned-event-${index + 1}`}
           account={account}
           resales={resales}
+          refundAmounts={refundAmounts}
           resaleContractActive={resaleContractActive}
           now={now}
         />

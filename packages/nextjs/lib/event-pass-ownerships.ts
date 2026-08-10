@@ -25,7 +25,10 @@ const passSchema = z.object({
   cancellation: z.object({
     status: z.enum(["active", "cancelled"]),
   }),
-  checkIn: z.object({ status: z.literal("notRecorded") }),
+  refund: z.object({
+    status: z.enum(["unavailable", "available", "received"]),
+  }),
+  checkIn: z.object({ status: z.enum(["notRecorded", "recorded"]) }),
   // Enriched event metadata – optional for backwards compatibility.
   event: z
     .object({

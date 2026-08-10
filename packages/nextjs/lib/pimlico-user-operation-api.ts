@@ -39,24 +39,35 @@ export const preparePimlicoUserOperation = anyApi.passkeySponsorshipActions
       transferId?: never;
       resaleId?: never;
       resalePurchaseId?: never;
+      refundId?: never;
     }
   | {
       purchaseId?: never;
       transferId: string;
       resaleId?: never;
       resalePurchaseId?: never;
+      refundId?: never;
     }
   | {
       purchaseId?: never;
       transferId?: never;
       resaleId: string;
       resalePurchaseId?: never;
+      refundId?: never;
     }
   | {
       purchaseId?: never;
       transferId?: never;
       resaleId?: never;
       resalePurchaseId: string;
+      refundId?: never;
+    }
+  | {
+      purchaseId?: never;
+      transferId?: never;
+      resaleId?: never;
+      resalePurchaseId?: never;
+      refundId: string;
     },
   PrepareUserOperationResult
 >;
