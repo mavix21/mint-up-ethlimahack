@@ -17,6 +17,7 @@ import {
   EmptyTitle,
 } from "~~/components/ui/empty";
 import { EventPassRefundPanel } from "~~/components/passes/event-pass-refund-panel";
+import { EventPassHistoryDialog } from "~~/components/passes/event-pass-history-dialog";
 import { EventPassTransfer } from "~~/components/passes/event-pass-transfer";
 import { EventPassResale } from "~~/components/passes/event-pass-resale";
 import { EventPassResaleContent } from "~~/components/passes/event-pass-resale-content";
@@ -54,6 +55,52 @@ function formatEventDate(value?: number, timezone?: string) {
   } catch {
     return new Date(value).toLocaleString();
   }
+}
+
+function formatUsdc(amountSubunits: string) {
+  const amount = amountSubunits.padStart(7, "0");
+  const integer = amount.slice(0, -6);
+  const fraction = amount.slice(-6).replace(/0+$/, "");
+  return `${integer}${fraction ? `.${fraction}` : ""} USDC`;
+}
+
+function PassHistory({
+  history,
+  timezone,
+}: {
+  history: PassGroup["passes"][number]["history"];
+  timezone?: string;
+}) {
+  return (
+    <ol className="space-y-5 border-l pl-5">
+      {history.map((entry, index) => {
+        const actor = entry.actor.isCurrentUser ? "You" : entry.actor.name;
+        const action =
+          entry.kind === "purchased"
+            ? "bought this pass"
+            : entry.kind === "listed"
+              ? "listed this pass for resale"
+              : "bought this pass from its previous owner";
+        return (
+          <li
+            key={`${entry.kind}-${entry.occurredAt}-${index}`}
+            className="relative"
+          >
+            <span className="absolute top-1.5 -left-[1.56rem] size-2 rounded-full bg-primary" />
+            <p className="font-medium">
+              {actor} {action} for {formatUsdc(entry.amountSubunits)}.
+            </p>
+            <time
+              dateTime={new Date(entry.occurredAt).toISOString()}
+              className="mt-1 block text-xs text-muted-foreground"
+            >
+              {formatEventDate(entry.occurredAt, timezone)}
+            </time>
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 function PassCard({
@@ -99,6 +146,11 @@ function PassCard({
             : "Transferred"}
         </Badge>
       </div>
+      {pass.history.length > 0 ? (
+        <EventPassHistoryDialog eventName={eventName}>
+          <PassHistory history={pass.history} timezone={pass.event?.timezone} />
+        </EventPassHistoryDialog>
+      ) : null}
       <EventPassRefundPanel
         pass={pass}
         eventName={eventName}

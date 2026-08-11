@@ -29,6 +29,19 @@ const passSchema = z.object({
     status: z.enum(["unavailable", "available", "received"]),
   }),
   checkIn: z.object({ status: z.enum(["notRecorded", "recorded"]) }),
+  history: z
+    .array(
+      z.object({
+        kind: z.enum(["purchased", "listed", "resold"]),
+        occurredAt: z.number(),
+        actor: z.object({
+          name: z.string(),
+          isCurrentUser: z.boolean(),
+        }),
+        amountSubunits: z.string(),
+      }),
+    )
+    .default([]),
   // Enriched event metadata – optional for backwards compatibility.
   event: z
     .object({
