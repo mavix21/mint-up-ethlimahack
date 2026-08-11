@@ -145,16 +145,15 @@ authorization, errors, and events. The mock has permissionless minting and is
 only selected automatically for chain ID `412346`; it must never be used as a
 production payment token.
 
-Deploy to Arbitrum Sepolia with:
+Deploy a fresh release to Arbitrum Sepolia with the repository wrapper so the
+generated ABI and deployment record stay aligned:
 
 ```sh
-cargo stylus deploy \
-  --endpoint https://sepolia-rollup.arbitrum.io/rpc \
-  --private-key "$PRIVATE_KEY" \
-  --constructor-args "$ADMIN" 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d "$AUTHORIZATION_SIGNER" "$FEE_RECIPIENT" false \
-  --no-verify
+yarn deploy --network sepolia
 ```
 
-This ticket does not deploy to Sepolia. After a later deployment, set the
-`ARBITRUM_SEPOLIA_EVENT_PASS` constant in
-`packages/nextjs/contracts/eventPassEnvironment.ts` to the deployed address.
+The current public Marketplace release is recorded in
+`docs/event-pass-demo-deployment.json`. Configure
+`NEXT_PUBLIC_ARBITRUM_SEPOLIA_EVENT_PASS` with that address and run
+`MINT_UP_PROD_ROOT=/absolute/path/to/mint-up-corp yarn demo:validate` before a
+coordinated smoke.
