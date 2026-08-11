@@ -12,6 +12,7 @@ export type ResalePurchaseAccessStatus =
   | "account_unprotected"
   | "email_unverified"
   | "blocked"
+  | "own_listing"
   | "already_has_event_pass"
   | "unavailable";
 

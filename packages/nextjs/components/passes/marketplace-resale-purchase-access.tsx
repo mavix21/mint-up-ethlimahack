@@ -83,6 +83,13 @@ export async function MarketplaceResalePurchaseAccess({
   }
 
   const { authenticated, account, balance, purchaseAccess } = access;
+  if (purchaseAccess?.status === "own_listing") {
+    return (
+      <div className="mt-5">
+        <MarketplaceResalePurchaseStatus status="own_listing" />
+      </div>
+    );
+  }
   const blockedStatus =
     purchaseAccess &&
     purchaseAccess.status !== "eligible" &&

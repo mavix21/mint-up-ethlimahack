@@ -10,7 +10,6 @@ import {
 } from "~~/components/passes/marketplace-resale-purchase-access";
 import { Badge } from "~~/components/ui/badge";
 import { formatUsdc } from "~~/lib/event-pass-offers";
-import { fetchMyPasses } from "~~/lib/event-pass-ownerships";
 import { composeMarketplace } from "~~/lib/marketplace";
 import { listPassResales } from "~~/lib/marketplace-data";
 
@@ -26,15 +25,11 @@ export default async function MarketplacePage({
   searchParams: Promise<{ buy?: string }>;
 }) {
   await connection();
-  const [{ buy }, resales, myPasses] = await Promise.all([
+  const [{ buy }, resales] = await Promise.all([
     searchParams,
     listPassResales(),
-    fetchMyPasses(),
   ]);
-  const groups = composeMarketplace(
-    resales,
-    new Set(myPasses.map(pass => pass.passId)),
-  );
+  const groups = composeMarketplace(resales);
   const selectedListingAvailable = groups.some(group =>
     group.offers.some(offer => offer.passId === buy),
   );

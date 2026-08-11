@@ -8,6 +8,7 @@ describe("Marketplace resale onboarding status", () => {
   it.each([
     ["email_unverified", "Verify your email", "verification message"],
     ["blocked", "cannot make purchases", "Contact Mint Up support"],
+    ["own_listing", "listed this Event Pass", "Manage My passes"],
     [
       "already_has_event_pass",
       "already have an active Event Pass",

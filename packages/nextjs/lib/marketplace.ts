@@ -44,20 +44,17 @@ export type MarketplaceGroup = {
 
 export function composeMarketplace(
   resaleGroups: z.infer<typeof resaleMarketplaceSchema>,
-  excludedPassIds: ReadonlySet<string> = new Set(),
 ): MarketplaceGroup[] {
   return resaleGroups
     .map(resaleGroup => ({
       event: resaleGroup.event,
-      offers: resaleGroup.listings
-        .filter(listing => !excludedPassIds.has(listing.passId))
-        .map(listing => ({
-          passId: listing.passId,
-          ticketTypeName: listing.ticketTypeName,
-          priceAmountSubunits: listing.price.amountSubunits,
-          originalProtectedPriceAmountSubunits:
-            listing.originalProtectedPrice.amountSubunits,
-        })),
+      offers: resaleGroup.listings.map(listing => ({
+        passId: listing.passId,
+        ticketTypeName: listing.ticketTypeName,
+        priceAmountSubunits: listing.price.amountSubunits,
+        originalProtectedPriceAmountSubunits:
+          listing.originalProtectedPrice.amountSubunits,
+      })),
     }))
     .filter(group => group.offers.length > 0)
     .map(group => ({

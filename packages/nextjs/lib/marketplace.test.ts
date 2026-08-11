@@ -3,58 +3,56 @@ import { describe, expect, it } from "vitest";
 import { composeMarketplace } from "./marketplace";
 
 describe("composeMarketplace", () => {
-  it("groups resale listings by event, excludes owned passes, then sorts", () => {
-    const result = composeMarketplace(
-      [
-        {
-          event: { id: "soon", name: "Soon", startTime: 100 },
-          listings: [
-            {
-              passId: "pass-2",
-              ticketTypeName: "General",
-              price: { amountSubunits: "2000000", denomination: "USDC" },
-              originalProtectedPrice: {
-                amountSubunits: "4000000",
-                denomination: "USDC",
-              },
-              offerKind: "pass_resale",
+  it("keeps every public resale listing while grouping and sorting", () => {
+    const result = composeMarketplace([
+      {
+        event: { id: "soon", name: "Soon", startTime: 100 },
+        listings: [
+          {
+            passId: "pass-2",
+            ticketTypeName: "General",
+            price: { amountSubunits: "2000000", denomination: "USDC" },
+            originalProtectedPrice: {
+              amountSubunits: "4000000",
+              denomination: "USDC",
             },
-            {
-              passId: "pass-1",
-              ticketTypeName: "VIP",
-              price: { amountSubunits: "1000000", denomination: "USDC" },
-              originalProtectedPrice: {
-                amountSubunits: "2000000",
-                denomination: "USDC",
-              },
-              offerKind: "pass_resale",
+            offerKind: "pass_resale",
+          },
+          {
+            passId: "pass-1",
+            ticketTypeName: "VIP",
+            price: { amountSubunits: "1000000", denomination: "USDC" },
+            originalProtectedPrice: {
+              amountSubunits: "2000000",
+              denomination: "USDC",
             },
-          ],
-        },
-        {
-          event: { id: "later", name: "Later", startTime: 200 },
-          listings: [
-            {
-              passId: "pass-3",
-              ticketTypeName: "General",
-              price: { amountSubunits: "3000000", denomination: "USDC" },
-              originalProtectedPrice: {
-                amountSubunits: "3000000",
-                denomination: "USDC",
-              },
-              offerKind: "pass_resale",
+            offerKind: "pass_resale",
+          },
+        ],
+      },
+      {
+        event: { id: "later", name: "Later", startTime: 200 },
+        listings: [
+          {
+            passId: "pass-3",
+            ticketTypeName: "General",
+            price: { amountSubunits: "3000000", denomination: "USDC" },
+            originalProtectedPrice: {
+              amountSubunits: "3000000",
+              denomination: "USDC",
             },
-          ],
-        },
-      ],
-      new Set(["pass-1"]),
-    );
+            offerKind: "pass_resale",
+          },
+        ],
+      },
+    ]);
 
     expect(result.map(group => group.event.id)).toEqual(["soon", "later"]);
     expect(result[0]?.offers.map(offer => offer.priceAmountSubunits)).toEqual([
+      "1000000",
       "2000000",
     ]);
-    expect(result[0]?.offers[0]).toMatchObject({
+    expect(result[0]?.offers[1]).toMatchObject({
       originalProtectedPriceAmountSubunits: "4000000",
     });
     expect(JSON.stringify(result)).not.toMatch(

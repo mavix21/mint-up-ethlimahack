@@ -25,6 +25,11 @@ export function MarketplaceResalePurchaseStatus({
       detail: "Contact Mint Up support if you think this is a mistake.",
       action: null,
     },
+    own_listing: {
+      title: "You listed this Event Pass",
+      detail: "You cannot buy your own resale listing.",
+      action: { href: "/my-passes", label: "Manage My passes" },
+    },
     already_has_event_pass: {
       title: "You already have an active Event Pass for this Event",
       detail:
