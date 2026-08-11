@@ -1,117 +1,79 @@
-# Event Pass coordinated demo checklist
+# Public Marketplace coordinated demo checklist
 
-This is the release record for issue #44. Keep operator-only evidence such as transaction hashes, account addresses, provider delivery IDs, and raw Event or Pass IDs outside buyer-facing screenshots.
+This is the release record for issue #55. Keep transaction hashes, account addresses, provider delivery IDs, and raw Event or Pass IDs out of buyer-facing screenshots.
 
 ## Release identity
 
-| Item                                | Recorded value                                                               |
-| ----------------------------------- | ---------------------------------------------------------------------------- |
-| Network                             | Arbitrum Sepolia (`421614`)                                                  |
-| Event Pass                          | `0xcdef01d755e4c68d3fc428a97f1d639c5fb44d62`                                 |
-| Deployment transaction              | `0xb5c855184ac486fc9bffe79b4a61fbceb6193d4895643cfeb2b228f66b3108b9`         |
-| Deployment block                    | `296796471`                                                                  |
-| Contract source revision            | `02a31fdc454262cfc8980299d93e5450c44b7a9c`                                   |
-| Buyer app deployed revision and URL | Not yet recorded                                                             |
-| `mint-up-corp` deployed revision    | `e04a35256ba030b63c749f1c1fa51e701d5d3f43` (deployment confirmation pending) |
-| Shared Convex deployment            | `dev:brilliant-chihuahua-114`                                                |
+| Item | Recorded value |
+| --- | --- |
+| Network | Arbitrum Sepolia (`421614`) |
+| Event Pass | `0xf38c46f74ced7b5b5784b8eed24a17bfafcac12d` |
+| Deployment transaction | `0xf16ab268e147ecc407940dc08e25265ff069a574a0ecbe7765480ac80e9b5ee1` |
+| Deployment block | `296886296` |
+| Contract source revision | `7fb346c9c37432fedbb97a454a304871ce6a5c6a` |
+| Shared backend revision | `f8d75a25bc46f6f001fa1ede44b733dd224dbe99` |
+| Shared Convex deployment | `dev:brilliant-chihuahua-114` |
+| Buyer deployment URL/revision | Not available under the authenticated Vercel account |
 
-The immutable expected configuration is tracked in `docs/event-pass-demo-deployment.json`. Run the compatibility gate before every smoke:
+Run the compatibility gate before every smoke:
 
 ```bash
 MINT_UP_PROD_ROOT=/absolute/path/to/mint-up-corp yarn demo:validate
 ```
 
-The command checks the complete function/event ABI across both repositories, buyer environment, shared Convex deployment row, live deployment receipt and bytecode, USDC, administrator, authorization signer, fee recipient, `500/900` fees, and paused state. Any mismatch exits nonzero and names the mismatched field.
-
-Onchain smoke evidence is recorded in `docs/event-pass-sepolia-smoke.md`.
-
 ## Deployment gate
 
-- [x] New contract exists on Arbitrum Sepolia with successful deployment receipt.
-- [x] Live administrator, USDC, authorization signer, fee recipient, primary fee `500`, resale fee `900`, and unpaused state match the release record.
-- [x] Buyer app selects chain `421614`, the release contract, official Sepolia USDC, and the shared Convex URL.
-- [x] Production Convex selects the same chain, contract, deployment block, fee recipient, and fee rates.
-- [x] Production Convex authorization signer account/address is configured and matches the immutable contract signer.
-- [x] Canonical, generated buyer, and production function/event ABI shapes match.
-- [ ] Buyer app production deployment URL and revision are recorded above.
-- [ ] Production Convex deployment revision is confirmed and recorded above.
-- [x] Native Stylus verification passes immediately after a clean build and deployment with `STYLUS_VERIFY_NATIVE=1 yarn stylus-verify`.
-- [ ] Reproducible Docker verification passes. On 2026-08-10 Rust `1.91.0` segfaulted under amd64 emulation on Apple Silicon.
-
-Do not continue to the coordinated browser/production smoke while any deployment-gate item is open. Contract-only Sepolia validation may proceed and is recorded separately.
+- [x] The public-only contract is deployed, starts empty, and has successful receipt and bytecode.
+- [x] Live administrator, USDC, authorization signer, fee recipient, fees, and pause state match the release record.
+- [x] Contract, generated buyer, and shared backend ABIs contain only the public listing interface.
+- [x] The buyer environment and shared Convex deployment select the same chain, contract, block, and economy.
+- [x] The shared backend revision is deployed and its legacy Event Pass projections were removed rather than migrated.
+- [x] Native source verification passes against the recorded deployment transaction.
+- [ ] Deploy the tested buyer revision and record its canonical URL.
+- [ ] Run reproducible verification on native amd64 infrastructure.
 
 ## Automated verification
 
-Run from the repository root and record the date/operator with the release evidence:
-
 ```bash
-yarn stylus:format
-yarn stylus:lint
-yarn compile
 yarn stylus:test
 yarn next:check-types
 yarn next:lint
 yarn workspace @ss/nextjs test
 yarn next:build
-yarn stylus-verify
 STYLUS_VERIFY_NATIVE=1 yarn stylus-verify
 MINT_UP_PROD_ROOT=/absolute/path/to/mint-up-corp yarn demo:validate
+pnpm --filter @mint-up-corp/backend check-types
+pnpm --filter @mint-up-corp/backend test
 ```
 
-Run the Nitro acceptance lifecycle against a freshly started local chain:
+- [x] Contract formatting, clippy, 34 unit tests, ABI parity, and Stylus build pass.
+- [x] Buyer typecheck, focused lint hooks, 287 tests, and production build pass.
+- [x] Shared backend typecheck and 708 tests pass.
+- [x] Cross-repository live compatibility gate passes.
+- [ ] Full-repository buyer lint completes; the command produced no findings but did not exit within five minutes.
 
-```bash
-yarn chain
-yarn deploy
-yarn test:local
-```
+## Fresh pilot setup
 
-- [x] Contract format, lint, unit tests, build, and native Stylus verification pass.
-- [ ] Buyer typecheck, lint, rendered tests, and production build pass.
-- [x] Production Event Pass backend typecheck and 700 backend tests pass.
-- [ ] Production repository verification and build pass.
-- [x] Deployed Sepolia protected-payment/cancellation/refund branch passes.
-- [x] Deployed Sepolia independent release branch proves exact one-time `95/5` settlement.
+- [ ] Create fresh pilot Events through the organizer flow after the Convex cutover.
+- [ ] Publish fresh Event Pass configurations and verify they snapshot this contract and block.
+- [ ] Acquire fresh Passes for a seller and two eligible protected buyers.
+- [x] No Event Pass configuration, Pass instance, purchase, transfer, refund, or resale projection was migrated from the prior deployment.
 
 ## Desktop smoke
 
-- [ ] Create a new demo Event against this deployment; do not copy Events, Passes, protected balances, or offers from an older contract.
-- [ ] Get Pass shows the Event, exact total USDC price, and Protected payment explanation under one Face ID or fingerprint confirmation.
-- [ ] Transfer by recipient email completes only after verified reconciliation; the pass moves between My Passes views.
-- [ ] Transfer transactional email is queued/observed. A delivery failure, if exercised, leaves verified ownership unchanged.
-- [ ] Seller creates or replaces a private resale offer by email and human USDC price.
-- [ ] Offer transactional email is queued/observed. A delivery failure, if exercised, leaves the verified offer unchanged.
-- [ ] Only the designated buyer sees and purchases the offer; review states that cancellation returns the original protected price.
-- [ ] Event Administrator completes Event Cancellation before the Event start.
-- [ ] Current holder sees Devolucion disponible, receives the original protected amount, then sees Devolucion recibida with no repeat action.
-- [ ] Buyer-visible pages and dialogs show no addresses, raw IDs, hashes, explorer links, gas, wallet, approval, NFT, token, or escrow terminology.
+- [ ] Explore the public Marketplace without signing in and distinguish Pass resale from primary inventory.
+- [ ] Publish by entering only a total USDC price and confirming biometrically.
+- [ ] Verify the listing appears only after canonical reconciliation and exposes no seller identity.
+- [ ] Resume one buyer through sign-in or account protection and revalidate the listing before review.
+- [ ] Review total price, included 9% fee, seller net, Protected payment, balance, and cancellation policy.
+- [ ] Submit two eligible buyers for one listing without a reservation.
+- [ ] Verify exactly one buyer pays, the seller receives 91%, Mint Up receives 9%, ownership moves once, and the losing buyer returns to the Marketplace.
+- [ ] Force a transactional email delivery failure after reconciliation and verify listing/payment/ownership remain authoritative and retries are idempotent.
+- [ ] Verify buyer-visible pages contain no addresses, hashes, gas, wallet, approval, NFT, token, escrow, or seller identity.
 
 ## Mobile smoke
 
-Repeat the principal purchase, transfer, resale purchase, cancellation, and refund controls at a Pixel 7-sized viewport or a physical mobile device.
+Repeat exploration, publication, onboarding, review, competing purchase, and failure recovery at a Pixel 7-sized viewport or on a physical device.
 
-- [ ] Navigation, dialogs, forms, price disclosures, biometric prompts, errors, and Retry actions remain readable and usable without horizontal scrolling.
-- [ ] The same buyer-jargon audit passes on mobile.
-
-## Independent release smoke
-
-Use a separate non-cancelled Event so cancellation/refund data cannot satisfy settlement evidence.
-
-- [x] Protected balance remains in the contract before Event start.
-- [x] Release at/after Event start pays exactly 95% to the organizer and 5% to Mint Up, with deterministic rounding and exact conservation.
-- [x] A repeated onchain release cannot pay again. Production settlement projection remains to be observed.
-
-## Collectible visibility and movement policy
-
-- [x] `supportsInterface` returns true for ERC-165, ERC-721, and ERC-721 Metadata.
-- [x] `name` is `Mint Up Event Pass`, `symbol` is `MUEP`, and `ownerOf` returns the onchain holder.
-- [x] `tokenURI` is `ipfs://`; its JSON and referenced image resolve through a public Pinata gateway.
-- [x] Arbiscan indexes the deployment as ERC-721 and exposes Token ID `5`.
-- [x] Standard approval and direct standard transfer are attempted and rejected.
-- [x] The same ownership change succeeds through Mint Up dual authorization.
-
-## No migration
-
-- [x] Record old/new contract-address separation before the smoke.
-- [x] Confirm the new contract began empty except for Events and Passes created for this demo.
-- [ ] Confirm production did not rewrite Event Pass, balance, offer, or ownership-history records from an older deployment.
+- [ ] Navigation, dialogs, forms, price disclosures, biometric prompts, errors, and retry controls are usable without horizontal scrolling.
+- [ ] The same privacy and buyer-language audit passes.

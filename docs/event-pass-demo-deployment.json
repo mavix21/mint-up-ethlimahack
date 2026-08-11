@@ -1,13 +1,13 @@
 {
   "chainId": 421614,
-  "contractAddress": "0xcdef01d755e4c68d3fc428a97f1d639c5fb44d62",
-  "deploymentBlock": "296796471",
-  "deploymentTransaction": "0xb5c855184ac486fc9bffe79b4a61fbceb6193d4895643cfeb2b228f66b3108b9",
+  "contractAddress": "0xf38c46f74ced7b5b5784b8eed24a17bfafcac12d",
+  "deploymentBlock": "296886296",
+  "deploymentTransaction": "0xf16ab268e147ecc407940dc08e25265ff069a574a0ecbe7765480ac80e9b5ee1",
   "administrator": "0xBE79FcF42348B143547c2d9f1a66C3C83BB7915b",
   "authorizationSigner": "0x9cbf24cd10948992e6912fb4a4c0433d7a3e985c",
   "feeRecipient": "0x0fb249b159543BCcE6f1f649DAdfe2f31a4a80D9",
   "usdc": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
   "primaryFeeBps": 500,
   "resaleFeeBps": 900,
-  "contractSourceRevision": "02a31fdc454262cfc8980299d93e5450c44b7a9c"
+  "contractSourceRevision": "7fb346c9c37432fedbb97a454a304871ce6a5c6a"
 }
