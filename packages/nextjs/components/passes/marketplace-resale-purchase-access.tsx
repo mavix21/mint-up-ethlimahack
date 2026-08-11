@@ -4,11 +4,13 @@ import { erc20Abi } from "viem";
 import { eventPassEnvironment } from "~~/contracts/eventPassEnvironment";
 import { fetchAuthQuery, isAuthenticated } from "~~/lib/auth-server";
 import { createEventPassPublicClient } from "~~/lib/event-pass-public-client";
+import { getEventPassResalePurchaseAccess } from "~~/lib/event-pass-resale-api";
 import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
 import { EventPassResalePurchaseReview } from "./event-pass-resale-purchase-review";
 import { MarketplaceResalePurchaseGate } from "./marketplace-resale-purchase-gate";
+import { MarketplaceResalePurchaseStatus } from "./marketplace-resale-purchase-status";
 
-const getMarketplaceBuyerAccess = cache(async () => {
+const getMarketplaceBuyerAccess = cache(async (passId: string) => {
   let authenticated: boolean;
   try {
     authenticated = await isAuthenticated();
@@ -16,26 +18,37 @@ const getMarketplaceBuyerAccess = cache(async () => {
     return { error: true as const };
   }
   let account = null;
+  let purchaseAccess = null;
   if (authenticated) {
     try {
-      account = await fetchAuthQuery(getWalletPasskeyAccount, {});
+      [account, purchaseAccess] = await Promise.all([
+        fetchAuthQuery(getWalletPasskeyAccount, {}),
+        fetchAuthQuery(getEventPassResalePurchaseAccess, { passId }),
+      ]);
     } catch {
       return { error: true as const };
     }
   }
-  const balance = account
-    ? await createEventPassPublicClient(eventPassEnvironment.chainId)
-        .readContract({
-          address: eventPassEnvironment.usdcAddress,
-          abi: erc20Abi,
-          functionName: "balanceOf",
-          args: [account.address],
-        })
-        .then(value => value.toString())
-        .catch(() => null)
-    : null;
+  const balance =
+    account && purchaseAccess?.status === "eligible"
+      ? await createEventPassPublicClient(eventPassEnvironment.chainId)
+          .readContract({
+            address: eventPassEnvironment.usdcAddress,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [account.address],
+          })
+          .then(value => value.toString())
+          .catch(() => null)
+      : null;
 
-  return { error: false as const, authenticated, account, balance };
+  return {
+    error: false as const,
+    authenticated,
+    account,
+    balance,
+    purchaseAccess,
+  };
 });
 
 export async function MarketplaceResalePurchaseAccess({
@@ -51,7 +64,7 @@ export async function MarketplaceResalePurchaseAccess({
   originalProtectedAmountSubunits: string;
   selected: boolean;
 }) {
-  const access = await getMarketplaceBuyerAccess();
+  const access = await getMarketplaceBuyerAccess(passId);
 
   if (access.error) {
     return (
@@ -69,7 +82,13 @@ export async function MarketplaceResalePurchaseAccess({
     );
   }
 
-  const { authenticated, account, balance } = access;
+  const { authenticated, account, balance, purchaseAccess } = access;
+  const blockedStatus =
+    purchaseAccess &&
+    purchaseAccess.status !== "eligible" &&
+    purchaseAccess.status !== "account_unprotected"
+      ? purchaseAccess.status
+      : null;
 
   return (
     <MarketplaceResalePurchaseGate
@@ -80,6 +99,11 @@ export async function MarketplaceResalePurchaseAccess({
       account={account}
       initialUsdcBalance={balance}
       selected={selected}
+      blocker={
+        blockedStatus ? (
+          <MarketplaceResalePurchaseStatus status={blockedStatus} />
+        ) : null
+      }
       review={
         <EventPassResalePurchaseReview
           eventName={eventName}

@@ -23,6 +23,7 @@ export function MarketplaceResalePurchaseGate({
   account,
   initialUsdcBalance,
   selected,
+  blocker,
   review,
 }: {
   passId: string;
@@ -32,6 +33,7 @@ export function MarketplaceResalePurchaseGate({
   account: WalletPasskeyAccount | null;
   initialUsdcBalance: string | null;
   selected: boolean;
+  blocker: ReactNode;
   review: ReactNode;
 }) {
   const [open, setOpen] = useState(selected);
@@ -70,6 +72,8 @@ export function MarketplaceResalePurchaseGate({
                 </p>
                 <GoogleSignInButton callbackUrl={callbackUrl} />
               </div>
+            ) : blocker ? (
+              blocker
             ) : !account ? (
               <InlineSecureStep
                 onSuccess={() => {

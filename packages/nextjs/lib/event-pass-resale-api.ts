@@ -7,6 +7,14 @@ import type {
   ResaleWithdrawalPreparation,
 } from "./event-pass-resale-schema";
 
+export type ResalePurchaseAccessStatus =
+  | "eligible"
+  | "account_unprotected"
+  | "email_unverified"
+  | "blocked"
+  | "already_has_event_pass"
+  | "unavailable";
+
 export function eventPassResaleErrorCode(error: unknown) {
   if (typeof error === "object" && error !== null && "data" in error) {
     const data = error.data;
@@ -84,6 +92,14 @@ export const prepareEventPassResalePurchase = anyApi.eventPassResalePurchases
     idempotencyKey: string;
   },
   ResalePurchasePreparation
+>;
+
+export const getEventPassResalePurchaseAccess = anyApi.eventPassResalePurchases
+  .getPurchaseAccess as FunctionReference<
+  "query",
+  "public",
+  { passId: string },
+  { status: ResalePurchaseAccessStatus }
 >;
 
 export const reconcileEventPassResalePurchase = anyApi.eventPassResalePurchases

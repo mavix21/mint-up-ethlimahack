@@ -32,6 +32,11 @@ export default async function MarketplacePage({
     listPassResales(),
   ]);
   const groups = composeMarketplace(primary, resales);
+  const selectedListingAvailable = groups.some(group =>
+    group.offers.some(
+      offer => offer.kind === "pass_resale" && offer.passId === buy,
+    ),
+  );
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-16">
@@ -47,6 +52,20 @@ export default async function MarketplacePage({
           No sign-in required to browse.
         </p>
       </header>
+      {buy && !selectedListingAvailable ? (
+        <div role="alert" className="mb-8 rounded-3xl border bg-card p-6">
+          <p className="font-bold">This Pass resale is no longer available.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            You were not charged. Choose another available option below.
+          </p>
+          <Link
+            href="/marketplace"
+            className="mt-4 inline-flex rounded-full border px-4 py-2 text-sm font-bold"
+          >
+            Back to Marketplace
+          </Link>
+        </div>
+      ) : null}
       {groups.length === 0 ? (
         <p className="rounded-3xl border bg-card p-8 text-muted-foreground">
           No passes are available right now.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useEffectEvent, useMemo } from "react";
 import { startRegistration } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/browser";
 import { useRouter } from "next/navigation";
@@ -40,6 +40,7 @@ type Props = {
 
 export function InlineSecureStep({ onSuccess }: Props) {
   const router = useRouter();
+  const notifySuccess = useEffectEvent(() => onSuccess?.());
 
   const machineWithActors = useMemo(
     () =>
@@ -141,14 +142,11 @@ export function InlineSecureStep({ onSuccess }: Props) {
     (isUnavailable || (availability && isAvailabilityBlocking(availability))) &&
     !isChecking;
 
-  if (isSuccess) {
-    if (typeof window !== "undefined") {
-      setTimeout(() => {
-        router.refresh();
-        onSuccess?.();
-      }, 0);
-    }
-  }
+  useEffect(() => {
+    if (!isSuccess) return;
+    router.refresh();
+    notifySuccess();
+  }, [isSuccess, router]);
 
   if (showAvailabilityBlock) {
     return <BiometricUnavailable onRetry={() => send({ type: "RETRY" })} />;

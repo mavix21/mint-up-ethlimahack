@@ -4,6 +4,9 @@ import { getLocalRedirect } from "./auth-redirect";
 describe("getLocalRedirect", () => {
   it("allows local callback paths", () => {
     expect(getLocalRedirect("/account?tab=passes")).toBe("/account?tab=passes");
+    expect(getLocalRedirect("/marketplace?buy=pass-42")).toBe(
+      "/marketplace?buy=pass-42",
+    );
   });
 
   it.each([
