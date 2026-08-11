@@ -8,6 +8,7 @@ import {
   ArrowUpIcon,
   CheckIcon,
   LoaderCircleIcon,
+  MenuIcon,
   MessageSquareIcon,
   PlusIcon,
   SearchIcon,
@@ -47,9 +48,20 @@ import {
 } from "~~/components/ui/message-scroller";
 import { ScrollArea } from "~~/components/ui/scroll-area";
 import { Separator } from "~~/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~~/components/ui/sheet";
 import { Skeleton } from "~~/components/ui/skeleton";
 import { authClient } from "~~/lib/auth-client";
-import { mintUpApi, type MintiMessage } from "~~/lib/mint-up-api";
+import {
+  mintUpApi,
+  type MintiMessage,
+  type MintiThread,
+} from "~~/lib/mint-up-api";
 import { EventRecommendationCard } from "./event-recommendation-card";
 import {
   getActiveSubmission,
@@ -719,6 +731,86 @@ function AuthenticatedConversation({
   );
 }
 
+function ConversationNavigation({
+  threads,
+  threadsLoading,
+  signedIn,
+  selectedThreadId,
+  disabled,
+  onNewChat,
+  onSelectThread,
+}: {
+  threads: MintiThread[];
+  threadsLoading: boolean;
+  signedIn: boolean;
+  selectedThreadId: string | undefined;
+  disabled: boolean;
+  onNewChat: () => void;
+  onSelectThread: (threadId: string) => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="p-3">
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-start"
+          disabled={disabled}
+          onClick={onNewChat}
+        >
+          <PlusIcon />
+          New chat
+        </Button>
+      </div>
+      <Separator />
+      <div className="px-4 pt-4 pb-2">
+        <p className="text-xs font-medium text-muted-foreground">Recents</p>
+      </div>
+      <ScrollArea className="min-h-0 flex-1">
+        <nav aria-label="Conversations" className="space-y-1 px-2 pb-3">
+          {threadsLoading ? (
+            <>
+              <Skeleton className="h-9 w-full rounded-md" />
+              <Skeleton className="h-9 w-4/5 rounded-md" />
+              <Skeleton className="h-9 w-11/12 rounded-md" />
+            </>
+          ) : !signedIn ? (
+            <p className="px-2 py-3 text-xs leading-5 text-muted-foreground">
+              Sign in to see your conversations.
+            </p>
+          ) : threads.length === 0 ? (
+            <p className="px-2 py-3 text-xs leading-5 text-muted-foreground">
+              Your conversations will appear here.
+            </p>
+          ) : (
+            threads.map(thread => {
+              const isActive = thread.threadId === selectedThreadId;
+              const label = formatThreadLabel(thread.createdAt);
+
+              return (
+                <Button
+                  key={thread.threadId}
+                  type="button"
+                  variant={isActive ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-9 w-full justify-start gap-2 px-2 font-normal"
+                  aria-current={isActive ? "page" : undefined}
+                  disabled={disabled}
+                  title={label}
+                  onClick={() => onSelectThread(thread.threadId)}
+                >
+                  <MessageSquareIcon className="shrink-0" />
+                  <span className="truncate">{label}</span>
+                </Button>
+              );
+            })
+          )}
+        </nav>
+      </ScrollArea>
+    </div>
+  );
+}
+
 export function MintiChat({
   welcome,
   header,
@@ -745,6 +837,7 @@ export function MintiChat({
   const [pendingSubmission, setPendingSubmission] =
     useState<PendingSubmission | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [lastSettledUserId, setLastSettledUserId] = useState(userId);
   if (!isPending && lastSettledUserId !== userId) {
     setLastSettledUserId(userId);
@@ -775,81 +868,71 @@ export function MintiChat({
     if (userId) removeSavedThread(`${THREAD_STORAGE_PREFIX}${userId}`);
     setSelectedThread(null);
     setPendingSubmission(null);
+    setIsSidebarOpen(false);
   }
 
   function selectThread(threadId: string) {
-    if (!userId || threadId === activeThread?.threadId) return;
+    if (!userId) return;
+    if (threadId === activeThread?.threadId) {
+      setIsSidebarOpen(false);
+      return;
+    }
     saveThread(`${THREAD_STORAGE_PREFIX}${userId}`, threadId);
     setSelectedThread({ userId, threadId });
     setPendingSubmission(null);
+    setIsSidebarOpen(false);
   }
 
   return (
     <div className="grid size-full min-h-0 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
       <aside className="hidden min-h-0 flex-col border-r bg-muted/25 lg:flex">
-        <div className="p-3">
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full justify-start"
-            disabled={isSending}
-            onClick={startNewChat}
-          >
-            <PlusIcon />
-            New chat
-          </Button>
-        </div>
-        <Separator />
-        <div className="px-4 pt-4 pb-2">
-          <p className="text-xs font-medium text-muted-foreground">Recents</p>
-        </div>
-        <ScrollArea className="min-h-0 flex-1">
-          <nav aria-label="Conversations" className="space-y-1 px-2 pb-3">
-            {threadsLoading ? (
-              <>
-                <Skeleton className="h-9 w-full rounded-md" />
-                <Skeleton className="h-9 w-4/5 rounded-md" />
-                <Skeleton className="h-9 w-11/12 rounded-md" />
-              </>
-            ) : !userId ? (
-              <p className="px-2 py-3 text-xs leading-5 text-muted-foreground">
-                Sign in to see your conversations.
-              </p>
-            ) : threadList.length === 0 ? (
-              <p className="px-2 py-3 text-xs leading-5 text-muted-foreground">
-                Your conversations will appear here.
-              </p>
-            ) : (
-              threadList.map(thread => {
-                const isActive = thread.threadId === activeThread?.threadId;
-                const label = formatThreadLabel(thread.createdAt);
-
-                return (
-                  <Button
-                    key={thread.threadId}
-                    type="button"
-                    variant={isActive ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-9 w-full justify-start gap-2 px-2 font-normal"
-                    aria-current={isActive ? "page" : undefined}
-                    disabled={isSending}
-                    title={label}
-                    onClick={() => selectThread(thread.threadId)}
-                  >
-                    <MessageSquareIcon className="shrink-0" />
-                    <span className="truncate">{label}</span>
-                  </Button>
-                );
-              })
-            )}
-          </nav>
-        </ScrollArea>
+        <ConversationNavigation
+          threads={threadList}
+          threadsLoading={threadsLoading}
+          signedIn={Boolean(userId)}
+          selectedThreadId={activeThread?.threadId}
+          disabled={isSending}
+          onNewChat={startNewChat}
+          onSelectThread={selectThread}
+        />
       </aside>
       <section
         aria-label="Event discovery conversation"
         className="flex min-h-0 min-w-0 flex-col"
       >
-        {header}
+        <div className="relative shrink-0">
+          {header}
+          <div className="absolute top-2 left-3 lg:hidden">
+            <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+              <SheetTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Open conversations"
+                  />
+                }
+              >
+                <MenuIcon />
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[min(20rem,85vw)] p-0">
+                <SheetHeader className="border-b px-4 py-3">
+                  <SheetTitle>Conversations</SheetTitle>
+                </SheetHeader>
+                <ConversationNavigation
+                  threads={threadList}
+                  threadsLoading={threadsLoading}
+                  signedIn={Boolean(userId)}
+                  selectedThreadId={activeThread?.threadId}
+                  disabled={isSending}
+                  onNewChat={startNewChat}
+                  onSelectThread={selectThread}
+                />
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
         <div className="min-h-0 flex-1">
           {conversationUserId ? (
             <AuthenticatedConversation

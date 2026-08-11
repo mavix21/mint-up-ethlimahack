@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 function ChatHeader() {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-background/80 px-3 backdrop-blur-xl sm:px-5">
+    <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-background/80 pr-3 pl-12 backdrop-blur-xl sm:pr-5 sm:pl-14 lg:pl-5">
       <div className="flex min-w-0 items-center gap-2.5">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary-foreground">
           <CompassIcon className="size-3.5" />
