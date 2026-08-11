@@ -48,8 +48,10 @@ import { mintUpApi, type MintiMessage } from "~~/lib/mint-up-api";
 import { EventRecommendationCard } from "./event-recommendation-card";
 import {
   getConversationUserId,
+  getConversationRevision,
   getMessageScrollMetadata,
   hasAssistantMessageAfter,
+  selectConversationMessages,
 } from "./minti-chat-state";
 
 const THREAD_STORAGE_PREFIX = "mint-up:minti-thread:";
@@ -227,7 +229,7 @@ function ChatMessage({ message }: { message: MintiMessage }) {
                 <span>Minti</span>
                 <span className="size-1 rounded-full bg-primary" />
                 <span className="font-normal text-muted-foreground">
-                  Event concierge
+                  Event assistant
                 </span>
               </MessageHeader>
             )}
@@ -283,14 +285,10 @@ function PendingUserMessage({
   prompt: string;
 }) {
   return (
-    <MessageScrollerItem
-      messageId={`pending-user-${submissionId}`}
-      scrollAnchor
-    >
+    <MessageScrollerItem messageId={`pending-user-${submissionId}`}>
       <Message align="end" className="mx-auto max-w-3xl">
         <MessageContent>
           <UserBubble text={prompt} />
-          <MessageFooter className="px-0">Sending...</MessageFooter>
         </MessageContent>
       </Message>
     </MessageScrollerItem>
@@ -307,7 +305,7 @@ function PendingAssistantMessage({ submissionId }: { submissionId: string }) {
             <span>Minti</span>
             <span className="size-1 rounded-full bg-primary" />
             <span className="font-normal text-muted-foreground">
-              Event concierge
+              Event assistant
             </span>
           </MessageHeader>
           <AssistantActivity label="Thinking..." />
@@ -345,6 +343,23 @@ function RestoreConversationEnd({ ready }: { ready: boolean }) {
   return null;
 }
 
+function FocusPendingTurn({ submissionId }: { submissionId: string | null }) {
+  const { scrollToMessage } = useMessageScroller();
+  const focusTurn = useEffectEvent((id: string) => {
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)")
+      .matches
+      ? "auto"
+      : "smooth";
+    scrollToMessage(`pending-user-${id}`, { behavior });
+  });
+
+  useLayoutEffect(() => {
+    if (submissionId) focusTurn(submissionId);
+  }, [submissionId]);
+
+  return null;
+}
+
 function Conversation({
   threadId,
   welcome,
@@ -354,18 +369,37 @@ function Conversation({
   welcome: React.ReactNode;
   pending: PendingSubmission | null;
 }) {
-  const { loadMore, results, status } = useUIMessages(
+  const {
+    loadMore,
+    results: queriedResults,
+    status,
+  } = useUIMessages(
     mintUpApi.minti.listMessages,
     { threadId },
     { initialNumItems: 30, stream: true },
+  );
+  const loadingFirstPage = status === "LoadingFirstPage";
+  const queriedRevision = getConversationRevision(queriedResults);
+  const [retained, setRetained] = useState<{
+    results: MintiMessage[];
+    revision: string;
+  }>({ results: [], revision: "" });
+  if (!loadingFirstPage && retained.revision !== queriedRevision) {
+    setRetained({ results: queriedResults, revision: queriedRevision });
+  }
+
+  const results = selectConversationMessages(
+    queriedResults,
+    retained.results,
+    loadingFirstPage,
   );
   const pendingUser = pending ? findPendingUser(results, pending) : undefined;
   const assistantStarted = hasAssistantMessageAfter(results, pendingUser);
 
   return (
-    <MessageScrollerProvider defaultScrollPosition="end">
+    <MessageScrollerProvider defaultScrollPosition="end" scrollMargin={64}>
       <MessageScroller>
-        <MessageScrollerViewport>
+        <MessageScrollerViewport className="[overflow-anchor:none]">
           <MessageScrollerContent className="mx-auto w-full max-w-5xl gap-7 px-4 py-8 sm:px-8 sm:py-10">
             {status === "CanLoadMore" ? (
               <MessageScrollerItem className="text-center">
@@ -379,9 +413,7 @@ function Conversation({
                 </Button>
               </MessageScrollerItem>
             ) : null}
-            {results.length === 0 &&
-            !pending &&
-            status !== "LoadingFirstPage" ? (
+            {results.length === 0 && !pending && !loadingFirstPage ? (
               <MessageScrollerItem>{welcome}</MessageScrollerItem>
             ) : null}
             {results.map(message => (
@@ -400,7 +432,8 @@ function Conversation({
         </MessageScrollerViewport>
         <MessageScrollerButton className="bottom-5 shadow-md" />
       </MessageScroller>
-      <RestoreConversationEnd ready={status !== "LoadingFirstPage"} />
+      <RestoreConversationEnd ready={!loadingFirstPage} />
+      <FocusPendingTurn submissionId={pending?.id ?? null} />
     </MessageScrollerProvider>
   );
 }

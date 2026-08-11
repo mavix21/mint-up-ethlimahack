@@ -6,14 +6,10 @@ type PositionedMessage = {
 
 type IdentifiedMessage = {
   key: string;
-  role: string;
 };
 
 export function getMessageScrollMetadata(message: IdentifiedMessage) {
-  return {
-    messageId: message.key,
-    scrollAnchor: message.role === "user",
-  };
+  return { messageId: message.key };
 }
 
 export function getConversationUserId(
@@ -22,6 +18,38 @@ export function getConversationUserId(
   lastSettledUserId: string | undefined,
 ) {
   return userId ?? (isPending ? lastSettledUserId : undefined);
+}
+
+export function selectConversationMessages<T>(
+  messages: T[],
+  retainedMessages: T[],
+  loadingFirstPage: boolean,
+) {
+  return loadingFirstPage ? retainedMessages : messages;
+}
+
+type RevisionMessage = {
+  key: string;
+  status: string;
+  text: string;
+  parts: { type: string; state?: unknown; text?: unknown }[];
+};
+
+export function getConversationRevision(messages: RevisionMessage[]) {
+  return messages
+    .map(message => {
+      const parts = message.parts
+        .map(part => {
+          const state = typeof part.state === "string" ? part.state : "";
+          const textLength =
+            typeof part.text === "string" ? part.text.length : "";
+          return `${part.type}:${state}:${textLength}`;
+        })
+        .join(",");
+
+      return `${message.key}:${message.status}:${message.text.length}:${parts}`;
+    })
+    .join("|");
 }
 
 export function hasAssistantMessageAfter(

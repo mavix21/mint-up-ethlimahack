@@ -95,7 +95,7 @@ export default function ChatPage() {
               </span>
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-medium">
-                  Minti concierge
+                  Minti event assistant
                 </h2>
                 <p className="hidden items-center gap-1 text-[10px] text-muted-foreground sm:flex">
                   <span className="size-1.5 rounded-full bg-primary" />
