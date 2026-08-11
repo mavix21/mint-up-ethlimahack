@@ -11,6 +11,10 @@ export function getMintUpSiweOrigin() {
   return new URL(configuredOrigin).origin;
 }
 
+export function getPassesOrigin() {
+  return new URL(process.env.PASSES_URL!).origin;
+}
+
 export function resolveMintUpReturnDestination(
   value: string | null | undefined,
 ) {
