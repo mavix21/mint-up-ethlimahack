@@ -15,6 +15,7 @@ describe("Passes route protection", () => {
     for (const url of [
       "https://passes.mint-up.xyz/",
       "https://passes.mint-up.xyz/auth/callback?ott=token",
+      "https://passes.mint-up.xyz/chat",
     ]) {
       const response = await proxy(new NextRequest(url));
       expect(response.headers.get("x-middleware-next")).toBe("1");

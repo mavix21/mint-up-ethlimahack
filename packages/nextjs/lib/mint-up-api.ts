@@ -1,4 +1,12 @@
-import { anyApi, type FunctionReference } from "convex/server";
+import {
+  anyApi,
+  type FunctionReference,
+  type PaginationOptions,
+  type PaginationResult,
+} from "convex/server";
+import type { StreamArgs, SyncStreamsReturnValue } from "@convex-dev/agent";
+import type { UIMessage } from "@convex-dev/agent/react";
+import type { UIDataTypes } from "ai";
 
 type EventLocation =
   | { kind: "custom"; label: string }
@@ -62,6 +70,86 @@ type GetEventPassOffer = FunctionReference<
   unknown
 >;
 
+export type SearchEventsInput = {
+  startTimeAfter?: number;
+  startTimeBefore?: number;
+  formats?: ("online" | "in-person" | "hybrid")[];
+  marketAreaSlug?: string;
+  districtSlug?: string;
+  categorySlugs?: string[];
+  priceKinds?: ("free" | "paid" | "unknown")[];
+  maxBudgetUsd?: number;
+  near?: { lat: number; lng: number; radiusKm: number };
+  locale?: "en" | "es";
+  limit?: number;
+};
+
+export type MintiEvent = {
+  eventId: string;
+  title: string;
+  startTime: number;
+  endTime: number;
+  timezone: string;
+  format: "online" | "in-person" | "hybrid";
+  platform: "luma" | "eventbrite" | "meetup" | "other" | "mintup";
+  organizerName?: string;
+  location?: {
+    label?: string;
+    venueName?: string;
+    address?: string;
+    district?: string;
+  };
+  distanceKm?: number;
+  price: {
+    kinds: ("free" | "paid" | "unknown")[];
+    minUsd?: number;
+    maxUsd?: number;
+  };
+  availability: "available" | "waitlist" | "closed" | "unknown";
+  categories: { slug: string; name: string }[];
+  imageUrl?: string;
+  url: string;
+};
+
+export type SearchEventsResult = {
+  unresolvedFilters: string[];
+  events: MintiEvent[];
+};
+
+type MintiTools = {
+  searchEvents: {
+    input: SearchEventsInput;
+    output: SearchEventsResult;
+  };
+};
+
+export type MintiMessage = UIMessage<unknown, UIDataTypes, MintiTools>;
+
+type CreateMintiThread = FunctionReference<
+  "mutation",
+  "public",
+  Record<string, never>,
+  string
+>;
+
+type ListMintiMessages = FunctionReference<
+  "query",
+  "public",
+  {
+    threadId: string;
+    paginationOpts: PaginationOptions;
+    streamArgs?: StreamArgs;
+  },
+  PaginationResult<MintiMessage> & { streams: SyncStreamsReturnValue }
+>;
+
+type SendMintiMessage = FunctionReference<
+  "action",
+  "public",
+  { threadId: string; prompt: string },
+  null
+>;
+
 interface MintUpPublicApi {
   eventDiscovery: {
     discover: DiscoverFirstPartyEvents;
@@ -69,6 +157,11 @@ interface MintUpPublicApi {
   eventPassOffers: {
     list: ListEventPassOffers;
     getByEventId: GetEventPassOffer;
+  };
+  minti: {
+    createThread: CreateMintiThread;
+    listMessages: ListMintiMessages;
+    sendMessage: SendMintiMessage;
   };
 }
 
