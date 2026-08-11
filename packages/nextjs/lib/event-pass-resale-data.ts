@@ -4,11 +4,11 @@ import { parseAbi } from "viem";
 
 import { eventPassEnvironment } from "../contracts/eventPassEnvironment";
 import { fetchAuthQuery } from "./auth-server";
-import { getEventPassResale } from "./event-pass-resale-api";
+import { getCurrentEventPassResaleListing } from "./event-pass-resale-api";
 import { createEventPassPublicClient } from "./event-pass-public-client";
 import {
-  privateResaleOfferSchema,
-  type PrivateResaleOffer,
+  type ResaleListing,
+  resaleListingSchema,
 } from "./event-pass-resale-schema";
 
 const configAbi = parseAbi([
@@ -34,12 +34,14 @@ export async function isEventPassResaleContractActive() {
   }
 }
 
-export async function fetchPrivateResaleOffer(
+export async function fetchCurrentResaleListing(
   passId: string,
-): Promise<PrivateResaleOffer | null> {
+): Promise<ResaleListing | null> {
   try {
-    const result = await fetchAuthQuery(getEventPassResale, { passId });
-    return result === null ? null : privateResaleOfferSchema.parse(result);
+    const result = await fetchAuthQuery(getCurrentEventPassResaleListing, {
+      passId,
+    });
+    return result === null ? null : resaleListingSchema.parse(result);
   } catch {
     return null;
   }

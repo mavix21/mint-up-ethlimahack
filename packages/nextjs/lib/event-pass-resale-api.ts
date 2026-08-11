@@ -1,7 +1,7 @@
 import { type FunctionReference, anyApi } from "convex/server";
 
 import type {
-  PrivateResaleOffer,
+  ResaleListing,
   ResalePreparation,
   ResalePurchasePreparation,
   ResaleWithdrawalPreparation,
@@ -25,12 +25,12 @@ export function eventPassResaleErrorCode(error: unknown) {
   }
 }
 
-export const getEventPassResale = anyApi.eventPassResales
-  .getByPassId as FunctionReference<
+export const getCurrentEventPassResaleListing = anyApi.eventPassResales
+  .getCurrentListing as FunctionReference<
   "query",
   "public",
   { passId: string },
-  PrivateResaleOffer | null
+  ResaleListing | null
 >;
 
 export const prepareEventPassResale = anyApi.eventPassResales

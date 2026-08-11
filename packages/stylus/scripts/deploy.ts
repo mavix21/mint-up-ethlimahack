@@ -58,7 +58,7 @@ export default async function deployScript(deployOptions: DeployOptions) {
     console.log(`🌐 Network: ${config.chain?.name}`);
     console.log(`🔗 Chain ID: ${config.chain?.id}`);
   }
-  console.log(`🔑 Using private key: ${config.privateKey.substring(0, 10)}...`);
+  console.log("🔑 Deployment key loaded");
   console.log(`📁 Deployment directory: ${config.deploymentDir}`);
   console.log(`\n`);
 

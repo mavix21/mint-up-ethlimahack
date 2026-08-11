@@ -338,56 +338,6 @@ const abi = [
         name: "seller",
         type: "address",
       },
-    ],
-    name: "EventPassResaleOfferCancelled",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "uint64",
-        name: "pass_id",
-        type: "uint64",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "seller",
-        type: "address",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "designated_buyer",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "price",
-        type: "uint256",
-      },
-    ],
-    name: "EventPassResaleOffered",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "uint64",
-        name: "pass_id",
-        type: "uint64",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "seller",
-        type: "address",
-      },
       {
         indexed: true,
         internalType: "address",
@@ -634,28 +584,6 @@ const abi = [
   },
   {
     inputs: [
-      { internalType: "uint64", name: "pass_id", type: "uint64" },
-      { internalType: "uint256", name: "nonce", type: "uint256" },
-      { internalType: "uint64", name: "issued_at", type: "uint64" },
-      { internalType: "uint64", name: "deadline", type: "uint64" },
-      { internalType: "uint8", name: "v", type: "uint8" },
-      { internalType: "bytes32", name: "r", type: "bytes32" },
-      { internalType: "bytes32", name: "s", type: "bytes32" },
-    ],
-    name: "cancelResaleOffer",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "cancelResaleOfferOperation",
-    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
       { internalType: "bytes32", name: "event_id", type: "bytes32" },
       { internalType: "uint64", name: "pass_id", type: "uint64" },
     ],
@@ -709,30 +637,6 @@ const abi = [
   {
     inputs: [],
     name: "createPublicResaleListingOperation",
-    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint64", name: "pass_id", type: "uint64" },
-      { internalType: "address", name: "designated_buyer", type: "address" },
-      { internalType: "uint256", name: "price", type: "uint256" },
-      { internalType: "uint256", name: "nonce", type: "uint256" },
-      { internalType: "uint64", name: "issued_at", type: "uint64" },
-      { internalType: "uint64", name: "deadline", type: "uint64" },
-      { internalType: "uint8", name: "v", type: "uint8" },
-      { internalType: "bytes32", name: "r", type: "bytes32" },
-      { internalType: "bytes32", name: "s", type: "bytes32" },
-    ],
-    name: "createResaleOffer",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "createResaleOfferOperation",
     outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
     stateMutability: "view",
     type: "function",
@@ -870,28 +774,6 @@ const abi = [
   },
   {
     inputs: [
-      { internalType: "uint64", name: "pass_id", type: "uint64" },
-      { internalType: "uint256", name: "nonce", type: "uint256" },
-      { internalType: "uint64", name: "issued_at", type: "uint64" },
-      { internalType: "uint64", name: "deadline", type: "uint64" },
-      { internalType: "uint8", name: "v", type: "uint8" },
-      { internalType: "bytes32", name: "r", type: "bytes32" },
-      { internalType: "bytes32", name: "s", type: "bytes32" },
-    ],
-    name: "purchaseResale",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "purchaseResaleOperation",
-    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
       { internalType: "bytes32", name: "event_id", type: "bytes32" },
       { internalType: "address", name: "revenue_recipient", type: "address" },
       { internalType: "uint64", name: "price", type: "uint64" },
@@ -914,18 +796,6 @@ const abi = [
     name: "releaseFunds",
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint64", name: "pass_id", type: "uint64" }],
-    name: "resaleOffer",
-    outputs: [
-      { internalType: "address", name: "seller", type: "address" },
-      { internalType: "address", name: "designated_buyer", type: "address" },
-      { internalType: "uint256", name: "price", type: "uint256" },
-      { internalType: "bool", name: "eligible", type: "bool" },
-    ],
-    stateMutability: "view",
     type: "function",
   },
   {

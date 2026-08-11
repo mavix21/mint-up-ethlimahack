@@ -7,9 +7,9 @@ import { GenericContractsDeclaration } from "../utils/scaffold-eth/contract";
 const deployedContracts = {
   "412346": {
     "mint-up-event-pass": {
-      address: "0xab8e440727a38bbb180f7032ca4a8009e7b52b80",
+      address: "0xe547a947fc6c8683c210a6a56a9de05dd87142ea",
       txHash:
-        "0xe4438a6004048f2f1f33d1684c7db6862df5556c9b1451dedd6e593d9a42bba2",
+        "0x482da8d2124f37b9feff72f28d25cc95d01bac2e4d5d5cd02a81a8b5fa84bd4a",
       abi: [
         {
           inputs: [
@@ -427,56 +427,6 @@ const deployedContracts = {
               name: "seller",
               type: "address",
             },
-          ],
-          name: "EventPassResaleOfferCancelled",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-          ],
-          name: "EventPassResaleOffered",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
             {
               indexed: true,
               internalType: "address",
@@ -849,62 +799,6 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-            {
-              internalType: "uint8",
-              name: "v",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "r",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "s",
-              type: "bytes32",
-            },
-          ],
-          name: "cancelResaleOffer",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "cancelResaleOfferOperation",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
               internalType: "bytes32",
               name: "event_id",
               type: "bytes32",
@@ -1027,72 +921,6 @@ const deployedContracts = {
         {
           inputs: [],
           name: "createPublicResaleListingOperation",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-            {
-              internalType: "uint8",
-              name: "v",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "r",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "s",
-              type: "bytes32",
-            },
-          ],
-          name: "createResaleOffer",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "createResaleOfferOperation",
           outputs: [
             {
               internalType: "bytes32",
@@ -1465,62 +1293,6 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-            {
-              internalType: "uint8",
-              name: "v",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "r",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "s",
-              type: "bytes32",
-            },
-          ],
-          name: "purchaseResale",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "purchaseResaleOperation",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
               internalType: "bytes32",
               name: "event_id",
               type: "bytes32",
@@ -1592,40 +1364,6 @@ const deployedContracts = {
           name: "releaseFunds",
           outputs: [],
           stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "resaleOffer",
-          outputs: [
-            {
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-            {
-              internalType: "bool",
-              name: "eligible",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
           type: "function",
         },
         {
@@ -2125,9 +1863,9 @@ const deployedContracts = {
   },
   "421614": {
     "mint-up-event-pass": {
-      address: "0xcdef01d755e4c68d3fc428a97f1d639c5fb44d62",
+      address: "0xf0494986a2976a07783355511d58b8096290fa3e",
       txHash:
-        "0xb5c855184ac486fc9bffe79b4a61fbceb6193d4895643cfeb2b228f66b3108b9",
+        "0x1686a63fed3225133c9d0a92f3ee1b75c0640414ecdbd0d27d4acd303ed6a35c",
       abi: [
         {
           inputs: [
@@ -2545,56 +2283,6 @@ const deployedContracts = {
               name: "seller",
               type: "address",
             },
-          ],
-          name: "EventPassResaleOfferCancelled",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-          ],
-          name: "EventPassResaleOffered",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
             {
               indexed: true,
               internalType: "address",
@@ -2967,62 +2655,6 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-            {
-              internalType: "uint8",
-              name: "v",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "r",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "s",
-              type: "bytes32",
-            },
-          ],
-          name: "cancelResaleOffer",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "cancelResaleOfferOperation",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
               internalType: "bytes32",
               name: "event_id",
               type: "bytes32",
@@ -3145,72 +2777,6 @@ const deployedContracts = {
         {
           inputs: [],
           name: "createPublicResaleListingOperation",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-            {
-              internalType: "uint8",
-              name: "v",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "r",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "s",
-              type: "bytes32",
-            },
-          ],
-          name: "createResaleOffer",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "createResaleOfferOperation",
           outputs: [
             {
               internalType: "bytes32",
@@ -3583,62 +3149,6 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "issued_at",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "deadline",
-              type: "uint64",
-            },
-            {
-              internalType: "uint8",
-              name: "v",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "r",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "s",
-              type: "bytes32",
-            },
-          ],
-          name: "purchaseResale",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "purchaseResaleOperation",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
               internalType: "bytes32",
               name: "event_id",
               type: "bytes32",
@@ -3710,40 +3220,6 @@ const deployedContracts = {
           name: "releaseFunds",
           outputs: [],
           stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "pass_id",
-              type: "uint64",
-            },
-          ],
-          name: "resaleOffer",
-          outputs: [
-            {
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "designated_buyer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-            {
-              internalType: "bool",
-              name: "eligible",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
           type: "function",
         },
         {

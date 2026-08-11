@@ -14,7 +14,7 @@ import type {
 import { prepareSignAndSubmitUserOperation } from "../../lib/pimlico-user-operation";
 import { prepareUserOperationResultSchema } from "../../lib/pimlico-user-operation-schema";
 import type {
-  PrivateResaleOffer,
+  ResaleListing,
   ResalePreparation,
   ResaleWithdrawalPreparation,
 } from "../../lib/event-pass-resale-schema";
@@ -55,7 +55,7 @@ async function responseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new StatusRequestError(
       response.status,
-      body.message ?? "The offer could not be completed.",
+      body.message ?? "The listing could not be completed.",
     );
   }
   return body as T;
@@ -65,20 +65,20 @@ export function EventPassResale({
   passId,
   eventName,
   account,
-  offer,
+  listing,
   maximumPriceAmountSubunits,
 }: {
   passId: string;
   eventName: string;
   account: WalletPasskeyAccount;
-  offer: PrivateResaleOffer | null;
+  listing: ResaleListing | null;
   maximumPriceAmountSubunits: string;
 }) {
   const [state, setState] = useState<"idle" | ResaleContentState>("idle");
   const [action, setAction] = useState<ResaleAction>(
-    offer ? "replace" : "create",
+    listing ? "replace" : "create",
   );
-  const [price, setPrice] = useState(offer?.price.amount ?? "");
+  const [price, setPrice] = useState(listing?.price.amount ?? "");
   const [preparation, setPreparation] = useState<Preparation>();
   const [failure, setFailure] = useState<"validation" | "operation">(
     "operation",
@@ -108,7 +108,7 @@ export function EventPassResale({
   }
 
   function openForm() {
-    setAction(offer ? "replace" : "create");
+    setAction(listing ? "replace" : "create");
     setState("form");
   }
 
@@ -210,7 +210,7 @@ export function EventPassResale({
     if (result.status !== "included") {
       setSubmittedHash(undefined);
       setRetryStep("review");
-      throw new Error("Offer inclusion was not verified");
+      throw new Error("Listing inclusion was not verified");
     }
     setRetryStep("reconcile");
     await reconcile(resaleId, signal);
@@ -310,7 +310,7 @@ export function EventPassResale({
   }
 
   if (state === "idle") {
-    if (!offer) {
+    if (!listing) {
       return (
         <button
           type="button"
@@ -327,7 +327,7 @@ export function EventPassResale({
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Pass resale
           </p>
-          <p className="mt-1 font-bold">{offer.price.amount} USDC</p>
+          <p className="mt-1 font-bold">{listing.price.amount} USDC</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button

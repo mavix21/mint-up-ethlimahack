@@ -30,7 +30,7 @@ const ATTENDEE_KEY =
 const OPERATOR_KEY =
   "0xc011740e64cd1bcefb4b5b869ac1169f79e8524cd7c6d409b3fe5b7dfd92afa6";
 const PRICE = 25_000_000n;
-const RESALE_PRICE = 30_000_001n;
+const RESALE_PRICE = 20_000_001n;
 const METADATA_URI =
   "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/local-event.json";
 const UNAUTHORIZED = 1;
@@ -45,7 +45,7 @@ const MOVEMENT_RESTRICTED = 18;
 const INVALID_AUTHORIZATION = 19;
 const REFUND_ALREADY_CLAIMED = 24;
 const FUNDS_ALREADY_RELEASED = 27;
-const NOT_DESIGNATED_BUYER = 30;
+const RESALE_LISTING_NOT_FOUND = 28;
 const chain = arbitrumNitro as Chain;
 
 const usdcAbi = parseAbi([
@@ -234,9 +234,9 @@ async function main() {
   );
   const [
     transferOperation,
-    createResaleOfferOperation,
-    cancelResaleOfferOperation,
-    purchaseResaleOperation,
+    createPublicResaleListingOperation,
+    cancelPublicResaleListingOperation,
+    purchasePublicResaleOperation,
   ] = await Promise.all([
     publicClient.readContract({
       address: eventPass,
@@ -246,29 +246,32 @@ async function main() {
     publicClient.readContract({
       address: eventPass,
       abi: eventPassAbi,
-      functionName: "createResaleOfferOperation",
+      functionName: "createPublicResaleListingOperation",
     }),
     publicClient.readContract({
       address: eventPass,
       abi: eventPassAbi,
-      functionName: "cancelResaleOfferOperation",
+      functionName: "cancelPublicResaleListingOperation",
     }),
     publicClient.readContract({
       address: eventPass,
       abi: eventPassAbi,
-      functionName: "purchaseResaleOperation",
+      functionName: "purchasePublicResaleOperation",
     }),
   ]);
   assert.equal(transferOperation, keccak256(toHex("TRANSFER_PASS")));
   assert.equal(
-    createResaleOfferOperation,
-    keccak256(toHex("CREATE_RESALE_OFFER")),
+    createPublicResaleListingOperation,
+    keccak256(toHex("CREATE_PUBLIC_RESALE_LISTING")),
   );
   assert.equal(
-    cancelResaleOfferOperation,
-    keccak256(toHex("CANCEL_RESALE_OFFER")),
+    cancelPublicResaleListingOperation,
+    keccak256(toHex("CANCEL_PUBLIC_RESALE_LISTING")),
   );
-  assert.equal(purchaseResaleOperation, keccak256(toHex("PURCHASE_RESALE")));
+  assert.equal(
+    purchasePublicResaleOperation,
+    keccak256(toHex("PURCHASE_PUBLIC_RESALE")),
+  );
   for (const interfaceId of [
     "0x01ffc9a7",
     "0x80ac58cd",
@@ -328,6 +331,13 @@ async function main() {
     abi: usdcAbi,
     functionName: "mint",
     args: [attendee.address, RESALE_PRICE],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  hash = await adminWallet.writeContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "mint",
+    args: [admin.address, RESALE_PRICE],
   });
   await publicClient.waitForTransactionReceipt({ hash });
 
@@ -571,10 +581,9 @@ async function main() {
       account: buyer,
       address: eventPass,
       abi: eventPassAbi as Abi,
-      functionName: "createResaleOffer",
+      functionName: "createPublicResaleListing",
       args: [
         resalePassId,
-        attendee.address,
         RESALE_PRICE,
         10n,
         saleStart,
@@ -589,10 +598,10 @@ async function main() {
   const offerIssuedAt = (await publicClient.getBlock()).timestamp;
   const offerDeadline = offerIssuedAt + 60n;
   const offerSignature = await signAuthorization({
-    operation: createResaleOfferOperation,
+    operation: createPublicResaleListingOperation,
     caller: buyer.address,
     passId: resalePassId,
-    recipient: attendee.address,
+    recipient: "0x0000000000000000000000000000000000000000",
     amount: RESALE_PRICE,
     nonce: 10n,
     issuedAt: offerIssuedAt,
@@ -601,10 +610,9 @@ async function main() {
   hash = await buyerWallet.writeContract({
     address: eventPass,
     abi: eventPassAbi,
-    functionName: "createResaleOffer",
+    functionName: "createPublicResaleListing",
     args: [
       resalePassId,
-      attendee.address,
       RESALE_PRICE,
       10n,
       offerIssuedAt,
@@ -615,7 +623,7 @@ async function main() {
     ],
   });
   const offerReceipt = await publicClient.waitForTransactionReceipt({ hash });
-  assert(eventNames(offerReceipt.logs).includes("EventPassResaleOffered"));
+  assert(eventNames(offerReceipt.logs).includes("EventPassPublicResaleListed"));
   assert(eventNames(offerReceipt.logs).includes("MintUpAuthorizationUsed"));
   const offered = offerReceipt.logs
     .map((entry) => {
@@ -629,30 +637,26 @@ async function main() {
         return undefined;
       }
     })
-    .find((entry) => entry?.eventName === "EventPassResaleOffered");
-  assert(offered?.eventName === "EventPassResaleOffered");
+    .find((entry) => entry?.eventName === "EventPassPublicResaleListed");
+  assert(offered?.eventName === "EventPassPublicResaleListed");
   assert.equal(offered.args.pass_id, resalePassId);
   assert.equal(offered.args.seller.toLowerCase(), buyer.address.toLowerCase());
-  assert.equal(
-    offered.args.designated_buyer.toLowerCase(),
-    attendee.address.toLowerCase(),
-  );
   assert.equal(offered.args.price, RESALE_PRICE);
   assert.deepEqual(
     await publicClient.readContract({
       address: eventPass,
       abi: eventPassAbi,
-      functionName: "resaleOffer",
+      functionName: "publicResaleListing",
       args: [resalePassId],
     }),
-    [buyer.address, attendee.address, RESALE_PRICE, true],
+    [buyer.address, RESALE_PRICE, true],
   );
   await expectMintUpError(
     publicClient.simulateContract({
       account: buyer,
       address: eventPass,
       abi: eventPassAbi as Abi,
-      functionName: "cancelResaleOffer",
+      functionName: "cancelPublicResaleListing",
       args: [
         resalePassId,
         11n,
@@ -666,7 +670,7 @@ async function main() {
     INVALID_AUTHORIZATION,
   );
   const cancelSignature = await signAuthorization({
-    operation: cancelResaleOfferOperation,
+    operation: cancelPublicResaleListingOperation,
     caller: buyer.address,
     passId: resalePassId,
     recipient: "0x0000000000000000000000000000000000000000",
@@ -678,7 +682,7 @@ async function main() {
   hash = await buyerWallet.writeContract({
     address: eventPass,
     abi: eventPassAbi,
-    functionName: "cancelResaleOffer",
+    functionName: "cancelPublicResaleListing",
     args: [
       resalePassId,
       11n,
@@ -694,17 +698,17 @@ async function main() {
   });
   assert(
     eventNames(cancelOfferReceipt.logs).includes(
-      "EventPassResaleOfferCancelled",
+      "EventPassPublicResaleCancelled",
     ),
   );
   assert(
     eventNames(cancelOfferReceipt.logs).includes("MintUpAuthorizationUsed"),
   );
   const replacementSignature = await signAuthorization({
-    operation: createResaleOfferOperation,
+    operation: createPublicResaleListingOperation,
     caller: buyer.address,
     passId: resalePassId,
-    recipient: attendee.address,
+    recipient: "0x0000000000000000000000000000000000000000",
     amount: RESALE_PRICE,
     nonce: 12n,
     issuedAt: offerIssuedAt,
@@ -713,10 +717,9 @@ async function main() {
   hash = await buyerWallet.writeContract({
     address: eventPass,
     abi: eventPassAbi,
-    functionName: "createResaleOffer",
+    functionName: "createPublicResaleListing",
     args: [
       resalePassId,
-      attendee.address,
       RESALE_PRICE,
       12n,
       offerIssuedAt,
@@ -732,7 +735,7 @@ async function main() {
       account: admin,
       address: eventPass,
       abi: eventPassAbi as Abi,
-      functionName: "purchaseResale",
+      functionName: "purchasePublicResale",
       args: [
         resalePassId,
         13n,
@@ -743,9 +746,16 @@ async function main() {
         toHex(0, { size: 32 }),
       ],
     }),
-    NOT_DESIGNATED_BUYER,
+    INVALID_AUTHORIZATION,
   );
   hash = await attendeeWallet.writeContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "approve",
+    args: [eventPass, RESALE_PRICE],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  hash = await adminWallet.writeContract({
     address: usdc,
     abi: usdcAbi,
     functionName: "approve",
@@ -760,7 +770,7 @@ async function main() {
       eventPass,
       encodeFunctionData({
         abi: eventPassAbi,
-        functionName: "purchaseResale",
+        functionName: "purchasePublicResale",
         args: [
           resalePassId,
           13n,
@@ -793,7 +803,7 @@ async function main() {
       account: attendee,
       address: eventPass,
       abi: eventPassAbi as Abi,
-      functionName: "purchaseResale",
+      functionName: "purchasePublicResale",
       args: [
         resalePassId,
         13n,
@@ -807,7 +817,7 @@ async function main() {
     INVALID_AUTHORIZATION,
   );
   const purchaseSignature = await signAuthorization({
-    operation: purchaseResaleOperation,
+    operation: purchasePublicResaleOperation,
     caller: attendee.address,
     passId: resalePassId,
     recipient: buyer.address,
@@ -816,10 +826,26 @@ async function main() {
     issuedAt: offerIssuedAt,
     deadline: offerDeadline,
   });
+  const competingPurchaseSignature = await signAuthorization({
+    operation: purchasePublicResaleOperation,
+    caller: admin.address,
+    passId: resalePassId,
+    recipient: buyer.address,
+    amount: RESALE_PRICE,
+    nonce: 14n,
+    issuedAt: offerIssuedAt,
+    deadline: offerDeadline,
+  });
+  const competingBuyerBalanceBefore = await publicClient.readContract({
+    address: usdc,
+    abi: usdcAbi,
+    functionName: "balanceOf",
+    args: [admin.address],
+  });
   hash = await attendeeWallet.writeContract({
     address: eventPass,
     abi: eventPassAbi,
-    functionName: "purchaseResale",
+    functionName: "purchasePublicResale",
     args: [
       resalePassId,
       13n,
@@ -917,7 +943,10 @@ async function main() {
     })
     .find((entry) => entry?.eventName === "MintUpAuthorizationUsed");
   assert(resaleAuthorization?.eventName === "MintUpAuthorizationUsed");
-  assert.equal(resaleAuthorization.args.operation, purchaseResaleOperation);
+  assert.equal(
+    resaleAuthorization.args.operation,
+    purchasePublicResaleOperation,
+  );
   assert.equal(
     resaleAuthorization.args.caller.toLowerCase(),
     attendee.address.toLowerCase(),
@@ -982,6 +1011,61 @@ async function main() {
       args: [buyer.address],
     })) - sellerBalanceBeforeResale,
     sellerAmount,
+  );
+  await expectMintUpError(
+    publicClient.simulateContract({
+      account: admin,
+      address: eventPass,
+      abi: eventPassAbi as Abi,
+      functionName: "purchasePublicResale",
+      args: [
+        resalePassId,
+        14n,
+        offerIssuedAt,
+        offerDeadline,
+        competingPurchaseSignature.v,
+        competingPurchaseSignature.r,
+        competingPurchaseSignature.s,
+      ],
+    }),
+    RESALE_LISTING_NOT_FOUND,
+  );
+  hash = await adminWallet.writeContract({
+    address: eventPass,
+    abi: eventPassAbi,
+    functionName: "purchasePublicResale",
+    args: [
+      resalePassId,
+      14n,
+      offerIssuedAt,
+      offerDeadline,
+      competingPurchaseSignature.v,
+      competingPurchaseSignature.r,
+      competingPurchaseSignature.s,
+    ],
+    gas: 2_000_000n,
+  });
+  const competingPurchaseReceipt =
+    await publicClient.waitForTransactionReceipt({ hash });
+  assert.equal(competingPurchaseReceipt.status, "reverted");
+  assert.equal(
+    await publicClient.readContract({
+      address: usdc,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [admin.address],
+    }),
+    competingBuyerBalanceBefore,
+    "The losing public buyer must not pay",
+  );
+  assert.equal(
+    await publicClient.readContract({
+      address: eventPass,
+      abi: eventPassAbi,
+      functionName: "authorizationUsed",
+      args: [14n],
+    }),
+    false,
   );
   assert.equal(
     (await publicClient.readContract({

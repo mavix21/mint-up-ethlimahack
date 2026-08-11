@@ -63,9 +63,9 @@ describe("prepare Event Pass resale API", () => {
     });
   });
 
-  it("rejects extra buyer or economic fields", async () => {
+  it("rejects unauthorized extra fields", async () => {
     const response = await POST(
-      request({ ...validRequest, buyerEmail: "gianna@example.com", fee: "0" }),
+      request({ ...validRequest, unexpected: true, fee: "0" }),
     );
 
     expect(response.status).toBe(400);

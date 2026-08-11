@@ -32,22 +32,18 @@ and mutable metadata are not implemented.
   release a non-cancelled Event's protected balance once. The fee is rounded
   down to 5%, and the exact remainder goes to the Event's configured revenue
   recipient.
-- The active holder can create or replace one private resale offer for a
-  designated non-holder account, or withdraw it before the Event begins. Only
-  that account can accept it. Acceptance pulls the exact listed USDC amount,
-  sends 9% rounded down to Mint Up and the exact remainder to the seller, then
-  changes ownership and consumes the offer atomically. The original protected
-  price and refund right are unchanged.
-- The active holder can also create or replace one public resale listing by
+- The active holder can create or replace one public resale listing by
   specifying only a price greater than zero and no greater than the original
   Protected payment. Any buyer with an exact Mint Up authorization can purchase
   it; the authorization binds the buyer, Pass, current seller, exact price,
-  nonce, time window, chain, and contract. Public purchases use the same atomic
-  91% seller and 9% Mint Up settlement while the private interface remains
-  available during migration.
+  nonce, time window, chain, and contract. The first confirmed purchase pulls
+  the exact listed USDC amount, sends 9% rounded down to Mint Up and the exact
+  remainder to the seller, then changes ownership and consumes the listing
+  atomically. Competing purchases cannot reserve the listing and a later
+  purchase cannot move funds. The original protected price and refund right are
+  unchanged.
 - Transfer, check-in, cancellation, Event start, ownership loss, and every pause
-  generation make an earlier offer or listing unusable. Unpausing never revives
-  one.
+  generation make an earlier listing unusable. Unpausing never revives one.
 
 Arbitrum Sepolia's official Circle USDC address is:
 
@@ -103,9 +99,8 @@ remain enforced.
 | 25 | Protected-payment accounting invariant failed |
 | 26 | Event funds are not ready for release |
 | 27 | Event funds were already released |
-| 28 | Resale offer not found |
+| 28 | Public resale listing not found |
 | 29 | Pass is unavailable for resale |
-| 30 | Caller is not the designated resale buyer |
 
 ## Commands
 
@@ -142,12 +137,13 @@ and deploys `scripts/local/MockUsdc.sol`, updates the dependency file, and then
 deploys Event Pass with the new token address.
 
 `yarn test:local` runs a complete on-chain flow: mint mock USDC, register a live
-event, approve USDC, verify sale boundaries and retained payment, transfer and
-check in a pass, cancel and refund another pass, release a non-cancelled Event's
-funds with exact balance and rollback checks, and exercise pause, authorization,
-errors, and events. The mock has permissionless minting and is only selected
-automatically for chain ID `412346`; it must never be used as a production
-payment token.
+event, approve USDC, verify sale boundaries and retained payment, publicly list
+and resell a Pass with two competing buyers and exact 91/9 settlement, transfer
+and check in a pass, cancel and refund another pass, release a non-cancelled
+Event's funds with exact balance and rollback checks, and exercise pause,
+authorization, errors, and events. The mock has permissionless minting and is
+only selected automatically for chain ID `412346`; it must never be used as a
+production payment token.
 
 Deploy to Arbitrum Sepolia with:
 

@@ -184,4 +184,23 @@ describe("Event Pass ABI parity", () => {
       signatures(source, ["function", "error", "event"], true),
     );
   });
+
+  it("publishes only the public resale listing interface", () => {
+    const names = checkedInAbi()
+      .map((entry) => entry.name)
+      .filter((name): name is string => /resale/i.test(name ?? ""))
+      .sort();
+
+    expect(names).toEqual([
+      "EventPassPublicResaleCancelled",
+      "EventPassPublicResaleListed",
+      "cancelPublicResaleListing",
+      "cancelPublicResaleListingOperation",
+      "createPublicResaleListing",
+      "createPublicResaleListingOperation",
+      "publicResaleListing",
+      "purchasePublicResale",
+      "purchasePublicResaleOperation",
+    ]);
+  });
 });

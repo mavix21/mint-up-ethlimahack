@@ -15,7 +15,7 @@ import {
   EventPassResalePurchaseReview,
 } from "./event-pass-resale-purchase-review";
 
-const offer = {
+const listing = {
   passId: "42",
   status: "actionable" as const,
   event: { name: "ETH Lima 2026", startTime: Date.UTC(2026, 8, 10) },
@@ -45,12 +45,7 @@ const forbidden = [
   "escrow",
   "0x1111111111111111111111111111111111111111",
   "Event Pass #42",
-  "private-resale-0001",
-  "private offer",
   "seller",
-  "Gianella C.",
-  "seller@example.com",
-  "0x2222222222222222222222222222222222222222",
 ];
 
 function expectBuyerSafe(html: string) {
@@ -62,10 +57,10 @@ describe("public Pass resale purchase rendered states", () => {
   it("reviews buyer-safe economics, balance, cancellation, and finality", () => {
     const html = renderToStaticMarkup(
       <EventPassResalePurchaseReview
-        eventName={offer.event.name}
-        priceAmountSubunits={offer.price.amountSubunits}
+        eventName={listing.event.name}
+        priceAmountSubunits={listing.price.amountSubunits}
         originalProtectedAmountSubunits={
-          offer.originalProtectedPrice.amountSubunits
+          listing.originalProtectedPrice.amountSubunits
         }
         balanceAmountSubunits="55000000"
       />,
@@ -96,8 +91,8 @@ describe("public Pass resale purchase rendered states", () => {
     const html = renderToStaticMarkup(
       <EventPassResalePurchaseContent
         state="insufficient"
-        eventName={offer.event.name}
-        priceAmountSubunits={offer.price.amountSubunits}
+        eventName={listing.event.name}
+        priceAmountSubunits={listing.price.amountSubunits}
         balanceAmountSubunits="25000000"
       />,
     );
@@ -113,8 +108,8 @@ describe("public Pass resale purchase rendered states", () => {
     const html = renderToStaticMarkup(
       <EventPassResalePurchaseContent
         state="balance_unavailable"
-        eventName={offer.event.name}
-        priceAmountSubunits={offer.price.amountSubunits}
+        eventName={listing.event.name}
+        priceAmountSubunits={listing.price.amountSubunits}
       />,
     );
 
@@ -129,8 +124,8 @@ describe("public Pass resale purchase rendered states", () => {
     const html = renderToStaticMarkup(
       <EventPassResalePurchaseContent
         state="stale"
-        eventName={offer.event.name}
-        priceAmountSubunits={offer.price.amountSubunits}
+        eventName={listing.event.name}
+        priceAmountSubunits={listing.price.amountSubunits}
       />,
     );
 
@@ -145,8 +140,8 @@ describe("public Pass resale purchase rendered states", () => {
     const html = renderToStaticMarkup(
       <EventPassResalePurchaseContent
         state="success"
-        eventName={offer.event.name}
-        priceAmountSubunits={offer.price.amountSubunits}
+        eventName={listing.event.name}
+        priceAmountSubunits={listing.price.amountSubunits}
       />,
     );
 
@@ -158,8 +153,8 @@ describe("public Pass resale purchase rendered states", () => {
     const html = renderToStaticMarkup(
       <EventPassResalePurchaseContent
         state="failure"
-        eventName={offer.event.name}
-        priceAmountSubunits={offer.price.amountSubunits}
+        eventName={listing.event.name}
+        priceAmountSubunits={listing.price.amountSubunits}
       />,
     );
 

@@ -29,9 +29,8 @@ export const resaleWithdrawalPreparationSchema = z
   })
   .strict();
 
-export const privateResaleOfferSchema = z
+export const resaleListingSchema = z
   .object({
-    role: z.enum(["seller", "buyer"]),
     status: z.enum(["actionable", "unavailable"]),
     event: z
       .object({
@@ -61,7 +60,7 @@ export type ResalePreparation = z.infer<typeof resalePreparationSchema>;
 export type ResaleWithdrawalPreparation = z.infer<
   typeof resaleWithdrawalPreparationSchema
 >;
-export type PrivateResaleOffer = z.infer<typeof privateResaleOfferSchema>;
+export type ResaleListing = z.infer<typeof resaleListingSchema>;
 export type ResalePurchasePreparation = z.infer<
   typeof resalePurchasePreparationSchema
 >;
