@@ -4,16 +4,20 @@ const { fetchAuthAction, isAuthenticated } = vi.hoisted(() => ({
   fetchAuthAction: vi.fn(),
   isAuthenticated: vi.fn(),
 }));
-vi.mock("~~/lib/auth-server", () => ({ fetchAuthAction, isAuthenticated }));
+vi.mock("~~/lib/auth-server", () => ({
+  fetchAuthAction,
+  isAuthenticated,
+}));
 import { POST } from "./route";
 
 const context = {
   params: Promise.resolve({
-    resalePurchaseId: "private-resale-purchase-0001",
+    resalePurchaseId: "resale-purchase-0001",
   }),
 };
+const request = () => new Request("https://mint-up.xyz", { method: "POST" });
 
-describe("reconcile private resale purchase API", () => {
+describe("reconcile public Pass resale purchase API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     isAuthenticated.mockResolvedValue(true);
@@ -22,19 +26,19 @@ describe("reconcile private resale purchase API", () => {
   it("returns success only after production verification completes", async () => {
     fetchAuthAction.mockResolvedValue(null);
 
-    const response = await POST(new Request("https://mint-up.xyz"), context);
+    const response = await POST(request(), context);
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "verified" });
     expect(fetchAuthAction).toHaveBeenCalledWith(expect.anything(), {
-      resalePurchaseId: "private-resale-purchase-0001",
+      resalePurchaseId: "resale-purchase-0001",
     });
   });
 
   it("returns Retry-safe failure while verification is incomplete", async () => {
     fetchAuthAction.mockRejectedValue(new Error("not included"));
 
-    const response = await POST(new Request("https://mint-up.xyz"), context);
+    const response = await POST(request(), context);
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({

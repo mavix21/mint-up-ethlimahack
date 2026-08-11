@@ -2,7 +2,12 @@ import { CheckCircle2, CircleAlert, LoaderCircle } from "lucide-react";
 import { formatUsdc } from "../../lib/event-pass-offers";
 
 export type ResalePurchaseContentState =
-  "insufficient" | "stale" | "pending" | "success" | "failure";
+  | "balance_unavailable"
+  | "insufficient"
+  | "stale"
+  | "pending"
+  | "success"
+  | "failure";
 
 function RetryButton({ onRetry }: { onRetry?: () => void }) {
   return (
@@ -75,10 +80,18 @@ export function EventPassResalePurchaseContent({
           role="alert"
           className="flex gap-2 rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive"
         >
-          <CircleAlert className="size-4 shrink-0" /> This private offer is no
-          longer available.
+          <CircleAlert className="size-4 shrink-0" /> This Pass resale is no
+          longer available or your account isn&apos;t eligible. Another buyer
+          may have completed it first. Check that your email is verified and
+          that you don&apos;t already have an Event Pass for this Event. You
+          won&apos;t be charged.
         </p>
-        <RetryButton onRetry={onRetry} />
+        <a
+          href="/marketplace"
+          className="block w-full rounded-xl border bg-background px-5 py-3 text-center font-semibold"
+        >
+          Back to Marketplace
+        </a>
       </div>
     );
   }
@@ -90,30 +103,57 @@ export function EventPassResalePurchaseContent({
           className="flex gap-2 rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive"
         >
           <CircleAlert className="size-4 shrink-0" /> We couldn&apos;t finish
-          this purchase. Try again.
+          this purchase. Another buyer may have completed it first, but you
+          won&apos;t be charged. Retry to check the listing.
         </p>
         <RetryButton onRetry={onRetry} />
+        <a
+          href="/marketplace"
+          className="block text-center text-sm font-bold underline underline-offset-4"
+        >
+          Back to Marketplace
+        </a>
       </div>
     );
   }
   if (state === "insufficient") {
     const balance = BigInt(balanceAmountSubunits ?? "0");
     const missing = price > balance ? price - balance : 0n;
-    const amount = `${missing / 1_000_000n}${
-      missing % 1_000_000n === 0n
-        ? ""
-        : `.${(missing % 1_000_000n)
-            .toString()
-            .padStart(6, "0")
-            .replace(/0+$/, "")}`
-    }`;
+    const missingAmount = formatUsdc(missing.toString()).replace(/ USDC$/, "");
     return (
       <div className="space-y-3">
         <p
           role="alert"
           className="rounded-xl bg-amber-500/10 p-3 text-sm font-semibold"
         >
-          You need {amount} more USDC to buy this Event Pass.
+          You need {missingAmount} more USDC to buy this Event Pass.
+        </p>
+        <dl className="grid grid-cols-2 gap-3 rounded-xl border p-3 text-sm">
+          <div>
+            <dt className="sr-only">Balance</dt>
+            <dd className="font-bold">
+              Available balance: {formatUsdc(balance.toString())}
+            </dd>
+          </div>
+          <div>
+            <dt className="sr-only">Total</dt>
+            <dd className="font-bold">
+              Total: {formatUsdc(priceAmountSubunits)}
+            </dd>
+          </div>
+        </dl>
+        <RetryButton onRetry={onRetry} />
+      </div>
+    );
+  }
+  if (state === "balance_unavailable") {
+    return (
+      <div className="space-y-3">
+        <p
+          role="alert"
+          className="rounded-xl bg-amber-500/10 p-3 text-sm font-semibold"
+        >
+          We couldn&apos;t check your USDC balance. Try again.
         </p>
         <RetryButton onRetry={onRetry} />
       </div>

@@ -13,6 +13,16 @@ const requestSchema = z
   })
   .strict();
 
+function resaleErrorCode(error: unknown) {
+  if (typeof error === "object" && error !== null && "data" in error) {
+    const data = error.data;
+    if (typeof data === "string") return data;
+  }
+  if (error instanceof Error) {
+    return error.message.match(/event_pass_resale_[a-z_]+/)?.[0];
+  }
+}
+
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
@@ -39,13 +49,24 @@ export async function POST(request: Request) {
       },
     );
     return Response.json(resalePurchasePreparationSchema.parse(preparation));
-  } catch {
+  } catch (error) {
+    if (resaleErrorCode(error) === "event_pass_resale_unavailable") {
+      return Response.json(
+        {
+          code: "listing_unavailable",
+          message:
+            "This Pass resale is unavailable to your account. Check that your email is verified and that you don't already have an Event Pass for this Event. If you still need help, contact Mint Up support.",
+        },
+        { status: 409 },
+      );
+    }
+    console.error("Pass resale purchase preparation failed", { error });
     return Response.json(
       {
-        code: "offer_unavailable",
-        message: "This private offer is no longer available.",
+        code: "purchase_temporarily_unavailable",
+        message: "We couldn't start this purchase. Try again.",
       },
-      { status: 409 },
+      { status: 503 },
     );
   }
 }

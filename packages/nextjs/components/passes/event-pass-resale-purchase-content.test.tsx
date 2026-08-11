@@ -14,13 +14,11 @@ import {
   EventPassResalePurchaseLoadError,
   EventPassResalePurchaseReview,
 } from "./event-pass-resale-purchase-review";
-import { PrivateResalePurchases } from "./private-resale-purchases";
 
 const offer = {
   passId: "42",
   status: "actionable" as const,
   event: { name: "ETH Lima 2026", startTime: Date.UTC(2026, 8, 10) },
-  seller: { name: "Gianella C." },
   price: {
     amountSubunits: "40000000",
     denomination: "USDC" as const,
@@ -48,6 +46,11 @@ const forbidden = [
   "0x1111111111111111111111111111111111111111",
   "Event Pass #42",
   "private-resale-0001",
+  "private offer",
+  "seller",
+  "Gianella C.",
+  "seller@example.com",
+  "0x2222222222222222222222222222222222222222",
 ];
 
 function expectBuyerSafe(html: string) {
@@ -55,38 +58,27 @@ function expectBuyerSafe(html: string) {
     expect(html.toLowerCase()).not.toContain(term.toLowerCase());
 }
 
-describe("private resale purchase rendered states", () => {
-  it("renders no actionable offer when the authenticated user is not designated", () => {
-    const html = renderToStaticMarkup(
-      <PrivateResalePurchases
-        offers={[]}
-        account={null}
-        initialUsdcBalance={null}
-        unavailable={false}
-      />,
-    );
-
-    expect(html).toBe("");
-  });
-
-  it("reviews only buyer-safe Event, seller, total, and protection details", () => {
+describe("public Pass resale purchase rendered states", () => {
+  it("reviews buyer-safe economics, balance, cancellation, and finality", () => {
     const html = renderToStaticMarkup(
       <EventPassResalePurchaseReview
         eventName={offer.event.name}
-        sellerName={offer.seller.name}
         priceAmountSubunits={offer.price.amountSubunits}
         originalProtectedAmountSubunits={
           offer.originalProtectedPrice.amountSubunits
         }
+        balanceAmountSubunits="55000000"
       />,
     );
 
-    expect(html).toContain("Private offer for you");
+    expect(html).toContain("Pass resale");
     expect(html).toContain("ETH Lima 2026");
-    expect(html).toContain("Sold by Gianella C.");
     expect(html).toContain("Total: 40 USDC");
-    expect(html).toContain("original protected amount of 25 USDC");
-    expect(html).toContain("not the 40 USDC resale price");
+    expect(html).toContain("Available balance: 55 USDC");
+    expect(html).toContain("Mint Up fee: 9% included");
+    expect(html).toContain("Protected payment: 25 USDC");
+    expect(html).toContain("If the Event is cancelled");
+    expect(html).toContain("This purchase is final");
     expect(html).toContain("Face ID or fingerprint");
     expectBuyerSafe(html);
   });
@@ -100,7 +92,7 @@ describe("private resale purchase rendered states", () => {
     expectBuyerSafe(html);
   });
 
-  it("shows insufficient funds with one concise Retry action", () => {
+  it("shows balance, total, and deficit when funds are insufficient", () => {
     const html = renderToStaticMarkup(
       <EventPassResalePurchaseContent
         state="insufficient"
@@ -111,11 +103,29 @@ describe("private resale purchase rendered states", () => {
     );
 
     expect(html).toContain("You need 15 more USDC to buy this Event Pass.");
+    expect(html).toContain("Available balance: 25 USDC");
+    expect(html).toContain("Total: 40 USDC");
     expect(html).toContain("Retry");
     expectBuyerSafe(html);
   });
 
-  it("shows a stale offer with one concise Retry action", () => {
+  it("blocks confirmation when the balance cannot be checked", () => {
+    const html = renderToStaticMarkup(
+      <EventPassResalePurchaseContent
+        state="balance_unavailable"
+        eventName={offer.event.name}
+        priceAmountSubunits={offer.price.amountSubunits}
+      />,
+    );
+
+    expect(html).toContain(
+      "We couldn&#x27;t check your USDC balance. Try again.",
+    );
+    expect(html).toContain("Retry");
+    expectBuyerSafe(html);
+  });
+
+  it("explains an unavailable listing and returns to the Marketplace", () => {
     const html = renderToStaticMarkup(
       <EventPassResalePurchaseContent
         state="stale"
@@ -124,8 +134,10 @@ describe("private resale purchase rendered states", () => {
       />,
     );
 
-    expect(html).toContain("This private offer is no longer available.");
-    expect(html).toContain("Retry");
+    expect(html).toContain("This Pass resale is no longer available");
+    expect(html).toContain("Another buyer may have completed it first.");
+    expect(html).toContain("You won&#x27;t be charged.");
+    expect(html).toContain("Back to Marketplace");
     expectBuyerSafe(html);
   });
 
@@ -151,16 +163,18 @@ describe("private resale purchase rendered states", () => {
       />,
     );
 
-    expect(html).toContain("We couldn&#x27;t finish this purchase. Try again.");
+    expect(html).toContain("Another buyer may have completed it first");
+    expect(html).toContain("you won&#x27;t be charged");
     expect(html).toContain("Retry");
+    expect(html).toContain("Back to Marketplace");
     expectBuyerSafe(html);
   });
 
-  it("shows a concise private-offer loading failure with Retry", () => {
+  it("shows a concise Marketplace loading failure with Retry", () => {
     const html = renderToStaticMarkup(<EventPassResalePurchaseLoadError />);
 
     expect(html).toContain(
-      "We couldn&#x27;t load your private offers. Try again.",
+      "We couldn&#x27;t load this Pass resale. Try again.",
     );
     expect(html).toContain("Retry");
     expectBuyerSafe(html);

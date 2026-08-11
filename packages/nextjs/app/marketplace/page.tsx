@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Ticket } from "lucide-react";
+import { Suspense } from "react";
 
+import {
+  MarketplaceResalePurchaseAccess,
+  MarketplaceResalePurchaseAccessFallback,
+} from "~~/components/passes/marketplace-resale-purchase-access";
 import { Badge } from "~~/components/ui/badge";
 import { listEventPassOffers } from "~~/lib/event-pass-offer-data";
 import { formatUsdc } from "~~/lib/event-pass-offers";
@@ -13,8 +18,13 @@ export const metadata: Metadata = {
   description: "Browse public Event Pass offers and Pass resale listings.",
 };
 
-export default async function MarketplacePage() {
-  const [primary, resales] = await Promise.all([
+export default async function MarketplacePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ buy?: string }>;
+}) {
+  const [{ buy }, primary, resales] = await Promise.all([
+    searchParams,
     listEventPassOffers(),
     listPassResales(),
   ]);
@@ -103,9 +113,19 @@ export default async function MarketplacePage() {
                         View offer
                       </Link>
                     ) : (
-                      <p className="mt-5 text-sm font-semibold text-muted-foreground">
-                        Verified public listing
-                      </p>
+                      <Suspense
+                        fallback={<MarketplaceResalePurchaseAccessFallback />}
+                      >
+                        <MarketplaceResalePurchaseAccess
+                          passId={offer.passId}
+                          eventName={group.event.name}
+                          priceAmountSubunits={offer.priceAmountSubunits}
+                          originalProtectedAmountSubunits={
+                            offer.originalProtectedPriceAmountSubunits
+                          }
+                          selected={buy === offer.passId}
+                        />
+                      </Suspense>
                     )}
                   </article>
                 ))}

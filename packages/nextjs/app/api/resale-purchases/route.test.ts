@@ -17,7 +17,7 @@ const request = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
-describe("prepare private resale purchase API", () => {
+describe("prepare public Pass resale purchase API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     isAuthenticated.mockResolvedValue(true);
@@ -53,6 +53,11 @@ describe("prepare private resale purchase API", () => {
         seller: "changed",
         priceAmountSubunits: "1",
         feeRecipient: "changed",
+        recipient: "changed",
+        chainId: 1,
+        contractAddress: "changed",
+        resaleFeeBps: 0,
+        calls: [],
       }),
     );
 
@@ -60,7 +65,7 @@ describe("prepare private resale purchase API", () => {
     expect(fetchAuthMutation).not.toHaveBeenCalled();
   });
 
-  it("returns a concise stale-offer response", async () => {
+  it("returns actionable public-listing guidance without seller identity", async () => {
     fetchAuthMutation.mockRejectedValue(
       new Error("event_pass_resale_unavailable"),
     );
@@ -68,6 +73,22 @@ describe("prepare private resale purchase API", () => {
     const response = await POST(request(validRequest));
 
     expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({ code: "offer_unavailable" });
+    expect(await response.json()).toEqual({
+      code: "listing_unavailable",
+      message:
+        "This Pass resale is unavailable to your account. Check that your email is verified and that you don't already have an Event Pass for this Event. If you still need help, contact Mint Up support.",
+    });
+  });
+
+  it("keeps unexpected service failures distinct from buyer eligibility", async () => {
+    fetchAuthMutation.mockRejectedValue(new Error("service unavailable"));
+
+    const response = await POST(request(validRequest));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      code: "purchase_temporarily_unavailable",
+      message: "We couldn't start this purchase. Try again.",
+    });
   });
 });

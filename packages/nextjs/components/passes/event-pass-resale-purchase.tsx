@@ -40,7 +40,7 @@ async function responseJson<T>(response: Response): Promise<T> {
     message?: string;
   };
   if (!response.ok) {
-    if (body.code === "offer_unavailable")
+    if (body.code === "listing_unavailable")
       throw new OfferUnavailableError(body.message);
     throw new StatusRequestError(
       response.status,
@@ -73,9 +73,11 @@ export function EventPassResalePurchase({
   const [state, setState] = useState<"review" | ResalePurchaseContentState>(
     status === "unavailable"
       ? "stale"
-      : insufficient
-        ? "insufficient"
-        : "review",
+      : initialUsdcBalance === null
+        ? "balance_unavailable"
+        : insufficient
+          ? "insufficient"
+          : "review",
   );
   const [preparation, setPreparation] = useState<ResalePurchasePreparation>();
   const [submittedHash, setSubmittedHash] = useState<`0x${string}`>();
@@ -207,7 +209,7 @@ export function EventPassResalePurchase({
       startTransition(() => router.refresh());
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
-      setState("failure");
+      setState(error instanceof OfferUnavailableError ? "stale" : "failure");
     }
   }
 
@@ -230,7 +232,11 @@ export function EventPassResalePurchase({
       priceAmountSubunits={priceAmountSubunits}
       balanceAmountSubunits={initialUsdcBalance}
       onRetry={() => {
-        if (state === "stale" || state === "insufficient") {
+        if (
+          state === "stale" ||
+          state === "insufficient" ||
+          state === "balance_unavailable"
+        ) {
           startTransition(() => router.refresh());
         } else {
           void retryProgress();
