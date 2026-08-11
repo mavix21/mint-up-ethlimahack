@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BackGround } from "./Background";
 import {
   RainbowKitProvider,
   darkTheme,
@@ -33,7 +32,6 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
       <div className="flex min-h-screen flex-col overflow-x-hidden">
         <Header />
         <main className="relative flex flex-1 flex-col overflow-x-hidden">
-          <BackGround />
           {children}
         </main>
         <Footer />
