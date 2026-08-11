@@ -14,6 +14,7 @@ import {
   formatEventPrice,
   formatEventTime,
 } from "./minti-event-format";
+import { ChatEventPassPurchase } from "./chat-event-pass-purchase";
 
 const availabilityLabels: Record<MintiEvent["availability"], string> = {
   available: "Disponible",
@@ -29,6 +30,9 @@ const formatLabels: Record<MintiEvent["format"], string> = {
 };
 
 export function EventRecommendationCard({ event }: { event: MintiEvent }) {
+  const canBuyPass =
+    event.platform === "mintup" && event.price.kinds.includes("paid");
+
   return (
     <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-3xl border bg-card shadow-[0_1px_2px_oklch(0_0_0/0.04),0_12px_40px_oklch(0_0_0/0.04)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-[0_1px_2px_oklch(0_0_0/0.04),0_20px_48px_oklch(0_0_0/0.08)] dark:bg-card/80">
       <div className="relative h-28 overflow-hidden border-b bg-[radial-gradient(circle_at_78%_24%,oklch(0.91_0.22_129),transparent_30%),linear-gradient(135deg,oklch(0.24_0.04_151),oklch(0.43_0.11_145))]">
@@ -104,17 +108,21 @@ export function EventRecommendationCard({ event }: { event: MintiEvent }) {
           <p className="mb-3 font-heading text-lg font-bold tracking-tight">
             {formatEventPrice(event)}
           </p>
-          <Button
-            render={
-              <a href={event.url} target="_blank" rel="noopener noreferrer" />
-            }
-            nativeButton={false}
-            className="w-full justify-between"
-            size="sm"
-          >
-            Ver evento
-            <ArrowUpRightIcon data-icon="inline-end" />
-          </Button>
+          {canBuyPass ? (
+            <ChatEventPassPurchase eventId={event.eventId} />
+          ) : (
+            <Button
+              render={
+                <a href={event.url} target="_blank" rel="noopener noreferrer" />
+              }
+              nativeButton={false}
+              className="w-full justify-between"
+              size="sm"
+            >
+              Ver evento
+              <ArrowUpRightIcon data-icon="inline-end" />
+            </Button>
+          )}
         </div>
       </div>
     </article>
