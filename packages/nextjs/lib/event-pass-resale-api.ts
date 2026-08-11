@@ -7,6 +7,16 @@ import type {
   ResaleWithdrawalPreparation,
 } from "./event-pass-resale-schema";
 
+export function eventPassResaleErrorCode(error: unknown) {
+  if (typeof error === "object" && error !== null && "data" in error) {
+    const data = error.data;
+    if (typeof data === "string") return data;
+  }
+  if (error instanceof Error) {
+    return error.message.match(/event_pass_resale_[a-z_]+/)?.[0];
+  }
+}
+
 export const getEventPassResale = anyApi.eventPassResales
   .getByPassId as FunctionReference<
   "query",
@@ -34,6 +44,14 @@ export const listEventPassMarketplace = anyApi.eventPassResales
   "public",
   Record<string, never>,
   unknown
+>;
+
+export const reconcileEventPassMarketplace = anyApi.eventPassResales
+  .reconcileMarketplace as FunctionReference<
+  "action",
+  "public",
+  Record<string, never>,
+  null
 >;
 
 export const prepareEventPassResaleWithdrawal = anyApi.eventPassResales

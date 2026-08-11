@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { CalendarDays, Ticket } from "lucide-react";
 import { Suspense } from "react";
 
@@ -17,12 +18,14 @@ export const metadata: Metadata = {
   title: "Marketplace",
   description: "Browse public Event Pass offers and Pass resale listings.",
 };
+export const instant = false;
 
 export default async function MarketplacePage({
   searchParams,
 }: {
   searchParams: Promise<{ buy?: string }>;
 }) {
+  await connection();
   const [{ buy }, primary, resales] = await Promise.all([
     searchParams,
     listEventPassOffers(),

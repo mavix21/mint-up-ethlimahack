@@ -45,4 +45,19 @@ describe("reconcile public Pass resale purchase API", () => {
       message: "We couldn't verify the purchase yet. Try again.",
     });
   });
+
+  it("returns an unavailable result when another buyer completed the purchase", async () => {
+    fetchAuthAction.mockRejectedValue(
+      new Error("event_pass_resale_unavailable"),
+    );
+
+    const response = await POST(request(), context);
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      code: "listing_unavailable",
+      message:
+        "This Pass resale is no longer available. Another buyer may have completed it first. You won't be charged.",
+    });
+  });
 });

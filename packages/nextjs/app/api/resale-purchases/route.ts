@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 import { fetchAuthMutation, isAuthenticated } from "~~/lib/auth-server";
-import { prepareEventPassResalePurchase } from "../../../lib/event-pass-resale-api";
+import {
+  eventPassResaleErrorCode,
+  prepareEventPassResalePurchase,
+} from "../../../lib/event-pass-resale-api";
 import { resalePurchasePreparationSchema } from "../../../lib/event-pass-resale-schema";
 import { kernelAccountMatrix } from "../../../lib/kernel-account";
 import { readBoundedJson } from "../../../lib/pimlico-user-operation-route";
@@ -12,16 +15,6 @@ const requestSchema = z
     idempotencyKey: z.string().regex(/^[A-Za-z0-9_-]{16,128}$/),
   })
   .strict();
-
-function resaleErrorCode(error: unknown) {
-  if (typeof error === "object" && error !== null && "data" in error) {
-    const data = error.data;
-    if (typeof data === "string") return data;
-  }
-  if (error instanceof Error) {
-    return error.message.match(/event_pass_resale_[a-z_]+/)?.[0];
-  }
-}
 
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
@@ -50,7 +43,7 @@ export async function POST(request: Request) {
     );
     return Response.json(resalePurchasePreparationSchema.parse(preparation));
   } catch (error) {
-    if (resaleErrorCode(error) === "event_pass_resale_unavailable") {
+    if (eventPassResaleErrorCode(error) === "event_pass_resale_unavailable") {
       return Response.json(
         {
           code: "listing_unavailable",

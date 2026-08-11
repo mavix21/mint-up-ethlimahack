@@ -1666,6 +1666,17 @@ mod tests {
         contract.purchase_public_resale(pass_id, nonce, issued_at, deadline, v, r, s)
     }
 
+    fn mock_public_resale_payment(vm: &TestVM, buyer: Address, seller: Address, price: U256) {
+        let fee_amount = basis_points(price, RESALE_FEE_BPS);
+        for calldata in [
+            transfer_from_data_u256(buyer, vm.contract_address(), price).to_vec(),
+            transfer_data(seller, price - fee_amount).to_vec(),
+            transfer_data(address(9), fee_amount).to_vec(),
+        ] {
+            vm.mock_call(address(2), calldata, Ok(true_word()));
+        }
+    }
+
     fn authorized_cancel_public_listing(
         vm: &TestVM,
         contract: &mut MintUpEventPass,
@@ -2520,6 +2531,95 @@ mod tests {
             (Address::ZERO, U256::ZERO, false)
         );
         assert_eq!(contract.pass_refund_info(pass_id).unwrap().0, PRICE);
+    }
+
+    #[test]
+    fn first_confirmed_public_resale_purchase_wins_without_reserving_the_listing() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let seller = address(6);
+        let winner = address(7);
+        let loser = address(8);
+        let price = U256::from(20_000_000);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, seller);
+        authorized_create_public_listing(&vm, &mut contract, pass_id, price, 1).unwrap();
+
+        vm.set_sender(winner);
+        mock_public_resale_payment(&vm, winner, seller, price);
+        authorized_purchase_public_resale(&vm, &mut contract, pass_id, 2).unwrap();
+
+        vm.set_sender(loser);
+        assert_error(
+            authorized_purchase_public_resale(&vm, &mut contract, pass_id, 3),
+            RESALE_OFFER_NOT_FOUND,
+        );
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), winner);
+        assert!(!contract.authorization_used(U256::from(3)));
+    }
+
+    #[test]
+    fn lifecycle_changes_remove_public_listings_and_pause_requires_relisting() {
+        for invalidation in ["start", "cancel", "pause", "check-in", "transfer"] {
+            let (vm, mut contract) = setup();
+            let id = event_id(1);
+            let seller = address(6);
+            register(&mut contract, id, 1, true, address(4));
+            let pass_id = buy(&vm, &mut contract, id, seller);
+            authorized_create_public_listing(
+                &vm,
+                &mut contract,
+                pass_id,
+                U256::from(20_000_000),
+                1,
+            )
+            .unwrap();
+
+            match invalidation {
+                "start" => vm.set_block_timestamp(RELEASE),
+                "cancel" => {
+                    vm.set_sender(address(1));
+                    contract.cancel_event(id).unwrap();
+                }
+                "pause" => {
+                    vm.set_sender(address(1));
+                    contract.set_paused(true).unwrap();
+                    contract.set_paused(false).unwrap();
+                }
+                "check-in" => {
+                    vm.set_sender(address(4));
+                    contract.check_in(id, pass_id).unwrap();
+                }
+                "transfer" => {
+                    vm.set_sender(seller);
+                    let recipient = address(7);
+                    let nonce = U256::from(2);
+                    let (v, r, s) =
+                        mock_authorization(&vm, &contract, seller, pass_id, recipient, nonce, 180);
+                    contract
+                        .transfer_pass(pass_id, recipient, nonce, 150, 180, v, r, s)
+                        .unwrap();
+                }
+                _ => unreachable!(),
+            }
+
+            assert!(!contract.public_resale_listing(pass_id).unwrap().2);
+            vm.set_sender(address(8));
+            assert!(authorized_purchase_public_resale(&vm, &mut contract, pass_id, 9).is_err());
+            assert!(!contract.authorization_used(U256::from(9)));
+            if invalidation == "pause" {
+                vm.set_sender(seller);
+                authorized_create_public_listing(
+                    &vm,
+                    &mut contract,
+                    pass_id,
+                    U256::from(20_000_000),
+                    2,
+                )
+                .unwrap();
+                assert!(contract.public_resale_listing(pass_id).unwrap().2);
+            }
+        }
     }
 
     #[test]
