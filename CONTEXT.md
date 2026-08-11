@@ -33,8 +33,16 @@ A free handoff of an active Event Pass to another registered Mint Up user identi
 _Avoid_: Token transfer, wallet address, resale
 
 **Pass resale**:
-A private sale in which an Event Pass holder chooses a registered Mint Up user and a USDC price for that user to accept. Payment and ownership change together; resale proceeds are not a Protected payment.
-_Avoid_: Marketplace listing, NFT sale, secondary-market transaction
+A fixed-price public listing through which an Event Pass holder offers the Pass for any eligible Mint Up user to buy. Payment and ownership change together; resale proceeds are not a Protected payment.
+_Avoid_: Private offer, email-directed sale, NFT sale, secondary-market transaction
+
+**Marketplace**:
+The public catalog of Event Passes currently available for Pass resale. Anyone may browse it, while buying requires an eligible authenticated Mint Up user.
+_Avoid_: NFT marketplace, private offers
+
+**Eligible marketplace buyer**:
+An authenticated Mint Up user with a verified email and protected account who is not blocked and does not already hold an active Event Pass for the same Event.
+_Avoid_: Anonymous buyer, designated buyer, wallet address
 
 **Pass refund**:
 The return, requested by the current Event Pass holder, of the original Protected payment after its Event is cancelled. A resale price does not change its amount.
