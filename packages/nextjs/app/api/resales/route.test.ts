@@ -15,7 +15,6 @@ const request = (body: unknown) =>
 
 const validRequest = {
   passId: "42",
-  buyerEmail: "gianna@example.com",
   price: "25.50",
   idempotencyKey: "12345678-1234-1234-1234-123456789abc",
 };
@@ -43,9 +42,8 @@ describe("prepare Event Pass resale API", () => {
 
   it("converts the human price and returns safe create or replace details", async () => {
     fetchAuthMutation.mockResolvedValue({
-      resaleId: "private-resale-0001",
+      resaleId: "public-resale-0001",
       kind: "replace",
-      buyerName: "Gianna",
       expiresAt: Date.UTC(2030, 0, 1),
     });
 
@@ -54,29 +52,36 @@ describe("prepare Event Pass resale API", () => {
     expect(response.status).toBe(200);
     expect(fetchAuthMutation).toHaveBeenCalledWith(expect.anything(), {
       passId: "42",
-      buyerEmail: "gianna@example.com",
       priceAmountSubunits: "25500000",
       chainId: 421614,
       idempotencyKey: validRequest.idempotencyKey,
     });
     expect(await response.json()).toEqual({
-      resaleId: "private-resale-0001",
+      resaleId: "public-resale-0001",
       kind: "replace",
-      buyerName: "Gianna",
       expiresAt: Date.UTC(2030, 0, 1),
     });
   });
 
-  it("uses one generic actionable response for an ineligible buyer", async () => {
+  it("rejects extra buyer or economic fields", async () => {
+    const response = await POST(
+      request({ ...validRequest, buyerEmail: "gianna@example.com", fee: "0" }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(fetchAuthMutation).not.toHaveBeenCalled();
+  });
+
+  it("uses one generic response when the backend cap rejects the price", async () => {
     fetchAuthMutation.mockRejectedValue(
-      new Error("event_pass_recipient_unavailable"),
+      new Error("event_pass_resale_unavailable"),
     );
 
     const response = await POST(request(validRequest));
 
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({
-      code: "recipient_unavailable",
+      message: "The price must not exceed your protected payment.",
     });
   });
 });

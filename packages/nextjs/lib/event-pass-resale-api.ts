@@ -22,12 +22,19 @@ export const prepareEventPassResale = anyApi.eventPassResales
   "public",
   {
     passId: string;
-    buyerEmail: string;
     priceAmountSubunits: string;
     chainId: number;
     idempotencyKey: string;
   },
   ResalePreparation
+>;
+
+export const listEventPassMarketplace = anyApi.eventPassResales
+  .listMarketplace as FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  unknown
 >;
 
 export const prepareEventPassResaleWithdrawal = anyApi.eventPassResales

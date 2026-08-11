@@ -89,14 +89,19 @@ describe("Event Pass resale rendered states", () => {
     expect(html).not.toContain("Put up for resale");
   });
 
-  it("renders a human email and USDC form for an eligible pass", () => {
+  it("renders a price-only form with the protected payment cap", () => {
     const html = renderToStaticMarkup(
-      <EventPassResaleContent state="form" eventName="ETH Lima 2026" />,
+      <EventPassResaleContent
+        state="form"
+        eventName="ETH Lima 2026"
+        maximumPrice="30 USDC"
+      />,
     );
 
-    expect(html).toContain("Buyer email");
-    expect(html).toContain('type="email"');
+    expect(html).not.toContain("Buyer email");
+    expect(html).not.toContain('type="email"');
     expect(html).toContain("Price in USDC");
+    expect(html).toContain("30 USDC");
     expect(html).toContain('inputMode="decimal"');
     expectBuyerSafe(html);
   });
@@ -109,16 +114,20 @@ describe("Event Pass resale rendered states", () => {
           state="review"
           eventName="ETH Lima 2026"
           action={kind}
-          buyerName="Gianna"
-          buyerEmail="gianna@example.com"
           price="25.50"
+          fee="2.295 USDC"
+          net="23.205 USDC"
         />,
       );
 
       expect(html).toContain(
-        kind === "replace" ? "Replace offer" : "Create offer",
+        kind === "replace" ? "Update listing" : "Create listing",
       );
       expect(html).toContain("25.50 USDC");
+      expect(html).toContain("9% marketplace fee");
+      expect(html).toContain("2.295 USDC");
+      expect(html).toContain("You receive (91%)");
+      expect(html).toContain("23.205 USDC");
       expect(html).toContain("Confirm with Face ID or fingerprint");
       expectBuyerSafe(html);
     },
@@ -134,7 +143,7 @@ describe("Event Pass resale rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Withdraw offer");
+    expect(html).toContain("Remove listing");
     expect(html).toContain("You keep your Event Pass");
     expect(html).toContain("No USDC moves");
     expectBuyerSafe(html);
@@ -157,7 +166,7 @@ describe("Event Pass resale rendered states", () => {
       />,
     );
 
-    expect(pending).toContain("Confirming your offer");
+    expect(pending).toContain("Confirming your listing");
     expect(pending).not.toContain("has been replaced");
     expect(failure).toContain("Try again");
     expect(failure).toContain("Retry");
@@ -175,7 +184,7 @@ describe("Event Pass resale rendered states", () => {
     );
 
     expect(html).toContain(
-      "Enter a valid email and a positive USDC price with up to 6 decimals.",
+      "Enter a positive USDC price with up to 6 decimals that does not exceed your protected payment.",
     );
     expect(html).toContain("Retry");
     expectBuyerSafe(html);
@@ -190,9 +199,9 @@ describe("Event Pass resale rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Offer unavailable");
-    expect(html).not.toContain("Replace offer");
-    expect(html).not.toContain("Withdraw offer");
+    expect(html).toContain("Listing unavailable");
+    expect(html).not.toContain("Update listing");
+    expect(html).not.toContain("Remove listing");
     expectBuyerSafe(html);
   });
 });

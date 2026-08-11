@@ -18,7 +18,6 @@ export const resalePreparationSchema = z
   .object({
     resaleId: z.string().min(1).max(200),
     kind: z.enum(["create", "replace"]),
-    buyerName: z.string().min(1).max(200),
     expiresAt: z.number().int().positive(),
   })
   .strict();
@@ -98,5 +97,8 @@ export type ResalePurchasePreparation = z.infer<
   typeof resalePurchasePreparationSchema
 >;
 
-export const resaleRecipientUnavailableMessage =
-  "Ask them to secure their passes, then check the email and try again.";
+export function resaleEconomics(priceAmountSubunits: string) {
+  const price = BigInt(priceAmountSubunits);
+  const fee = (price * 900n) / 10_000n;
+  return { fee: fee.toString(), net: (price - fee).toString() };
+}

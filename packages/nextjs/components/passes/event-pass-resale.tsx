@@ -4,6 +4,7 @@ import { startTransition, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { abortableWait } from "../../lib/abortable-wait";
+import { formatUsdc } from "../../lib/event-pass-offers";
 import type { WalletPasskeyAccount } from "../../lib/kernel-account";
 import { reconstructKernelAccount } from "../../lib/kernel-account";
 import type {
@@ -19,6 +20,7 @@ import type {
 } from "../../lib/event-pass-resale-schema";
 import {
   parseHumanUsdc,
+  resaleEconomics,
   resalePreparationSchema,
   resaleWithdrawalPreparationSchema,
 } from "../../lib/event-pass-resale-schema";
@@ -36,7 +38,18 @@ type RetryStep = "form" | "review" | "withdraw" | "status" | "reconcile";
 type Preparation =
   ResalePreparation | (ResaleWithdrawalPreparation & { kind: "withdraw" });
 
-class RecipientUnavailableError extends Error {}
+function formatSubunits(value: string) {
+  return formatUsdc(value);
+}
+
+function formatEconomics(price: string) {
+  try {
+    const economics = resaleEconomics(parseHumanUsdc(price));
+    return { fee: formatUsdc(economics.fee), net: formatUsdc(economics.net) };
+  } catch {
+    return { fee: "", net: "" };
+  }
+}
 
 async function responseJson<T>(response: Response): Promise<T> {
   const body = (await response.json().catch(() => ({}))) as {
@@ -44,8 +57,6 @@ async function responseJson<T>(response: Response): Promise<T> {
     message?: string;
   };
   if (!response.ok) {
-    if (body.code === "recipient_unavailable")
-      throw new RecipientUnavailableError(body.message);
     throw new StatusRequestError(
       response.status,
       body.message ?? "The offer could not be completed.",
@@ -59,27 +70,27 @@ export function EventPassResale({
   eventName,
   account,
   offer,
+  maximumPriceAmountSubunits,
 }: {
   passId: string;
   eventName: string;
   account: WalletPasskeyAccount;
   offer: PrivateResaleOffer | null;
+  maximumPriceAmountSubunits: string;
 }) {
   const [state, setState] = useState<"idle" | ResaleContentState>("idle");
   const [action, setAction] = useState<ResaleAction>(
     offer ? "replace" : "create",
   );
-  const [email, setEmail] = useState("");
   const [price, setPrice] = useState(offer?.price.amount ?? "");
   const [preparation, setPreparation] = useState<Preparation>();
-  const [failure, setFailure] = useState<
-    "recipient" | "validation" | "operation"
-  >("operation");
+  const [failure, setFailure] = useState<"validation" | "operation">(
+    "operation",
+  );
   const [retryStep, setRetryStep] = useState<RetryStep>("form");
   const [submittedHash, setSubmittedHash] = useState<`0x${string}`>();
   const [preparingWithdrawal, setPreparingWithdrawal] = useState(false);
   const controller = useRef<AbortController>(null);
-  const emailId = useId();
   const priceId = useId();
   const router = useRouter();
 
@@ -98,7 +109,9 @@ export function EventPassResale({
 
   async function prepareOffer() {
     try {
-      parseHumanUsdc(price);
+      const amount = parseHumanUsdc(price);
+      if (BigInt(amount) > BigInt(maximumPriceAmountSubunits))
+        throw new Error();
     } catch {
       setFailure("validation");
       setRetryStep("form");
@@ -114,7 +127,6 @@ export function EventPassResale({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           passId,
-          buyerEmail: email,
           price,
           idempotencyKey: crypto.randomUUID(),
         }),
@@ -128,9 +140,7 @@ export function EventPassResale({
       setState("review");
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
-      setFailure(
-        error instanceof RecipientUnavailableError ? "recipient" : "operation",
-      );
+      setFailure("operation");
       setRetryStep("form");
       setState("failure");
     }
@@ -309,7 +319,7 @@ export function EventPassResale({
       <div className="space-y-3 rounded-xl bg-muted/60 p-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Private offer
+            Pass resale
           </p>
           <p className="mt-1 font-bold">{offer.price.amount} USDC</p>
         </div>
@@ -320,7 +330,7 @@ export function EventPassResale({
             disabled={preparingWithdrawal}
             className="min-h-10 flex-1 rounded-full border bg-background px-4 text-sm font-bold hover:bg-muted disabled:opacity-50"
           >
-            Replace offer
+            Update listing
           </button>
           <button
             type="button"
@@ -328,7 +338,7 @@ export function EventPassResale({
             disabled={preparingWithdrawal}
             className="min-h-10 flex-1 rounded-full border bg-background px-4 text-sm font-bold hover:bg-muted disabled:opacity-50"
           >
-            {preparingWithdrawal ? "Preparing..." : "Withdraw offer"}
+            {preparingWithdrawal ? "Preparing..." : "Remove listing"}
           </button>
         </div>
       </div>
@@ -341,18 +351,12 @@ export function EventPassResale({
         state={state}
         eventName={eventName}
         action={action}
-        buyerName={
-          preparation && "buyerName" in preparation
-            ? preparation.buyerName
-            : undefined
-        }
-        buyerEmail={email.trim().toLowerCase()}
         price={price}
-        email={email}
+        fee={formatEconomics(price).fee}
+        net={formatEconomics(price).net}
+        maximumPrice={formatSubunits(maximumPriceAmountSubunits)}
         failure={failure}
-        inputId={emailId}
         priceInputId={priceId}
-        onEmailChange={setEmail}
         onPriceChange={setPrice}
         onPrepare={prepareOffer}
         onConfirm={confirm}
