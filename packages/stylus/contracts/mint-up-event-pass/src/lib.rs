@@ -121,6 +121,12 @@ sol! {
         uint256 price
     );
     event EventPassResaleOfferCancelled(uint64 indexed pass_id, address indexed seller);
+    event EventPassPublicResaleListed(
+        uint64 indexed pass_id,
+        address indexed seller,
+        uint256 price
+    );
+    event EventPassPublicResaleCancelled(uint64 indexed pass_id, address indexed seller);
     event EventPassResold(
         uint64 indexed pass_id,
         address indexed seller,
@@ -207,6 +213,12 @@ sol_storage! {
         uint64 pause_generation;
     }
 
+    pub struct PublicResaleListing {
+        address seller;
+        uint256 price;
+        uint64 pause_generation;
+    }
+
     #[entrypoint]
     pub struct MintUpEventPass {
         address administrator;
@@ -220,6 +232,7 @@ sol_storage! {
         mapping(bytes32 => EventData) events;
         mapping(uint64 => PassData) passes;
         mapping(uint64 => ResaleOffer) resale_offers;
+        mapping(uint64 => PublicResaleListing) public_resale_listings;
         mapping(uint256 => bool) used_authorizations;
         Erc721 erc721;
         Erc721Metadata metadata;
@@ -592,6 +605,7 @@ impl MintUpEventPass {
             U256::ZERO,
         );
         self.clear_resale_offer(pass_id);
+        self.clear_public_resale_listing(pass_id);
         self.erc721._transfer(previous_owner, to, token_id)?;
         self.log_pass_transfer(token_id, previous_owner, to, event_id);
         Ok(())
@@ -757,6 +771,7 @@ impl MintUpEventPass {
         self.record_authorization(operation, buyer, nonce, pass_id, seller, price);
 
         self.clear_resale_offer(pass_id);
+        self.clear_public_resale_listing(pass_id);
         self.erc721._transfer(seller, buyer, U256::from(pass_id))?;
         self.log_pass_transfer(U256::from(pass_id), seller, buyer, event_id);
         log(
@@ -771,6 +786,204 @@ impl MintUpEventPass {
             },
         );
         Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_public_resale_listing(
+        &mut self,
+        pass_id: u64,
+        price: U256,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+        v: u8,
+        r: B256,
+        s: B256,
+    ) -> Result<(), Error> {
+        self.not_entered()?;
+        if price.is_zero() {
+            return Err(error(INVALID_INPUT));
+        }
+        let seller = self.vm().msg_sender();
+        let (owner, _) = self.require_resale_eligible(pass_id)?;
+        if owner != seller {
+            return Err(error(NOT_PASS_OWNER));
+        }
+        let protected_payment = U256::from(
+            self.passes
+                .getter(U64::from(pass_id))
+                .original_price
+                .get()
+                .to::<u64>(),
+        );
+        if price > protected_payment {
+            return Err(error(INVALID_INPUT));
+        }
+        let operation = Self::create_public_resale_listing_operation_hash();
+        self.validate_authorization(
+            operation,
+            seller,
+            pass_id,
+            Address::ZERO,
+            price,
+            nonce,
+            issued_at,
+            deadline,
+            v,
+            r,
+            s,
+        )?;
+        self.record_authorization(operation, seller, nonce, pass_id, Address::ZERO, price);
+
+        let mut listing = self.public_resale_listings.setter(U64::from(pass_id));
+        listing.seller.set(seller);
+        listing.price.set(price);
+        listing.pause_generation.set(self.pause_generation.get());
+        log(
+            self.vm(),
+            EventPassPublicResaleListed {
+                pass_id,
+                seller,
+                price,
+            },
+        );
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn cancel_public_resale_listing(
+        &mut self,
+        pass_id: u64,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+        v: u8,
+        r: B256,
+        s: B256,
+    ) -> Result<(), Error> {
+        self.not_entered()?;
+        let seller = self.vm().msg_sender();
+        let (owner, _) = self.require_resale_eligible(pass_id)?;
+        if owner != seller {
+            return Err(error(NOT_PASS_OWNER));
+        }
+        if self
+            .public_resale_listings
+            .getter(U64::from(pass_id))
+            .seller
+            .get()
+            .is_zero()
+        {
+            return Err(error(RESALE_OFFER_NOT_FOUND));
+        }
+        let operation = Self::cancel_public_resale_listing_operation_hash();
+        self.validate_authorization(
+            operation,
+            seller,
+            pass_id,
+            Address::ZERO,
+            U256::ZERO,
+            nonce,
+            issued_at,
+            deadline,
+            v,
+            r,
+            s,
+        )?;
+        self.record_authorization(operation, seller, nonce, pass_id, Address::ZERO, U256::ZERO);
+        self.clear_public_resale_listing(pass_id);
+        log(
+            self.vm(),
+            EventPassPublicResaleCancelled { pass_id, seller },
+        );
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn purchase_public_resale(
+        &mut self,
+        pass_id: u64,
+        nonce: U256,
+        issued_at: u64,
+        deadline: u64,
+        v: u8,
+        r: B256,
+        s: B256,
+    ) -> Result<(), Error> {
+        self.not_paused()?;
+        if self.entered.get() {
+            return Err(error(REENTRANCY));
+        }
+        let buyer = self.vm().msg_sender();
+        let listing = self.public_resale_listings.getter(U64::from(pass_id));
+        let seller = listing.seller.get();
+        if seller.is_zero() {
+            return Err(error(RESALE_OFFER_NOT_FOUND));
+        }
+        let price = listing.price.get();
+        let listing_pause_generation = listing.pause_generation.get();
+        drop(listing);
+        if buyer == seller {
+            return Err(error(INVALID_INPUT));
+        }
+        if listing_pause_generation != self.pause_generation.get() {
+            return Err(error(RESALE_UNAVAILABLE));
+        }
+        let (current_owner, event_id) = self.require_resale_eligible(pass_id)?;
+        if current_owner != seller {
+            return Err(error(RESALE_UNAVAILABLE));
+        }
+        let operation = Self::purchase_public_resale_operation_hash();
+        self.validate_authorization(
+            operation, buyer, pass_id, seller, price, nonce, issued_at, deadline, v, r, s,
+        )?;
+
+        let fee_amount = basis_points(price, RESALE_FEE_BPS);
+        let seller_amount = price - fee_amount;
+        if !self.strict_usdc_call(&transfer_from_data_u256(
+            buyer,
+            self.vm().contract_address(),
+            price,
+        )) || !self.strict_usdc_call(&transfer_data(seller, seller_amount))
+            || !self.strict_usdc_call(&transfer_data(self.fee_recipient.get(), fee_amount))
+        {
+            return Err(error(PAYMENT_FAILED));
+        }
+        self.record_authorization(operation, buyer, nonce, pass_id, seller, price);
+        self.clear_public_resale_listing(pass_id);
+        self.clear_resale_offer(pass_id);
+        self.erc721._transfer(seller, buyer, U256::from(pass_id))?;
+        self.log_pass_transfer(U256::from(pass_id), seller, buyer, event_id);
+        log(
+            self.vm(),
+            EventPassResold {
+                pass_id,
+                seller,
+                buyer,
+                price,
+                seller_amount,
+                fee_amount,
+            },
+        );
+        Ok(())
+    }
+
+    pub fn public_resale_listing(&self, pass_id: u64) -> Result<(Address, U256, bool), Error> {
+        self.erc721
+            .owner_of(U256::from(pass_id))
+            .map_err(|_| error(PASS_NOT_FOUND))?;
+        let listing = self.public_resale_listings.getter(U64::from(pass_id));
+        let seller = listing.seller.get();
+        let price = listing.price.get();
+        let listing_pause_generation = listing.pause_generation.get();
+        drop(listing);
+        Ok((
+            seller,
+            price,
+            !seller.is_zero()
+                && listing_pause_generation == self.pause_generation.get()
+                && self.resale_is_eligible(pass_id, seller),
+        ))
     }
 
     pub fn resale_offer(&self, pass_id: u64) -> Result<(Address, Address, U256, bool), Error> {
@@ -823,6 +1036,7 @@ impl MintUpEventPass {
         drop(pass);
 
         self.clear_resale_offer(pass_id);
+        self.clear_public_resale_listing(pass_id);
         self.passes.setter(U64::from(pass_id)).attended.set(true);
         log(
             self.vm(),
@@ -943,6 +1157,18 @@ impl MintUpEventPass {
 
     pub fn purchase_resale_operation(&self) -> B256 {
         Self::purchase_resale_operation_hash()
+    }
+
+    pub fn create_public_resale_listing_operation(&self) -> B256 {
+        Self::create_public_resale_listing_operation_hash()
+    }
+
+    pub fn cancel_public_resale_listing_operation(&self) -> B256 {
+        Self::cancel_public_resale_listing_operation_hash()
+    }
+
+    pub fn purchase_public_resale_operation(&self) -> B256 {
+        Self::purchase_public_resale_operation_hash()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1386,6 +1612,83 @@ mod tests {
             deadline,
         );
         contract.purchase_resale(pass_id, nonce, issued_at, deadline, v, r, s)
+    }
+
+    fn authorized_create_public_listing(
+        vm: &TestVM,
+        contract: &mut MintUpEventPass,
+        pass_id: u64,
+        price: U256,
+        nonce: u64,
+    ) -> Result<(), Error> {
+        let seller = vm.msg_sender();
+        let nonce = U256::from(nonce);
+        let issued_at = vm.block_timestamp();
+        let deadline = issued_at + 30;
+        let (v, r, s) = mock_action_authorization(
+            vm,
+            contract,
+            contract.create_public_resale_listing_operation(),
+            seller,
+            pass_id,
+            Address::ZERO,
+            price,
+            nonce,
+            issued_at,
+            deadline,
+        );
+        contract.create_public_resale_listing(pass_id, price, nonce, issued_at, deadline, v, r, s)
+    }
+
+    fn authorized_purchase_public_resale(
+        vm: &TestVM,
+        contract: &mut MintUpEventPass,
+        pass_id: u64,
+        nonce: u64,
+    ) -> Result<(), Error> {
+        let buyer = vm.msg_sender();
+        let (seller, price, _) = contract.public_resale_listing(pass_id)?;
+        let nonce = U256::from(nonce);
+        let issued_at = vm.block_timestamp();
+        let deadline = issued_at + 30;
+        let (v, r, s) = mock_action_authorization(
+            vm,
+            contract,
+            contract.purchase_public_resale_operation(),
+            buyer,
+            pass_id,
+            seller,
+            price,
+            nonce,
+            issued_at,
+            deadline,
+        );
+        contract.purchase_public_resale(pass_id, nonce, issued_at, deadline, v, r, s)
+    }
+
+    fn authorized_cancel_public_listing(
+        vm: &TestVM,
+        contract: &mut MintUpEventPass,
+        pass_id: u64,
+        nonce: u64,
+    ) -> Result<(), Error> {
+        let seller = vm.msg_sender();
+        let nonce = U256::from(nonce);
+        let issued_at = vm.block_timestamp();
+        let deadline = issued_at + 30;
+        let (v, r, s) = mock_action_authorization(
+            vm,
+            contract,
+            contract.cancel_public_resale_listing_operation(),
+            seller,
+            pass_id,
+            Address::ZERO,
+            U256::ZERO,
+            nonce,
+            issued_at,
+            deadline,
+        );
+        contract.cancel_public_resale_listing(pass_id, nonce, issued_at, deadline, v, r, s)
     }
 
     #[test]
@@ -2119,6 +2422,189 @@ mod tests {
             authorized_cancel_offer(&vm, &mut contract, pass_id, 4),
             RESALE_OFFER_NOT_FOUND,
         );
+    }
+
+    #[test]
+    fn owner_creates_and_replaces_one_public_listing_within_protected_payment() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let seller = address(6);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, seller);
+
+        assert_error(
+            authorized_create_public_listing(&vm, &mut contract, pass_id, U256::ZERO, 1),
+            INVALID_INPUT,
+        );
+        assert_error(
+            authorized_create_public_listing(
+                &vm,
+                &mut contract,
+                pass_id,
+                U256::from(PRICE) + U256::from(1),
+                1,
+            ),
+            INVALID_INPUT,
+        );
+        authorized_create_public_listing(&vm, &mut contract, pass_id, U256::from(20_000_000), 1)
+            .unwrap();
+        authorized_create_public_listing(&vm, &mut contract, pass_id, U256::from(PRICE), 2)
+            .unwrap();
+
+        assert_eq!(
+            contract.public_resale_listing(pass_id).unwrap(),
+            (seller, U256::from(PRICE), true)
+        );
+
+        authorized_cancel_public_listing(&vm, &mut contract, pass_id, 3).unwrap();
+        assert_eq!(
+            contract.public_resale_listing(pass_id).unwrap(),
+            (Address::ZERO, U256::ZERO, false)
+        );
+        assert_error(
+            authorized_cancel_public_listing(&vm, &mut contract, pass_id, 4),
+            RESALE_OFFER_NOT_FOUND,
+        );
+    }
+
+    #[test]
+    fn any_exactly_authorized_buyer_purchases_public_listing_with_91_9_conservation() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let seller = address(6);
+        let buyer = address(7);
+        let other_buyer = address(8);
+        let price = U256::from(20_000_001);
+        let seller_amount = U256::from(18_200_001);
+        let fee_amount = U256::from(1_800_000);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, seller);
+        authorized_create_public_listing(&vm, &mut contract, pass_id, price, 1).unwrap();
+
+        vm.set_sender(other_buyer);
+        let nonce = U256::from(2);
+        let (v, r, s) = mock_action_authorization(
+            &vm,
+            &contract,
+            contract.purchase_public_resale_operation(),
+            buyer,
+            pass_id,
+            seller,
+            price,
+            nonce,
+            150,
+            180,
+        );
+        assert_error(
+            contract.purchase_public_resale(pass_id, nonce, 150, 180, v, r, s),
+            INVALID_AUTHORIZATION,
+        );
+
+        vm.set_sender(buyer);
+        for (calldata, response) in [
+            transfer_from_data_u256(buyer, vm.contract_address(), price).to_vec(),
+            transfer_data(seller, seller_amount).to_vec(),
+            transfer_data(address(9), fee_amount).to_vec(),
+        ]
+        .into_iter()
+        .zip([Ok(true_word()), Ok(true_word()), Ok(true_word())])
+        {
+            vm.mock_call(address(2), calldata, response);
+        }
+        authorized_purchase_public_resale(&vm, &mut contract, pass_id, 2).unwrap();
+
+        assert_eq!(seller_amount + fee_amount, price);
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), buyer);
+        assert_eq!(
+            contract.public_resale_listing(pass_id).unwrap(),
+            (Address::ZERO, U256::ZERO, false)
+        );
+        assert_eq!(contract.pass_refund_info(pass_id).unwrap().0, PRICE);
+    }
+
+    #[test]
+    fn failed_public_resale_payment_and_reentrancy_preserve_owner_and_listing() {
+        let (vm, mut contract) = setup();
+        let id = event_id(1);
+        let seller = address(6);
+        let buyer = address(7);
+        let price = U256::from(20_000_000);
+        register(&mut contract, id, 1, true, address(4));
+        let pass_id = buy(&vm, &mut contract, id, seller);
+        authorized_create_public_listing(&vm, &mut contract, pass_id, price, 1).unwrap();
+        vm.set_sender(buyer);
+        vm.mock_call(
+            address(2),
+            transfer_from_data_u256(buyer, vm.contract_address(), price).to_vec(),
+            Ok(vec![0; 32]),
+        );
+
+        assert_error(
+            authorized_purchase_public_resale(&vm, &mut contract, pass_id, 2),
+            PAYMENT_FAILED,
+        );
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), seller);
+        assert_eq!(
+            contract.public_resale_listing(pass_id).unwrap(),
+            (seller, price, true)
+        );
+
+        contract.entered.set(true);
+        assert_error(
+            authorized_purchase_public_resale(&vm, &mut contract, pass_id, 3),
+            REENTRANCY,
+        );
+        assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), seller);
+        assert_eq!(
+            contract.public_resale_listing(pass_id).unwrap(),
+            (seller, price, true)
+        );
+    }
+
+    #[test]
+    fn every_failed_public_resale_payment_leg_preserves_owner_and_listing() {
+        for failed_leg in 0..3 {
+            let (vm, mut contract) = setup();
+            let id = event_id(failed_leg + 1);
+            let seller = address(6);
+            let buyer = address(7);
+            let price = U256::from(20_000_000);
+            let seller_amount = U256::from(18_200_000);
+            let fee_amount = U256::from(1_800_000);
+            register(&mut contract, id, 1, true, address(4));
+            let pass_id = buy(&vm, &mut contract, id, seller);
+            authorized_create_public_listing(&vm, &mut contract, pass_id, price, 1).unwrap();
+            vm.set_sender(buyer);
+            for (leg, calldata) in [
+                transfer_from_data_u256(buyer, vm.contract_address(), price).to_vec(),
+                transfer_data(seller, seller_amount).to_vec(),
+                transfer_data(address(9), fee_amount).to_vec(),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                vm.mock_call(
+                    address(2),
+                    calldata,
+                    if leg == usize::from(failed_leg) {
+                        Ok(vec![0; 32])
+                    } else {
+                        Ok(true_word())
+                    },
+                );
+            }
+
+            assert_error(
+                authorized_purchase_public_resale(&vm, &mut contract, pass_id, 2),
+                PAYMENT_FAILED,
+            );
+            assert_eq!(contract.owner_of(U256::from(pass_id)).unwrap(), seller);
+            assert_eq!(
+                contract.public_resale_listing(pass_id).unwrap(),
+                (seller, price, true)
+            );
+            assert!(!contract.authorization_used(U256::from(2)));
+        }
     }
 
     #[test]
@@ -3018,6 +3504,18 @@ impl MintUpEventPass {
         keccak256("PURCHASE_RESALE")
     }
 
+    fn create_public_resale_listing_operation_hash() -> B256 {
+        keccak256("CREATE_PUBLIC_RESALE_LISTING")
+    }
+
+    fn cancel_public_resale_listing_operation_hash() -> B256 {
+        keccak256("CANCEL_PUBLIC_RESALE_LISTING")
+    }
+
+    fn purchase_public_resale_operation_hash() -> B256 {
+        keccak256("PURCHASE_PUBLIC_RESALE")
+    }
+
     fn record_authorization(
         &mut self,
         operation: B256,
@@ -3179,6 +3677,13 @@ impl MintUpEventPass {
         offer.designated_buyer.set(Address::ZERO);
         offer.price.set(U256::ZERO);
         offer.pause_generation.set(U64::ZERO);
+    }
+
+    fn clear_public_resale_listing(&mut self, pass_id: u64) {
+        let mut listing = self.public_resale_listings.setter(U64::from(pass_id));
+        listing.seller.set(Address::ZERO);
+        listing.price.set(U256::ZERO);
+        listing.pause_generation.set(U64::ZERO);
     }
 
     fn log_pass_transfer(

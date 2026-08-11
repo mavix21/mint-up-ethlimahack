@@ -38,8 +38,16 @@ and mutable metadata are not implemented.
   sends 9% rounded down to Mint Up and the exact remainder to the seller, then
   changes ownership and consumes the offer atomically. The original protected
   price and refund right are unchanged.
+- The active holder can also create or replace one public resale listing by
+  specifying only a price greater than zero and no greater than the original
+  Protected payment. Any buyer with an exact Mint Up authorization can purchase
+  it; the authorization binds the buyer, Pass, current seller, exact price,
+  nonce, time window, chain, and contract. Public purchases use the same atomic
+  91% seller and 9% Mint Up settlement while the private interface remains
+  available during migration.
 - Transfer, check-in, cancellation, Event start, ownership loss, and every pause
-  generation make an earlier offer unusable. Unpausing never revives an offer.
+  generation make an earlier offer or listing unusable. Unpausing never revives
+  one.
 
 Arbitrum Sepolia's official Circle USDC address is:
 

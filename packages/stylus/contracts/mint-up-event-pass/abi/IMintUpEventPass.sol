@@ -64,6 +64,12 @@ interface IMintUpEventPass {
         uint256 price
     );
     event EventPassResaleOfferCancelled(uint64 indexed pass_id, address indexed seller);
+    event EventPassPublicResaleListed(
+        uint64 indexed pass_id,
+        address indexed seller,
+        uint256 price
+    );
+    event EventPassPublicResaleCancelled(uint64 indexed pass_id, address indexed seller);
     event EventPassResold(
         uint64 indexed pass_id,
         address indexed seller,
@@ -132,6 +138,34 @@ interface IMintUpEventPass {
         bytes32 r,
         bytes32 s
     ) external;
+    function createPublicResaleListing(
+        uint64 pass_id,
+        uint256 price,
+        uint256 nonce,
+        uint64 issued_at,
+        uint64 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+    function cancelPublicResaleListing(
+        uint64 pass_id,
+        uint256 nonce,
+        uint64 issued_at,
+        uint64 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+    function purchasePublicResale(
+        uint64 pass_id,
+        uint256 nonce,
+        uint64 issued_at,
+        uint64 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
     function transferPass(
         uint64 pass_id,
         address to,
@@ -176,11 +210,18 @@ interface IMintUpEventPass {
         external
         view
         returns (address seller, address designated_buyer, uint256 price, bool eligible);
+    function publicResaleListing(uint64 pass_id)
+        external
+        view
+        returns (address seller, uint256 price, bool eligible);
 
     function transferOperation() external view returns (bytes32);
     function createResaleOfferOperation() external view returns (bytes32);
     function cancelResaleOfferOperation() external view returns (bytes32);
     function purchaseResaleOperation() external view returns (bytes32);
+    function createPublicResaleListingOperation() external view returns (bytes32);
+    function cancelPublicResaleListingOperation() external view returns (bytes32);
+    function purchasePublicResaleOperation() external view returns (bytes32);
     function authorizationDigest(
         bytes32 operation,
         address caller,
