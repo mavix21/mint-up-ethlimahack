@@ -16,7 +16,7 @@ const requestSchema = z
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to withdraw this offer." },
+      { message: "Sign in to remove this listing." },
       { status: 401 },
     );
   const body = await readBoundedJson(request);
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success)
     return Response.json(
-      { message: "Invalid offer request." },
+      { message: "Invalid listing request." },
       { status: 400 },
     );
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     return Response.json(resaleWithdrawalPreparationSchema.parse(prepared));
   } catch {
     return Response.json(
-      { message: "This offer can no longer be withdrawn." },
+      { message: "This listing can no longer be removed." },
       { status: 409 },
     );
   }

@@ -38,10 +38,6 @@ type RetryStep = "form" | "review" | "withdraw" | "status" | "reconcile";
 type Preparation =
   ResalePreparation | (ResaleWithdrawalPreparation & { kind: "withdraw" });
 
-function formatSubunits(value: string) {
-  return formatUsdc(value);
-}
-
 function formatEconomics(price: string) {
   try {
     const economics = resaleEconomics(parseHumanUsdc(price));
@@ -91,13 +87,22 @@ export function EventPassResale({
   const [submittedHash, setSubmittedHash] = useState<`0x${string}`>();
   const [preparingWithdrawal, setPreparingWithdrawal] = useState(false);
   const controller = useRef<AbortController>(null);
+  const idempotency = useRef<{ action: string; key: string }>(null);
   const priceId = useId();
   const router = useRouter();
+
+  function idempotencyKey(action: string) {
+    if (idempotency.current?.action !== action) {
+      idempotency.current = { action, key: crypto.randomUUID() };
+    }
+    return idempotency.current.key;
+  }
 
   useEffect(() => () => controller.current?.abort(), []);
 
   function cancel() {
     controller.current?.abort();
+    idempotency.current = null;
     setState("idle");
     setPreparation(undefined);
   }
@@ -128,7 +133,7 @@ export function EventPassResale({
         body: JSON.stringify({
           passId,
           price,
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: idempotencyKey(`list:${price.trim()}`),
         }),
         signal: controller.current.signal,
       });
@@ -157,7 +162,7 @@ export function EventPassResale({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           passId,
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: idempotencyKey("withdraw"),
         }),
         signal: controller.current.signal,
       });
@@ -255,6 +260,7 @@ export function EventPassResale({
     setRetryStep("review");
 
     if (Date.now() >= preparation.expiresAt) {
+      idempotency.current = null;
       setPreparation(undefined);
       setFailure("operation");
       setRetryStep(action === "withdraw" ? "withdraw" : "form");
@@ -354,7 +360,7 @@ export function EventPassResale({
         price={price}
         fee={formatEconomics(price).fee}
         net={formatEconomics(price).net}
-        maximumPrice={formatSubunits(maximumPriceAmountSubunits)}
+        maximumPrice={formatUsdc(maximumPriceAmountSubunits)}
         failure={failure}
         priceInputId={priceId}
         onPriceChange={setPrice}
@@ -368,6 +374,9 @@ export function EventPassResale({
           else setState(retryStep);
         }}
         onDone={() => {
+          idempotency.current = null;
+          setPreparation(undefined);
+          setState("idle");
           startTransition(() => router.refresh());
         }}
       />

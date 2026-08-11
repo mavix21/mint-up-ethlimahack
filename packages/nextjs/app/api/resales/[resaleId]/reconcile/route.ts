@@ -6,13 +6,13 @@ type Context = { params: Promise<{ resaleId: string }> };
 export async function POST(_request: Request, { params }: Context) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to finish this offer." },
+      { message: "Sign in to finish this listing." },
       { status: 401 },
     );
   const { resaleId } = await params;
   if (!resaleId || resaleId.length > 200)
     return Response.json(
-      { message: "Invalid offer reference." },
+      { message: "Invalid listing reference." },
       { status: 400 },
     );
 
@@ -21,7 +21,7 @@ export async function POST(_request: Request, { params }: Context) {
     return Response.json({ status: "verified" });
   } catch {
     return Response.json(
-      { message: "We couldn't verify the offer yet. Try again." },
+      { message: "We couldn't verify the listing yet. Try again." },
       { status: 409 },
     );
   }
