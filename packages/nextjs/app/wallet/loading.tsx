@@ -8,9 +8,9 @@ export default function WalletLoading() {
     >
       <div className="mx-auto w-full max-w-105">
         <div className="overflow-hidden rounded-[2rem] border bg-card shadow-xl">
-          <div className="bg-linear-to-br from-violet-600 via-indigo-600 to-blue-600 p-6 sm:p-7">
-            <Skeleton className="h-11 w-32 rounded-2xl bg-white/20" />
-            <Skeleton className="mt-6 h-19 w-full rounded-2xl bg-white/80" />
+          <div className="bg-primary p-6 sm:p-7">
+            <Skeleton className="h-11 w-32 rounded-2xl bg-primary-foreground/20" />
+            <Skeleton className="mt-6 h-19 w-full rounded-2xl bg-primary-foreground/80" />
           </div>
           <div className="space-y-3 p-4 sm:p-5">
             <Skeleton className="h-4 w-20" />

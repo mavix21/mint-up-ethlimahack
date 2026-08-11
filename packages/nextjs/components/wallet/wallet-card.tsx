@@ -101,25 +101,22 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
       {/* Phantom-style card */}
       <div className="overflow-hidden rounded-[2rem] border bg-card shadow-xl">
         {/* Header */}
-        <div className="relative bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 p-6 text-white sm:p-7">
+        <div className="relative bg-primary p-6 text-primary-foreground sm:p-7">
           {/* subtle glow */}
-          <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-white/10 blur-3xl" />
-          <div className="pointer-events-none absolute -left-10 bottom-0 size-40 rounded-full bg-violet-300/20 blur-2xl" />
+          <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-primary-foreground/10 blur-3xl" />
+          <div className="pointer-events-none absolute -left-10 bottom-0 size-40 rounded-full bg-primary-foreground/15 blur-2xl" />
 
           <div className="relative flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-white text-violet-600 shadow-lg">
-              <Sparkles className="size-5" />
-            </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary-foreground/75">
                 Your wallet
               </p>
-              <p className="mt-0.5 text-sm font-medium text-white/90">
+              <p className="mt-0.5 text-sm font-medium text-primary-foreground/90">
                 Ready for passes
               </p>
             </div>
-            <div className="ml-auto hidden items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold tracking-wide text-white backdrop-blur sm:flex">
-              <span className="size-2 rounded-full bg-emerald-400 shadow shadow-emerald-400/50" />
+            <div className="ml-auto hidden items-center gap-1 rounded-full bg-primary-foreground/15 px-2.5 py-1 text-[11px] font-bold tracking-wide text-primary-foreground backdrop-blur sm:flex">
+              <span className="size-2 rounded-full bg-primary-foreground shadow shadow-primary-foreground/50" />
               Active
             </div>
           </div>
@@ -170,7 +167,7 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
             isLoading={usdcLoading}
             isError={usdcError}
             icon={
-              <span className="text-[11px] font-black tracking-tight text-[#2775CA]">
+              <span className="text-[11px] font-black tracking-tight text-primary">
                 $
               </span>
             }
@@ -189,6 +186,14 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
           <p className="px-1 pt-1 text-center text-xs leading-5 text-muted-foreground">
             USDC for passes · ETH for network fees (sponsored)
           </p>
+          <a
+            href="https://faucet.circle.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="flex w-full items-center justify-center rounded-xl border bg-background px-4 py-3 text-sm font-bold transition-colors hover:bg-muted"
+          >
+            Fund wallet with Circle
+          </a>
         </div>
       </div>
 

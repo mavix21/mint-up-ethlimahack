@@ -41,6 +41,10 @@ export const menuLinks: HeaderMenuLink[] = [
     label: "My Passes",
     href: "/my-passes",
   },
+  {
+    label: "Wallet",
+    href: "/wallet",
+  },
   // {
   //   label: "Debug Contracts",
   //   href: "/debug",
