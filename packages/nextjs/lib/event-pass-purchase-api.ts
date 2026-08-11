@@ -119,7 +119,7 @@ export async function responseJson<T>(
   if (!response.ok) {
     const result = z.object({ message: z.string() }).safeParse(value);
     throw new Error(
-      result.success ? result.data.message : "Purchase request failed",
+      result.success ? result.data.message : "La solicitud de compra falló",
     );
   }
   return schema.parse(value);

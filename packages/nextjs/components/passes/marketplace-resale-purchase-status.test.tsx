@@ -6,15 +6,15 @@ import { MarketplaceResalePurchaseStatus } from "./marketplace-resale-purchase-s
 
 describe("Marketplace resale onboarding status", () => {
   it.each([
-    ["email_unverified", "Verify your email", "verification message"],
-    ["blocked", "cannot make purchases", "Contact Mint Up support"],
-    ["own_listing", "listed this Event Pass", "Manage My passes"],
     [
-      "already_has_event_pass",
-      "already have an active Event Pass",
-      "My passes",
+      "email_unverified",
+      "Verifica tu correo electrónico",
+      "verificación de Mint Up",
     ],
-    ["unavailable", "no longer available", "Back to Marketplace"],
+    ["blocked", "no puede realizar compras", "soporte de Mint Up"],
+    ["own_listing", "Publicaste este Event Pass", "Administrar Mis pases"],
+    ["already_has_event_pass", "Ya tienes un Event Pass activo", "Mis pases"],
+    ["unavailable", "ya no está disponible", "Volver a Marketplace"],
   ] as const)(
     "explains %s without internal details",
     (status, reason, action) => {

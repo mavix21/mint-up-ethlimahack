@@ -9,16 +9,19 @@ import {
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to view this action." },
+      { message: "Inicia sesión para ver esta acción." },
       { status: 401 },
     );
   const body = await readBoundedJson(request);
   if ("oversized" in body)
-    return Response.json({ message: "Request is too large." }, { status: 413 });
+    return Response.json(
+      { message: "La solicitud es demasiado grande." },
+      { status: 413 },
+    );
   const parsed = operationStatusSchema.safeParse(body.value);
   if (!parsed.success)
     return Response.json(
-      { message: "Invalid operation reference." },
+      { message: "Referencia de operación no válida." },
       { status: 400 },
     );
   try {
@@ -34,8 +37,8 @@ export async function POST(request: Request) {
     return Response.json(
       {
         message: retryable
-          ? "Operation status is temporarily unavailable."
-          : "Operation inclusion could not be verified.",
+          ? "El estado de la operación no está disponible temporalmente."
+          : "No se pudo verificar la inclusión de la operación.",
       },
       { status: retryable ? 503 : 409 },
     );

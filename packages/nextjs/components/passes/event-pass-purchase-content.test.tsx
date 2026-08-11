@@ -42,25 +42,27 @@ describe("Get Pass rendered states", () => {
 
     expect(html).toContain("ETH Lima 2026");
     expect(html).toContain("25 USDC");
-    expect(html).toContain("Protected payment");
-    expect(html).toContain("full original price");
-    expect(html).toContain("Confirm with Face ID or fingerprint");
+    expect(html).toContain("Pago protegido");
+    expect(html).toContain("precio original completo");
+    expect(html).toContain("Confirmar con Face ID o huella digital");
     expectBuyerSafe(html);
   });
 
   it("renders one actionable failure and Retry", () => {
     const html = renderToStaticMarkup(<EventPassPurchaseError />);
 
-    expect(html).toContain("We couldn&#x27;t get your Event Pass. Try again.");
-    expect(html).toContain("Retry");
+    expect(html).toContain(
+      "No pudimos obtener tu Event Pass. Inténtalo de nuevo.",
+    );
+    expect(html).toContain("Reintentar");
     expectBuyerSafe(html);
   });
 
   it("renders biometric recovery without account infrastructure", () => {
     const html = renderToStaticMarkup(<BiometricUnavailable />);
 
-    expect(html).toContain("Face ID or fingerprint is not available");
-    expect(html).toContain("Retry");
+    expect(html).toContain("Face ID o la huella digital no están disponibles");
+    expect(html).toContain("Reintentar");
     expectBuyerSafe(html);
   });
 
@@ -70,7 +72,7 @@ describe("Get Pass rendered states", () => {
     );
 
     expect(html).toContain("ETH Lima 2026");
-    expect(html).toContain("Your Event Pass is confirmed.");
+    expect(html).toContain("Tu Event Pass está confirmado.");
     expect(html).not.toContain("<p>");
     expectBuyerSafe(html);
   });

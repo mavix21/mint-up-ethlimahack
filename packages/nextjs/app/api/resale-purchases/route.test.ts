@@ -76,7 +76,7 @@ describe("prepare public Pass resale purchase API", () => {
     expect(await response.json()).toEqual({
       code: "listing_unavailable",
       message:
-        "This Pass resale is unavailable to your account. Check that your email is verified and that you don't already have an Event Pass for this Event. If you still need help, contact Mint Up support.",
+        "Esta reventa de Event Pass no está disponible para tu cuenta. Comprueba que tu correo electrónico esté verificado y que aún no tengas un Event Pass para este evento. Si todavía necesitas ayuda, contacta al soporte de Mint Up.",
     });
   });
 
@@ -88,7 +88,7 @@ describe("prepare public Pass resale purchase API", () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
       code: "purchase_temporarily_unavailable",
-      message: "We couldn't start this purchase. Try again.",
+      message: "No pudimos iniciar esta compra. Inténtalo de nuevo.",
     });
   });
 });

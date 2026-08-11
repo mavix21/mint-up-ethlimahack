@@ -4,7 +4,7 @@ import { resumePimlicoUserOperation } from "../../../../../lib/pimlico-user-oper
 export async function POST() {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to view this action." },
+      { message: "Inicia sesión para ver esta acción." },
       { status: 401 },
     );
   try {
@@ -16,8 +16,8 @@ export async function POST() {
     return Response.json(
       {
         message: retryable
-          ? "Operation status is temporarily unavailable."
-          : "Operation inclusion could not be verified.",
+          ? "El estado de la operación no está disponible temporalmente."
+          : "No se pudo verificar la inclusión de la operación.",
       },
       { status: retryable ? 503 : 409 },
     );

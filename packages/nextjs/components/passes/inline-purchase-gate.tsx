@@ -84,7 +84,7 @@ export function InlinePurchaseGate(props: Props) {
         className="mt-6 w-full rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground opacity-50"
         aria-disabled="true"
       >
-        Get Pass
+        Obtener Event Pass
       </button>
     );
   }
@@ -131,7 +131,7 @@ export function InlinePurchaseGate(props: Props) {
         onClick={() => handleOpenChange(true)}
         className="mt-6 w-full rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground"
       >
-        Get Pass
+        Obtener Event Pass
       </button>
 
       <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -142,9 +142,9 @@ export function InlinePurchaseGate(props: Props) {
           {!isAuthed ? (
             <>
               <SheetHeader>
-                <SheetTitle>Get your pass</SheetTitle>
+                <SheetTitle>Obtén tu Event Pass</SheetTitle>
                 <SheetDescription>
-                  Continue to secure your passes
+                  Continua para proteger tus Event Pass
                 </SheetDescription>
               </SheetHeader>
               <div className="p-6 pt-2">
@@ -160,9 +160,9 @@ export function InlinePurchaseGate(props: Props) {
           ) : (
             <>
               <SheetHeader>
-                <SheetTitle>Secure your passes</SheetTitle>
+                <SheetTitle>Protege tus Event Pass</SheetTitle>
                 <SheetDescription>
-                  Use Face ID to keep your passes safe
+                  Usa Face ID para mantener seguros tus Event Pass
                 </SheetDescription>
               </SheetHeader>
               <div className="p-6 pt-2">
@@ -180,7 +180,7 @@ export function InlinePurchaseGate(props: Props) {
 
       {/* Dialog fallback for desktop - same content but as dialog when sheet not ideal; keep hidden sheet already covers, but ensure dialog also accessible */}
       <span className="hidden" data-testid="inline-sheet">
-        Continue with Google
+        Continuar con Google
       </span>
     </>
   );

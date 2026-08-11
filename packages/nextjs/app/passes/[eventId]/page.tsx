@@ -27,7 +27,7 @@ type EventPassPageProps = {
 };
 
 function dateTime(value: number, timezone: string) {
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("es-ES", {
     dateStyle: "long",
     timeStyle: "short",
     timeZone: timezone,
@@ -41,7 +41,7 @@ export async function generateMetadata({
   const offer = await getEventPassOffer(eventId);
   return offer
     ? { title: `${offer.name} Event Pass`, description: offer.description }
-    : { title: "Event Pass unavailable" };
+    : { title: "Event Pass no disponible" };
 }
 
 async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
@@ -94,14 +94,14 @@ async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
           className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
           data-testid="return-to-event"
         >
-          <ArrowLeft className="size-4" /> Return to event
+          <ArrowLeft className="size-4" /> Volver al evento
         </a>
       ) : (
         <Link
           href="/"
           className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="size-4" /> All passes
+          <ArrowLeft className="size-4" /> Todos los pases
         </Link>
       )}
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
@@ -132,7 +132,7 @@ async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
           <dl className="mt-8 grid gap-5 rounded-3xl border bg-card p-6 sm:grid-cols-2">
             <div>
               <dt className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CalendarDays className="size-4" /> Event
+                <CalendarDays className="size-4" /> Evento
               </dt>
               <dd className="mt-2 font-semibold">
                 {dateTime(offer.startTime, offer.timezone)}
@@ -140,14 +140,14 @@ async function EventPassDetails({ params, searchParams }: EventPassPageProps) {
             </div>
             <div>
               <dt className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="size-4" /> Location
+                <MapPin className="size-4" /> Ubicación
               </dt>
               <dd className="mt-2 font-semibold">{offer.location}</dd>
             </div>
           </dl>
         </article>
         <aside className="h-fit rounded-3xl border bg-card p-6 shadow-xl lg:sticky lg:top-6">
-          <p className="text-sm text-muted-foreground">One Event Pass</p>
+          <p className="text-sm text-muted-foreground">Un Event Pass</p>
           <p className="mt-2 font-heading text-4xl font-black">
             {formatUsdc(offer.price.amountSubunits)}
           </p>

@@ -7,7 +7,11 @@ type PaginationButtonProps = {
   setCurrentPage: (page: number) => void;
 };
 
-export const PaginationButton = ({ currentPage, hasNextPage, setCurrentPage }: PaginationButtonProps) => {
+export const PaginationButton = ({
+  currentPage,
+  hasNextPage,
+  setCurrentPage,
+}: PaginationButtonProps) => {
   const isPrevButtonDisabled = currentPage === 0;
   const isNextButtonDisabled = !hasNextPage;
 
@@ -22,8 +26,11 @@ export const PaginationButton = ({ currentPage, hasNextPage, setCurrentPage }: P
       >
         <ArrowLeftIcon className="h-4 w-4" />
       </Button>
-      <span className="self-center font-medium text-foreground" data-testid="blockexplorer-page-label">
-        Page {currentPage + 1}
+      <span
+        className="self-center font-medium text-foreground"
+        data-testid="blockexplorer-page-label"
+      >
+        Página {currentPage + 1}
       </span>
       <Button
         disabled={isNextButtonDisabled}

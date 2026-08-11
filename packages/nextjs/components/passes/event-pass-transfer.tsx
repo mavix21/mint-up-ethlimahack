@@ -35,7 +35,7 @@ async function responseJson<T>(response: Response): Promise<T> {
       throw new RecipientUnavailableError(body.message);
     throw new StatusRequestError(
       response.status,
-      body.message ?? "The transfer could not be completed.",
+      body.message ?? "No se pudo completar la transferencia.",
     );
   }
   return body as T;
@@ -144,7 +144,7 @@ export function EventPassTransfer({
     if (result.status !== "included") {
       setSubmittedHash(undefined);
       setRetryStep("review");
-      throw new Error("Transfer inclusion was not verified");
+      throw new Error("No se verificó la inclusión de la transferencia");
     }
 
     setRetryStep("reconcile");
@@ -235,7 +235,7 @@ export function EventPassTransfer({
         onClick={() => setState("form")}
         className="mt-auto min-h-10 rounded-full border bg-background px-4 text-sm font-bold hover:bg-muted"
       >
-        Transfer
+        Transferir
       </button>
     );
   }

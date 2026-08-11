@@ -70,13 +70,13 @@ export async function MarketplaceResalePurchaseAccess({
     return (
       <div className="mt-5 space-y-2 text-sm">
         <p role="alert" className="font-semibold text-muted-foreground">
-          We couldn&apos;t load your purchase options.
+          No pudimos cargar tus opciones de compra.
         </p>
         <a
           href={`/marketplace?buy=${encodeURIComponent(passId)}`}
           className="inline-flex rounded-full border px-4 py-2 font-bold"
         >
-          Retry
+          Reintentar
         </a>
       </div>
     );
@@ -130,7 +130,7 @@ export function MarketplaceResalePurchaseAccessFallback() {
       disabled
       className="mt-5 w-full rounded-full border px-4 py-2.5 text-sm font-bold text-muted-foreground"
     >
-      Loading purchase options...
+      Cargando opciones de compra...
     </button>
   );
 }

@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { parseEther } from "viem";
-import { CommonInputProps, InputBase, IntegerVariant, isValidInteger } from "~~/components/scaffold-eth";
+import {
+  CommonInputProps,
+  InputBase,
+  IntegerVariant,
+  isValidInteger,
+} from "~~/components/scaffold-eth";
 import { InputGroupButton } from "~~/components/ui/input-group";
-import { Tooltip, TooltipContent, TooltipTrigger } from "~~/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~~/components/ui/tooltip";
 
 type IntegerInputProps = CommonInputProps<string> & {
   variant?: IntegerVariant;
@@ -47,11 +56,17 @@ export const IntegerInput = ({
         !disableMultiplyBy1e18 && (
           <Tooltip>
             <TooltipTrigger
-              render={<InputGroupButton onClick={multiplyBy1e18} disabled={disabled} aria-label="Multiply by 1e18" />}
+              render={
+                <InputGroupButton
+                  onClick={multiplyBy1e18}
+                  disabled={disabled}
+                  aria-label="Multiplicar por 1e18"
+                />
+              }
             >
               ∗
             </TooltipTrigger>
-            <TooltipContent>Multiply by 1e18 (wei)</TooltipContent>
+            <TooltipContent>Multiplicar por 1e18 (wei)</TooltipContent>
           </Tooltip>
         )
       }

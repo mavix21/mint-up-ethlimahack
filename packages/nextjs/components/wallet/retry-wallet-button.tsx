@@ -19,7 +19,7 @@ export function RetryWalletButton({ retry }: { retry?: () => void }) {
       }
     >
       <RefreshCw className={isPending ? "animate-spin" : undefined} />
-      {isPending ? "Checking wallet..." : "Try again"}
+      {isPending ? "Verificando billetera..." : "Intentar de nuevo"}
     </Button>
   );
 }

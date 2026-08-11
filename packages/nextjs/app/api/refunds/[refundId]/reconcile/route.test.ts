@@ -36,7 +36,7 @@ describe("reconcile Event Pass refund API", () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
-      message: "We couldn't verify the refund yet. Try again.",
+      message: "Aún no pudimos verificar el reembolso. Inténtalo de nuevo.",
     });
   });
 });

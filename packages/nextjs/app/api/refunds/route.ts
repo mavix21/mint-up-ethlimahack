@@ -16,17 +16,20 @@ const requestSchema = z
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to receive this refund." },
+      { message: "Inicia sesión para recibir este reembolso." },
       { status: 401 },
     );
 
   const body = await readBoundedJson(request);
   if ("oversized" in body)
-    return Response.json({ message: "Request is too large." }, { status: 413 });
+    return Response.json(
+      { message: "La solicitud es demasiado grande." },
+      { status: 413 },
+    );
   const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success)
     return Response.json(
-      { message: "Invalid refund request." },
+      { message: "Solicitud de reembolso no válida." },
       { status: 400 },
     );
 
@@ -40,7 +43,7 @@ export async function POST(request: Request) {
     return Response.json(
       {
         code: "refund_unavailable",
-        message: "This refund is no longer available.",
+        message: "Este reembolso ya no está disponible.",
       },
       { status: 409 },
     );

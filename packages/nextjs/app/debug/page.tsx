@@ -3,8 +3,9 @@ import type { NextPage } from "next";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
 export const metadata = getMetadata({
-  title: "Debug Contracts",
-  description: "Debug your deployed 🏗 Scaffold-Stylus contracts in an easy way",
+  title: "Depurar contratos",
+  description:
+    "Depura fácilmente tus contratos de 🏗 Scaffold-Stylus desplegados",
 });
 
 const Debug: NextPage = () => {

@@ -30,11 +30,11 @@ const prepareArgs = z.object({
 
 const purchaseConflictMessages: Record<string, string> = {
   event_pass_embedded_wallet_required:
-    "Your embedded wallet does not match this purchase. Sign out and sign in again.",
-  event_pass_not_found: "This Event Pass offer no longer exists.",
+    "Tu wallet integrada no coincide con esta compra. Cierra sesión y vuelve a iniciarla.",
+  event_pass_not_found: "Esta oferta de Event Pass ya no existe.",
   event_pass_purchase_unavailable:
-    "This Event Pass is not currently available for purchase.",
-  event_pass_sold_out: "This Event Pass is sold out.",
+    "Este Event Pass no está disponible para comprar en este momento.",
+  event_pass_sold_out: "Este Event Pass está agotado.",
 };
 
 function purchaseErrorCode(error: unknown) {
@@ -64,7 +64,7 @@ function conflictResponse(
       code,
       message:
         purchaseConflictMessages[code] ??
-        "This Event Pass could not be prepared. Refresh the offer and try again.",
+        "No se pudo preparar este Event Pass. Actualiza la oferta e inténtalo de nuevo.",
       stage,
     },
     { status: 409 },
@@ -74,7 +74,7 @@ function conflictResponse(
 export async function POST(request: Request) {
   if (!(await isAuthenticated())) {
     return Response.json(
-      { message: "Sign in to purchase this Event Pass." },
+      { message: "Inicia sesión para comprar este Event Pass." },
       { status: 401 },
     );
   }
@@ -83,14 +83,14 @@ export async function POST(request: Request) {
     value = await request.json();
   } catch {
     return Response.json(
-      { message: "Invalid purchase request." },
+      { message: "Solicitud de compra no válida." },
       { status: 400 },
     );
   }
   const parsed = prepareArgs.safeParse(value);
   if (!parsed.success) {
     return Response.json(
-      { message: "Invalid purchase request." },
+      { message: "Solicitud de compra no válida." },
       { status: 400 },
     );
   }
@@ -102,7 +102,8 @@ export async function POST(request: Request) {
     return Response.json(
       {
         code: "event_pass_offer_lookup_failed",
-        message: "The latest Event Pass offer could not be loaded. Try again.",
+        message:
+          "No se pudo cargar la oferta más reciente de Event Pass. Inténtalo de nuevo.",
         stage: "offer_lookup",
       },
       { status: 409 },
@@ -112,7 +113,7 @@ export async function POST(request: Request) {
     const message =
       offer?.availability.kind === "unavailable"
         ? offer.availability.reason
-        : "This Event Pass offer is no longer available.";
+        : "Esta oferta de Event Pass ya no está disponible.";
     return Response.json(
       {
         code: "event_pass_offer_unavailable",

@@ -4,7 +4,7 @@ import { beginWalletPasskeyRegistration } from "../../../../../lib/wallet-passke
 export async function POST() {
   if (!(await isAuthenticated())) {
     return Response.json(
-      { message: "Sign in to secure Event Passes." },
+      { message: "Inicia sesión para proteger tus Event Passes." },
       { status: 401 },
     );
   }
@@ -15,7 +15,7 @@ export async function POST() {
     );
   } catch {
     return Response.json(
-      { message: "Could not start passkey registration." },
+      { message: "No se pudo iniciar el registro de la passkey." },
       { status: 409 },
     );
   }

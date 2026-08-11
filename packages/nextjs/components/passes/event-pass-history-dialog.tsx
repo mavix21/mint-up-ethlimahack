@@ -26,11 +26,11 @@ export function EventPassHistoryDialog({
         render={<Button type="button" variant="outline" size="sm" />}
       >
         <History />
-        History
+        Historial
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Pass history</DialogTitle>
+          <DialogTitle>Historial del pase</DialogTitle>
           <DialogDescription>{eventName}</DialogDescription>
         </DialogHeader>
         {children}

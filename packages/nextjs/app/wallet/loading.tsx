@@ -4,7 +4,7 @@ export default function WalletLoading() {
   return (
     <main
       className="mx-auto min-h-[70svh] w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-10"
-      aria-label="Loading wallet"
+      aria-label="Cargando billetera"
     >
       <div className="mx-auto w-full max-w-105">
         <div className="overflow-hidden rounded-[2rem] border bg-card shadow-xl">

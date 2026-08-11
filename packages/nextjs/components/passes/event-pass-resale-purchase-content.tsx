@@ -16,7 +16,7 @@ function RetryButton({ onRetry }: { onRetry?: () => void }) {
       onClick={onRetry}
       className="w-full rounded-xl border bg-background px-5 py-3 font-semibold"
     >
-      Retry
+      Reintentar
     </button>
   );
 }
@@ -34,7 +34,7 @@ export function EventPassResalePurchaseButton({
       onClick={onConfirm}
       className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground hover:bg-primary/90"
     >
-      Buy for {formatUsdc(priceAmountSubunits)}
+      Comprar por {formatUsdc(priceAmountSubunits)}
     </button>
   );
 }
@@ -57,8 +57,8 @@ export function EventPassResalePurchaseContent({
   if (state === "pending") {
     return (
       <div className="flex items-center gap-3 rounded-xl bg-muted/60 p-4 text-sm font-semibold">
-        <LoaderCircle className="size-5 animate-spin" /> Confirming your
-        purchase...
+        <LoaderCircle className="size-5 animate-spin" /> Confirmando tu
+        compra...
       </div>
     );
   }
@@ -69,7 +69,7 @@ export function EventPassResalePurchaseContent({
         className="flex gap-3 rounded-xl bg-primary/10 p-4 text-sm font-semibold"
       >
         <CheckCircle2 className="size-5 shrink-0" />
-        <span>{eventName} is now in My passes.</span>
+        <span>{eventName} ahora está en Mis pases.</span>
       </div>
     );
   }
@@ -80,17 +80,17 @@ export function EventPassResalePurchaseContent({
           role="alert"
           className="flex gap-2 rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive"
         >
-          <CircleAlert className="size-4 shrink-0" /> This Pass resale is no
-          longer available or your account isn&apos;t eligible. Another buyer
-          may have completed it first. Check that your email is verified and
-          that you don&apos;t already have an Event Pass for this Event. You
-          won&apos;t be charged.
+          <CircleAlert className="size-4 shrink-0" /> Esta reventa ya no está
+          disponible o tu cuenta no es elegible. Es posible que otro comprador
+          la haya completado primero. Verifica que tu correo electrónico esté
+          verificado y que no cuentes ya con un Event Pass para este evento. No
+          se te cobrará.
         </p>
         <a
           href="/marketplace"
           className="block w-full rounded-xl border bg-background px-5 py-3 text-center font-semibold"
         >
-          Back to Marketplace
+          Volver a Marketplace
         </a>
       </div>
     );
@@ -102,16 +102,15 @@ export function EventPassResalePurchaseContent({
           role="alert"
           className="flex gap-2 rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive"
         >
-          <CircleAlert className="size-4 shrink-0" /> We couldn&apos;t finish
-          this purchase, but you won&apos;t be charged. Retry to check the
-          listing.
+          <CircleAlert className="size-4 shrink-0" /> No pudimos completar esta
+          compra, pero no se te cobrará. Reintenta para verificar el anuncio.
         </p>
         <RetryButton onRetry={onRetry} />
         <a
           href="/marketplace"
           className="block text-center text-sm font-bold underline underline-offset-4"
         >
-          Back to Marketplace
+          Volver a Marketplace
         </a>
       </div>
     );
@@ -126,13 +125,13 @@ export function EventPassResalePurchaseContent({
           role="alert"
           className="rounded-xl bg-amber-500/10 p-3 text-sm font-semibold"
         >
-          You need {missingAmount} more USDC to buy this Event Pass.
+          Necesitas {missingAmount} USDC más para comprar este Event Pass.
         </p>
         <dl className="grid grid-cols-2 gap-3 rounded-xl border p-3 text-sm">
           <div>
-            <dt className="sr-only">Balance</dt>
+            <dt className="sr-only">Saldo</dt>
             <dd className="font-bold">
-              Available balance: {formatUsdc(balance.toString())}
+              Saldo disponible: {formatUsdc(balance.toString())}
             </dd>
           </div>
           <div>
@@ -153,7 +152,7 @@ export function EventPassResalePurchaseContent({
           role="alert"
           className="rounded-xl bg-amber-500/10 p-3 text-sm font-semibold"
         >
-          We couldn&apos;t check your USDC balance. Try again.
+          No pudimos consultar tu saldo de USDC. Inténtalo de nuevo.
         </p>
         <RetryButton onRetry={onRetry} />
       </div>

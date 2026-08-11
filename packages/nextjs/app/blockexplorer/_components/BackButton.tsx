@@ -5,5 +5,5 @@ import { Button } from "~~/components/ui/button";
 
 export const BackButton = () => {
   const router = useRouter();
-  return <Button onClick={() => router.back()}>Back</Button>;
+  return <Button onClick={() => router.back()}>Volver</Button>;
 };

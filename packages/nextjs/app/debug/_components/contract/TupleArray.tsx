@@ -1,10 +1,17 @@
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { ContractInput } from "./ContractInput";
-import { getFunctionInputKey, getInitialTupleArrayFormState } from "./utilsContract";
+import {
+  getFunctionInputKey,
+  getInitialTupleArrayFormState,
+} from "./utilsContract";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Badge } from "~~/components/ui/badge";
 import { Button } from "~~/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~~/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "~~/components/ui/collapsible";
 import { replacer } from "~~/utils/scaffold-eth/common";
 import { AbiParameterTuple } from "~~/utils/scaffold-eth/contract";
 
@@ -15,11 +22,17 @@ type TupleArrayProps = {
   parentForm: Record<string, any> | undefined;
 };
 
-export const TupleArray = ({ abiTupleParameter, setParentForm, parentStateObjectKey }: TupleArrayProps) => {
-  const [form, setForm] = useState<Record<string, any>>(() => getInitialTupleArrayFormState(abiTupleParameter));
-  const [additionalInputs, setAdditionalInputs] = useState<Array<typeof abiTupleParameter.components>>([
-    abiTupleParameter.components,
-  ]);
+export const TupleArray = ({
+  abiTupleParameter,
+  setParentForm,
+  parentStateObjectKey,
+}: TupleArrayProps) => {
+  const [form, setForm] = useState<Record<string, any>>(() =>
+    getInitialTupleArrayFormState(abiTupleParameter),
+  );
+  const [additionalInputs, setAdditionalInputs] = useState<
+    Array<typeof abiTupleParameter.components>
+  >([abiTupleParameter.components]);
 
   const depth = (abiTupleParameter.type.match(/\[\]/g) || []).length;
 
@@ -45,7 +58,8 @@ export const TupleArray = ({ abiTupleParameter, setParentForm, parentStateObject
 
       const argsStruct: Record<string, any> = {};
       abiTupleParameter.components.forEach((component, componentIndex) => {
-        argsStruct[component.name || `input_${componentIndex}_`] = currentKeyValues[componentIndex];
+        argsStruct[component.name || `input_${componentIndex}_`] =
+          currentKeyValues[componentIndex];
       });
 
       argsArray.push(argsStruct);
@@ -58,14 +72,20 @@ export const TupleArray = ({ abiTupleParameter, setParentForm, parentStateObject
     }
 
     setParentForm(parentForm => {
-      return { ...parentForm, [parentStateObjectKey]: JSON.stringify(argsArray, replacer) };
+      return {
+        ...parentForm,
+        [parentStateObjectKey]: JSON.stringify(argsArray, replacer),
+      };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(form, replacer)]);
 
   const addInput = () => {
     setAdditionalInputs(previousValue => {
-      const newAdditionalInputs = [...previousValue, abiTupleParameter.components];
+      const newAdditionalInputs = [
+        ...previousValue,
+        abiTupleParameter.components,
+      ];
 
       // Add the new inputs to the form
       setForm(form => {
@@ -112,7 +132,9 @@ export const TupleArray = ({ abiTupleParameter, setParentForm, parentStateObject
         <div className="ml-3 flex flex-col space-y-2 border-l pl-4">
           {additionalInputs.map((additionalInput, additionalIndex) => (
             <div key={additionalIndex} className="space-y-1">
-              <Badge variant="secondary">{depth > 1 ? `${additionalIndex}` : `tuple[${additionalIndex}]`}</Badge>
+              <Badge variant="secondary">
+                {depth > 1 ? `${additionalIndex}` : `tuple[${additionalIndex}]`}
+              </Badge>
               <div className="space-y-4">
                 {additionalInput.map((param, index) => {
                   const key = getFunctionInputKey(
@@ -121,18 +143,36 @@ export const TupleArray = ({ abiTupleParameter, setParentForm, parentStateObject
                     index,
                   );
                   return (
-                    <ContractInput setForm={setForm} form={form} key={key} stateObjectKey={key} paramType={param} />
+                    <ContractInput
+                      setForm={setForm}
+                      form={form}
+                      key={key}
+                      stateObjectKey={key}
+                      paramType={param}
+                    />
                   );
                 })}
               </div>
             </div>
           ))}
           <div className="flex space-x-2">
-            <Button type="button" variant="secondary" size="sm" onClick={addInput} aria-label="Add tuple">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={addInput}
+              aria-label="Agregar tuple"
+            >
               +
             </Button>
             {additionalInputs.length > 0 && (
-              <Button type="button" variant="secondary" size="sm" onClick={removeInput} aria-label="Remove tuple">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={removeInput}
+                aria-label="Eliminar tuple"
+              >
                 -
               </Button>
             )}

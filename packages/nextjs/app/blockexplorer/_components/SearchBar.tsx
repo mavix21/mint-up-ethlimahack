@@ -35,17 +35,20 @@ export const SearchBar = () => {
   };
 
   return (
-    <form onSubmit={handleSearch} className="flex items-center justify-between mb-5">
-      <div className="uppercase text-3xl font-bold">Block explorer</div>
+    <form
+      onSubmit={handleSearch}
+      className="flex items-center justify-between mb-5"
+    >
+      <div className="uppercase text-3xl font-bold">Explorador de bloques</div>
       <div className="flex items-center gap-2">
         <Input
           className="md:w-96 lg:w-96"
           type="text"
           value={searchInput}
-          placeholder="Search by hash or address"
+          placeholder="Buscar por hash o dirección"
           onChange={e => setSearchInput(e.target.value)}
         />
-        <Button aria-label="Search" type="submit">
+        <Button aria-label="Buscar" type="submit">
           <svg
             className="w-5 h-5"
             fill="none"

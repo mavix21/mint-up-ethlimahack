@@ -24,7 +24,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   });
   const result = (await response.json()) as T & { message?: string };
   if (!response.ok)
-    throw new Error(result.message ?? "Wallet verification failed.");
+    throw new Error(result.message ?? "Falló la verificación de la billetera.");
   return result;
 }
 
@@ -114,7 +114,7 @@ export function WalletProofButton({
       setError(
         cause instanceof Error && cause.message
           ? cause.message
-          : "Wallet verification failed. Try again.",
+          : "Falló la verificación de la billetera. Inténtalo de nuevo.",
       );
     } finally {
       setPending(false);
@@ -133,7 +133,7 @@ export function WalletProofButton({
               disabled={!ready}
               onClick={openConnectModal}
             >
-              Connect wallet
+              Conectar billetera
             </Button>
           );
         }
@@ -147,7 +147,7 @@ export function WalletProofButton({
                 variant="outline"
                 onClick={openAccountModal}
               >
-                Choose another wallet
+                Elegir otra billetera
               </Button>
             ) : (
               <Button
@@ -158,20 +158,20 @@ export function WalletProofButton({
                 onClick={proveWallet}
               >
                 {pending
-                  ? "Waiting for signature..."
+                  ? "Esperando la firma..."
                   : chainId !== targetChainId
-                    ? `Switch to ${targetChainName}`
+                    ? `Cambiar a ${targetChainName}`
                     : intent === "sign-in"
-                      ? "Sign in with wallet"
-                      : "Link connected wallet"}
+                      ? "Iniciar sesión con la billetera"
+                      : "Vincular billetera conectada"}
               </Button>
             )}
             <p className="mt-2 break-all text-xs text-base-content/55">
-              Connected: {address}
+              Conectada: {address}
             </p>
             {success ? (
               <p className="mt-3 text-sm font-medium text-success">
-                Wallet linked and verified.
+                Billetera vinculada y verificada.
               </p>
             ) : null}
             {error ? <p className="mt-3 text-sm text-error">{error}</p> : null}

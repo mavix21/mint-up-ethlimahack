@@ -11,4 +11,4 @@ export const transferPreparationSchema = z
 export type TransferPreparation = z.infer<typeof transferPreparationSchema>;
 
 export const recipientUnavailableMessage =
-  "Ask them to secure their passes, then check the email and try again.";
+  "Pídele que proteja sus pases, luego comprueba el correo e inténtalo de nuevo.";

@@ -6,13 +6,13 @@ type Context = { params: Promise<{ resaleId: string }> };
 export async function POST(_request: Request, { params }: Context) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to finish this listing." },
+      { message: "Inicia sesión para finalizar esta publicación." },
       { status: 401 },
     );
   const { resaleId } = await params;
   if (!resaleId || resaleId.length > 200)
     return Response.json(
-      { message: "Invalid listing reference." },
+      { message: "Referencia de publicación no válida." },
       { status: 400 },
     );
 
@@ -21,7 +21,9 @@ export async function POST(_request: Request, { params }: Context) {
     return Response.json({ status: "verified" });
   } catch {
     return Response.json(
-      { message: "We couldn't verify the listing yet. Try again." },
+      {
+        message: "Aún no pudimos verificar la publicación. Inténtalo de nuevo.",
+      },
       { status: 409 },
     );
   }

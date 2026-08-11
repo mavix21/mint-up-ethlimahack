@@ -10,7 +10,12 @@ interface CardProps {
   isDarkMode: boolean;
 }
 
-export const Card: React.FC<CardProps> = ({ icon, description, linkHref, linkText }) => {
+export const Card: React.FC<CardProps> = ({
+  icon,
+  description,
+  linkHref,
+  linkText,
+}) => {
   return (
     <div className="h-full max-w-md text-center">
       <UICard>
@@ -19,10 +24,13 @@ export const Card: React.FC<CardProps> = ({ icon, description, linkHref, linkTex
           <p className="text-sm">
             {description}
             <br />
-            <Link href={linkHref} className="font-semibold text-primary underline underline-offset-4">
+            <Link
+              href={linkHref}
+              className="font-semibold text-primary underline underline-offset-4"
+            >
               {linkText}
             </Link>{" "}
-            tab.
+            pestaña.
           </p>
         </CardContent>
       </UICard>

@@ -34,7 +34,7 @@ export function OfferCard({
             Event Pass
           </span>
           <p className="absolute bottom-4 left-4 text-sm font-semibold text-white">
-            {offer.remaining} remaining
+            Quedan {offer.remaining}
           </p>
         </div>
         <div className="p-5">
@@ -49,7 +49,7 @@ export function OfferCard({
           </p>
           <div className="mt-5 flex items-center justify-between border-t pt-4">
             <span className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Ticket className="size-4" /> One pass
+              <Ticket className="size-4" /> Un Event Pass
             </span>
             <strong>{formatUsdc(offer.price.amountSubunits)}</strong>
           </div>

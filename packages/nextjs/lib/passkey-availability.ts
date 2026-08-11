@@ -85,10 +85,10 @@ export async function getPasskeyAvailability(): Promise<PasskeyAvailability> {
 
 export function availabilityMessage(availability: PasskeyAvailability): string {
   if (!availability.supported)
-    return "Passkeys are not supported in this browser. Use a modern Chromium, Safari, or Firefox on a supported OS.";
+    return "Este navegador no admite passkeys. Usa una versión moderna de Chromium, Safari o Firefox en un sistema operativo compatible.";
   if (availability.platformAuthenticatorAvailable === false)
-    return "No platform authenticator is available on this device. Enable biometrics/PIN or use a security key.";
-  return "Passkey available.";
+    return "No hay un autenticador de plataforma disponible en este dispositivo. Activa la biometría/PIN o usa una llave de seguridad.";
+  return "Passkey disponible.";
 }
 
 export function isAvailabilityBlocking(

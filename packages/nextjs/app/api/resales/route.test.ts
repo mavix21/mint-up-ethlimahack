@@ -81,7 +81,7 @@ describe("prepare Event Pass resale API", () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({
-      message: "The price must not exceed your protected payment.",
+      message: "El precio no debe superar tu pago protegido.",
     });
   });
 });

@@ -109,15 +109,12 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
           <div className="relative flex items-center gap-3">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-widest text-primary-foreground/75">
-                Your wallet
-              </p>
-              <p className="mt-0.5 text-sm font-medium text-primary-foreground/90">
-                Ready for passes
+                Tu billetera
               </p>
             </div>
             <div className="ml-auto hidden items-center gap-1 rounded-full bg-primary-foreground/15 px-2.5 py-1 text-[11px] font-bold tracking-wide text-primary-foreground backdrop-blur sm:flex">
               <span className="size-2 rounded-full bg-primary-foreground shadow shadow-primary-foreground/50" />
-              Active
+              Activa
             </div>
           </div>
 
@@ -125,7 +122,7 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
           <div className="relative mt-6 flex items-center gap-3 rounded-2xl bg-white/95 p-3 pl-4 text-foreground shadow-lg backdrop-blur sm:p-4">
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                Address
+                Dirección
               </p>
               <p
                 className="mt-0.5 truncate font-mono text-sm font-bold tracking-tight"
@@ -143,7 +140,7 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
             <button
               type="button"
               onClick={handleCopy}
-              aria-label={copied ? "Copied" : "Copy address"}
+              aria-label={copied ? "Copiada" : "Copiar dirección"}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-foreground px-4 py-2.5 text-xs font-bold text-background transition hover:bg-foreground/90 active:scale-[0.98]"
             >
               {copied ? (
@@ -151,7 +148,7 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
               ) : (
                 <Copy className="size-3.5" />
               )}
-              {copied ? "Copied" : "Copy"}
+              {copied ? "Copiada" : "Copiar"}
             </button>
           </div>
         </div>
@@ -159,7 +156,7 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
         {/* Balances */}
         <div className="space-y-3 p-4 sm:p-5">
           <p className="px-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Balances
+            Saldos
           </p>
           <TokenRow
             symbol="USDC"
@@ -184,7 +181,7 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
             }
           />
           <p className="px-1 pt-1 text-center text-xs leading-5 text-muted-foreground">
-            USDC for passes · ETH for network fees (sponsored)
+            USDC para pases · ETH para comisiones de red (patrocinadas)
           </p>
           <a
             href="https://faucet.circle.com/"
@@ -192,13 +189,13 @@ export function WalletCard({ address }: { address: `0x${string}` }) {
             rel="noreferrer"
             className="flex w-full items-center justify-center rounded-xl border bg-background px-4 py-3 text-sm font-bold transition-colors hover:bg-muted"
           >
-            Fund wallet with Circle
+            Agregar fondos con Circle
           </a>
         </div>
       </div>
 
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        Secured with Face ID on this device.
+        Protegida con Face ID en este dispositivo.
       </p>
     </div>
   );

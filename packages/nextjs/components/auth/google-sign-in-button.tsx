@@ -17,7 +17,7 @@ export function GoogleSignInButton({ callbackUrl }: { callbackUrl: string }) {
       callbackURL,
     });
     if (result.error) {
-      setError(result.error.message ?? "Google sign-in failed.");
+      setError(result.error.message ?? "Falló el inicio de sesión con Google.");
       setPending(false);
     }
   }
@@ -25,7 +25,7 @@ export function GoogleSignInButton({ callbackUrl }: { callbackUrl: string }) {
   return (
     <div>
       <Button className="w-full" size="lg" disabled={pending} onClick={signIn}>
-        {pending ? "Opening Google..." : "Continue with Google"}
+        {pending ? "Abriendo Google..." : "Continuar con Google"}
       </Button>
       {error ? <p className="mt-3 text-sm text-error">{error}</p> : null}
     </div>

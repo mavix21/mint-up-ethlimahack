@@ -19,17 +19,20 @@ const requestSchema = z
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to buy this Event Pass." },
+      { message: "Inicia sesión para comprar este Event Pass." },
       { status: 401 },
     );
 
   const body = await readBoundedJson(request);
   if ("oversized" in body)
-    return Response.json({ message: "Request is too large." }, { status: 413 });
+    return Response.json(
+      { message: "La solicitud es demasiado grande." },
+      { status: 413 },
+    );
   const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success)
     return Response.json(
-      { message: "Invalid purchase request." },
+      { message: "Solicitud de compra no válida." },
       { status: 400 },
     );
 
@@ -48,7 +51,7 @@ export async function POST(request: Request) {
         {
           code: "listing_unavailable",
           message:
-            "This Pass resale is unavailable to your account. Check that your email is verified and that you don't already have an Event Pass for this Event. If you still need help, contact Mint Up support.",
+            "Esta reventa de Event Pass no está disponible para tu cuenta. Comprueba que tu correo electrónico esté verificado y que aún no tengas un Event Pass para este evento. Si todavía necesitas ayuda, contacta al soporte de Mint Up.",
         },
         { status: 409 },
       );
@@ -57,7 +60,7 @@ export async function POST(request: Request) {
     return Response.json(
       {
         code: "purchase_temporarily_unavailable",
-        message: "We couldn't start this purchase. Try again.",
+        message: "No pudimos iniciar esta compra. Inténtalo de nuevo.",
       },
       { status: 503 },
     );

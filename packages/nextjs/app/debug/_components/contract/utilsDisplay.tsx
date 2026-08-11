@@ -1,9 +1,19 @@
 import { ReactElement, useState } from "react";
-import { TransactionBase, TransactionReceipt, formatEther, isAddress, isHex } from "viem";
+import {
+  TransactionBase,
+  TransactionReceipt,
+  formatEther,
+  isAddress,
+  isHex,
+} from "viem";
 import { ArrowsRightLeftIcon } from "@heroicons/react/24/solid";
 import { Address } from "~~/components/scaffold-eth";
 import { Button } from "~~/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "~~/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~~/components/ui/tooltip";
 import { replacer } from "~~/utils/scaffold-eth/common";
 
 type DisplayContent =
@@ -32,7 +42,9 @@ export const displayTxResult = (
 
   if (typeof displayContent === "string") {
     if (isAddress(displayContent)) {
-      return <Address address={displayContent} size={fontSize} onlyEnsOrAddress />;
+      return (
+        <Address address={displayContent} size={fontSize} onlyEnsOrAddress />
+      );
     }
 
     if (isHex(displayContent)) {
@@ -55,7 +67,10 @@ const NumberDisplay = ({ value }: { value: bigint }) => {
   const [isEther, setIsEther] = useState(false);
 
   const asNumber = Number(value);
-  if (asNumber <= Number.MAX_SAFE_INTEGER && asNumber >= Number.MIN_SAFE_INTEGER) {
+  if (
+    asNumber <= Number.MAX_SAFE_INTEGER &&
+    asNumber >= Number.MIN_SAFE_INTEGER
+  ) {
     return String(value);
   }
 
@@ -70,13 +85,15 @@ const NumberDisplay = ({ value }: { value: bigint }) => {
               variant="ghost"
               size="icon-xs"
               onClick={() => setIsEther(!isEther)}
-              aria-label={isEther ? "Multiply by 1e18" : "Divide by 1e18"}
+              aria-label={isEther ? "Multiplicar por 1e18" : "Dividir por 1e18"}
             />
           }
         >
           <ArrowsRightLeftIcon className="opacity-65" />
         </TooltipTrigger>
-        <TooltipContent>{isEther ? "Multiply by 1e18" : "Divide by 1e18"}</TooltipContent>
+        <TooltipContent>
+          {isEther ? "Multiplicar por 1e18" : "Dividir por 1e18"}
+        </TooltipContent>
       </Tooltip>
     </div>
   );
@@ -101,7 +118,13 @@ export const ObjectFieldDisplay = ({
   );
 };
 
-const ArrayDisplay = ({ values, size }: { values: DisplayContent[]; size: ResultFontSize }) => {
+const ArrayDisplay = ({
+  values,
+  size,
+}: {
+  values: DisplayContent[];
+  size: ResultFontSize;
+}) => {
   return (
     <div className="flex flex-col gap-y-1">
       {values.length ? "array" : "[]"}
@@ -112,7 +135,13 @@ const ArrayDisplay = ({ values, size }: { values: DisplayContent[]; size: Result
   );
 };
 
-const StructDisplay = ({ struct, size }: { struct: Record<string, any>; size: ResultFontSize }) => {
+const StructDisplay = ({
+  struct,
+  size,
+}: {
+  struct: Record<string, any>;
+  size: ResultFontSize;
+}) => {
   return (
     <div className="flex flex-col gap-y-1">
       struct

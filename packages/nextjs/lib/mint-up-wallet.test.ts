@@ -68,7 +68,7 @@ describe("Mint Up Wallet provider boundary", () => {
     expect(wallet.address).toBe(address);
     expect(wallet.balances).toEqual({
       error:
-        "Balances are temporarily unavailable. Check the network and try again.",
+        "Los saldos no están disponibles temporalmente. Comprueba la red e inténtalo de nuevo.",
     });
   });
 });

@@ -93,40 +93,41 @@ function availability(
 ): EventPassOffer["availability"] {
   if (offer.availability.kind === "unavailable") {
     const reasons: Record<string, string> = {
-      cancelled: "This event was cancelled",
-      sales_disabled: "Pass sales are not active",
-      sale_not_started: "Sales have not started",
-      sale_ended: "Sales have ended",
-      sold_out: "This Event Pass is sold out",
+      cancelled: "Este evento fue cancelado",
+      sales_disabled: "La venta de Event Pass no está activa",
+      sale_not_started: "La venta aún no ha comenzado",
+      sale_ended: "La venta ha finalizado",
+      sold_out: "Este Event Pass está agotado",
     };
     return {
       kind: "unavailable",
       reason:
-        reasons[offer.availability.reason] ?? "This Event Pass is unavailable",
+        reasons[offer.availability.reason] ??
+        "Este Event Pass no está disponible",
     };
   }
   let reason: string | undefined;
-  if (offer.publication !== "published") reason = "Event is not published";
-  else if (offer.lifecycle === "cancelled") reason = "This event was cancelled";
+  if (offer.publication !== "published") reason = "El evento no está publicado";
+  else if (offer.lifecycle === "cancelled")
+    reason = "Este evento fue cancelado";
   else if (offer.configuration !== "active")
-    reason = "Pass sales are not active";
+    reason = "La venta de Event Pass no está activa";
   else if (offer.contractSales !== "enabled")
-    reason = "Onchain sales are disabled";
+    reason = "Las ventas onchain están desactivadas";
   else if (offer.onchainTicketTypeCount !== 1)
-    reason = "Exactly one Event Pass offer is required";
+    reason = "Se requiere exactamente una oferta de Event Pass";
   else if (offer.paymentAsset !== "USDC" || offer.paymentAssetDecimals !== 6)
-    reason = "Only USDC is supported";
+    reason = "Solo se admite USDC";
   else if (offer.pricing === "flexible")
-    reason = "Flexible pricing is not supported";
-  else if (offer.pricing !== "fixed")
-    reason = "Only fixed pricing is supported";
+    reason = "No se admiten precios flexibles";
+  else if (offer.pricing !== "fixed") reason = "Solo se admiten precios fijos";
   else if (offer.pricePhaseCount !== 0)
-    reason = "Price phases are not supported";
+    reason = "No se admiten fases de precios";
   else if (offer.approval !== "immediate")
-    reason = "Approval-based tickets are not supported";
-  else if (now < offer.saleStartsAt) reason = "Sales have not started";
-  else if (now >= offer.saleEndsAt) reason = "Sales have ended";
-  else if (offer.remaining === 0) reason = "This Event Pass is sold out";
+    reason = "No se admiten entradas que requieren aprobación";
+  else if (now < offer.saleStartsAt) reason = "La venta aún no ha comenzado";
+  else if (now >= offer.saleEndsAt) reason = "La venta ha finalizado";
+  else if (offer.remaining === 0) reason = "Este Event Pass está agotado";
   return reason ? { kind: "unavailable", reason } : { kind: "available" };
 }
 

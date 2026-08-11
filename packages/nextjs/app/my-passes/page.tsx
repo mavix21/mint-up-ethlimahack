@@ -40,14 +40,14 @@ import type { WalletPasskeyAccount } from "~~/lib/kernel-account";
 import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
 
 export const metadata: Metadata = {
-  title: "My Passes",
-  description: "Your purchased Mint Up Event Passes, grouped by event.",
+  title: "Mis pases",
+  description: "Tus Event Pass de Mint Up comprados, agrupados por evento.",
 };
 
 function formatEventDate(value?: number, timezone?: string) {
   if (!value) return null;
   try {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat("es-ES", {
       dateStyle: "medium",
       timeStyle: "short",
       timeZone: timezone ?? "UTC",
@@ -74,13 +74,19 @@ function PassHistory({
   return (
     <ol className="space-y-5 border-l pl-5">
       {history.map((entry, index) => {
-        const actor = entry.actor.isCurrentUser ? "You" : entry.actor.name;
+        const actor = entry.actor.isCurrentUser ? "Tú" : entry.actor.name;
         const action =
           entry.kind === "purchased"
-            ? "bought this pass"
+            ? entry.actor.isCurrentUser
+              ? "compraste este pase"
+              : "compró este pase"
             : entry.kind === "listed"
-              ? "listed this pass for resale"
-              : "bought this pass from its previous owner";
+              ? entry.actor.isCurrentUser
+                ? "publicaste este pase para reventa"
+                : "publicó este pase para reventa"
+              : entry.actor.isCurrentUser
+                ? "compraste este pase a su propietario anterior"
+                : "compró este pase a su propietario anterior";
         return (
           <li
             key={`${entry.kind}-${entry.occurredAt}-${index}`}
@@ -88,7 +94,7 @@ function PassHistory({
           >
             <span className="absolute top-1.5 -left-[1.56rem] size-2 rounded-full bg-primary" />
             <p className="font-medium">
-              {actor} {action} for {formatUsdc(entry.amountSubunits)}.
+              {actor} {action} por {formatUsdc(entry.amountSubunits)}.
             </p>
             <time
               dateTime={new Date(entry.occurredAt).toISOString()}
@@ -135,15 +141,15 @@ function PassCard({
 
       <div className="flex flex-wrap gap-1.5">
         <Badge variant={isValid ? "default" : "destructive"}>
-          {isValid ? "Valid" : "Invalid"}
+          {isValid ? "Válido" : "Inválido"}
         </Badge>
         <Badge variant={isCancelled ? "destructive" : "secondary"}>
-          {isCancelled ? "Cancelled" : "Active"}
+          {isCancelled ? "Cancelado" : "Activo"}
         </Badge>
         <Badge variant="outline">
           {pass.transfer.status === "transferable"
-            ? "Transferable"
-            : "Transferred"}
+            ? "Transferible"
+            : "Transferido"}
         </Badge>
       </div>
       {pass.history.length > 0 ? (
@@ -242,8 +248,8 @@ function PassGroupSection({
                 ) : null}
                 <span className="inline-flex items-center gap-1.5">
                   <Ticket className="size-4 shrink-0" />
-                  {group.passes.length} pass
-                  {group.passes.length === 1 ? "" : "es"}
+                  {group.passes.length} pase
+                  {group.passes.length === 1 ? "" : "s"}
                 </span>
               </div>
             </div>
@@ -252,7 +258,7 @@ function PassGroupSection({
                 href={`/passes/${encodeURIComponent(group.eventId)}`}
                 className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
               >
-                View event
+                Ver evento
               </Link>
             ) : null}
           </div>
@@ -310,17 +316,17 @@ async function MyPassesContent() {
           <EmptyMedia variant="icon">
             <Ticket />
           </EmptyMedia>
-          <EmptyTitle>No passes yet</EmptyTitle>
+          <EmptyTitle>Aún no tienes pases</EmptyTitle>
           <EmptyDescription>
-            You don&apos;t own any Event Passes yet. Browse available offers and
-            secure your first pass.
+            Aún no tienes ningún Event Pass. Explora las ofertas disponibles y
+            obtén tu primer pase.
           </EmptyDescription>
         </EmptyHeader>
         <Link
           href="/"
           className="mt-2 inline-flex rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90"
         >
-          Browse passes
+          Explorar pases
         </Link>
       </Empty>
     );
@@ -331,8 +337,8 @@ async function MyPassesContent() {
       {groups.length > 0 ? (
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            {passes.length} pass{passes.length === 1 ? "" : "es"} across{" "}
-            {groups.length} event{groups.length === 1 ? "" : "s"}
+            {passes.length} pase{passes.length === 1 ? "" : "s"} en{" "}
+            {groups.length} evento{groups.length === 1 ? "" : "s"}
           </p>
         </div>
       ) : null}
@@ -373,14 +379,14 @@ export default function MyPassesPage() {
     <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-16">
       <header className="mb-8 border-b pb-8">
         <p className="text-sm font-bold uppercase tracking-[0.22em] text-primary-foreground">
-          Your collection
+          Tu colección
         </p>
         <h1 className="mt-3 font-heading text-4xl font-black tracking-tight sm:text-5xl">
-          My passes
+          Mis pases
         </h1>
         <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-          All Event Passes you own, grouped by event. Valid passes are ready for
-          check-in.
+          Todos tus Event Pass, agrupados por evento. Los pases válidos están
+          listos para el check-in.
         </p>
       </header>
 

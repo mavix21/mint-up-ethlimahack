@@ -42,28 +42,28 @@ const BlockExplorer: NextPage = () => {
               {" "}
               targetNetwork{" "}
             </code>{" "}
-            is not localhost
+            no es localhost
           </p>
           <p className="m-0">
-            - You are on{" "}
+            - Estás en{" "}
             <code className="bg-muted text-base font-bold italic">
               {targetNetwork.name}
             </code>{" "}
-            .This block explorer is only for{" "}
+            . Este explorador de bloques es solo para{" "}
             <code className="bg-muted text-base font-bold italic">
               localhost
             </code>
             .
           </p>
           <p className="mt-1 break-normal">
-            - You can use{" "}
+            - Puedes usar{" "}
             <a
               className="text-primary"
               href={targetNetwork.blockExplorers?.default.url}
             >
               {targetNetwork.blockExplorers?.default.name}
             </a>{" "}
-            instead
+            en su lugar
           </p>
         </>,
       );
@@ -80,21 +80,21 @@ const BlockExplorer: NextPage = () => {
       notification.error(
         <>
           <p className="font-bold mt-0 mb-1">
-            Cannot connect to local provider
+            No se puede conectar con el proveedor local
           </p>
           <p className="m-0">
-            - Did you forget to run{" "}
+            - ¿Olvidaste ejecutar{" "}
             <code className="bg-muted text-base font-bold italic">
               yarn chain
             </code>{" "}
             ?
           </p>
           <p className="mt-1 break-normal">
-            - Or you can change{" "}
+            - O puedes cambiar{" "}
             <code className="bg-muted text-base font-bold italic">
               targetNetwork
             </code>{" "}
-            in{" "}
+            en{" "}
             <code className="bg-muted text-base font-bold italic">
               scaffold.config.ts
             </code>

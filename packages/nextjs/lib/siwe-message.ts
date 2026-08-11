@@ -25,7 +25,7 @@ export function createMintUpSiweMessage({
     uri: site.origin,
     nonce,
     version: "1",
-    statement: "Verify this wallet for Mint Up Passes.",
+    statement: "Verifica esta wallet para Mint Up Passes.",
     expirationTime,
     issuedAt,
   });

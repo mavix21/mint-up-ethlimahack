@@ -7,9 +7,12 @@ test.describe("Event Pass buyer surface", () => {
     await page.goto("/");
 
     await expect(
-      page.getByText("original USDC payment protected until the Event begins", {
-        exact: false,
-      }),
+      page.getByText(
+        "original en USDC protegido hasta que comience el evento",
+        {
+          exact: false,
+        },
+      ),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: /wallet/i })).toHaveCount(0);
 

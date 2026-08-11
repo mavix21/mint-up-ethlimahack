@@ -71,7 +71,7 @@ describe("prepare Event Pass transfer API", () => {
     expect(await response.json()).toEqual({
       code: "recipient_unavailable",
       message:
-        "Ask them to secure their passes, then check the email and try again.",
+        "Pídele que proteja sus pases, luego comprueba el correo e inténtalo de nuevo.",
     });
   });
 

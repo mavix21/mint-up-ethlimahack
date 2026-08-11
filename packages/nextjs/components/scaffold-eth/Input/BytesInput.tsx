@@ -3,9 +3,17 @@ import { bytesToString, isHex, toBytes, toHex } from "viem";
 import { CommonInputProps, InputBase } from "~~/components/scaffold-eth";
 import { InputGroupButton } from "~~/components/ui/input-group";
 
-export const BytesInput = ({ value, onChange, name, placeholder, disabled }: CommonInputProps) => {
+export const BytesInput = ({
+  value,
+  onChange,
+  name,
+  placeholder,
+  disabled,
+}: CommonInputProps) => {
   const convertStringToBytes = useCallback(() => {
-    onChange(isHex(value) ? bytesToString(toBytes(value)) : toHex(toBytes(value)));
+    onChange(
+      isHex(value) ? bytesToString(toBytes(value)) : toHex(toBytes(value)),
+    );
   }, [onChange, value]);
 
   return (
@@ -16,7 +24,10 @@ export const BytesInput = ({ value, onChange, name, placeholder, disabled }: Com
       onChange={onChange}
       disabled={disabled}
       suffix={
-        <InputGroupButton onClick={convertStringToBytes} aria-label="Toggle bytes representation">
+        <InputGroupButton
+          onClick={convertStringToBytes}
+          aria-label="Cambiar representación de bytes"
+        >
           #
         </InputGroupButton>
       }

@@ -14,7 +14,9 @@ type WalletIdentitySelectorProps = {
 };
 
 function walletLabel(wallet: WalletOption) {
-  return wallet.kind === "smart-account" ? "Smart account" : "Linked external";
+  return wallet.kind === "smart-account"
+    ? "Cuenta inteligente"
+    : "Externa vinculada";
 }
 
 function shortAddress(address: string) {
@@ -40,10 +42,10 @@ export function WalletIdentitySelector({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              Wallet selector
+              Selector de billetera
             </p>
             <h2 className="mt-2 font-heading text-2xl font-bold">
-              Choose a verified wallet
+              Elige una billetera verificada
             </h2>
           </div>
           <ShieldCheck className="size-6 text-primary" />
@@ -76,7 +78,7 @@ export function WalletIdentitySelector({
                 </span>
                 {wallet.kind === "linked" ? (
                   <span className="mt-1 block text-xs text-base-content/50">
-                    Chain {wallet.chainId}
+                    Cadena {wallet.chainId}
                   </span>
                 ) : null}
               </button>
@@ -87,7 +89,7 @@ export function WalletIdentitySelector({
           <div className="mt-5 flex flex-col gap-4 rounded-2xl bg-base-200 p-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-base-content/55">
-                Selected {walletLabel(selected).toLowerCase()} wallet
+                Billetera {walletLabel(selected).toLowerCase()} seleccionada
               </p>
               <p className="mt-2 break-all font-mono text-sm font-semibold">
                 {selected.address}
@@ -100,12 +102,14 @@ export function WalletIdentitySelector({
 
       <div className="rounded-4xl border border-base-300 bg-base-100 p-5 shadow-sm sm:p-7">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          External wallet
+          Billetera externa
         </p>
-        <h2 className="mt-2 font-heading text-2xl font-bold">Link a wallet</h2>
+        <h2 className="mt-2 font-heading text-2xl font-bold">
+          Vincular una billetera
+        </h2>
         <p className="mb-5 mt-2 text-sm text-base-content/65">
-          Sign a fresh proof to add an address to this account. Connecting alone
-          never links a wallet.
+          Firma una prueba nueva para agregar una dirección a esta cuenta. Solo
+          conectar una billetera nunca la vincula.
         </p>
         <WalletProofButton
           intent="link"

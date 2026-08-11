@@ -8,36 +8,38 @@ export function PasskeyLifecycleGuard({
   if (!accountExists) return null;
   return (
     <div className="mt-6 rounded-2xl border bg-card p-4 text-sm leading-6">
-      <p className="font-bold">Credential lifecycle</p>
+      <p className="font-bold">Ciclo de vida de la credencial</p>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
         <li>
-          Deleting or replacing this passkey in your browser will{" "}
-          <strong className="text-foreground">not</strong> revoke the onchain
-          Kernel owner. The smart account still requires the original credential
-          you just used.
+          Eliminar o reemplazar esta passkey en tu navegador{" "}
+          <strong className="text-foreground">no</strong> revocará al
+          propietario onchain de Kernel. La cuenta inteligente seguirá
+          requiriendo la credencial original que acabas de usar.
         </li>
         <li>
-          Data deletion in Mint Up (Convex) does not revoke the onchain signer —
-          treat it as app data cleanup, not onchain revocation.
+          Eliminar datos en Mint Up (Convex) no revoca al firmante onchain.
+          Considéralo una limpieza de datos de la aplicación, no una revocación
+          onchain.
         </li>
         <li>
-          Creating a new passkey does{" "}
+          Crear una passkey nueva{" "}
           <strong className="text-foreground">
-            not recover the previous account
+            no recupera la cuenta anterior
           </strong>
-          . A replacement credential will derive a{" "}
-          <strong className="text-foreground">different address</strong> and
-          cannot control the old funded account.
+          . Una credencial de reemplazo generará una{" "}
+          <strong className="text-foreground">dirección diferente</strong> y no
+          podrá controlar la cuenta anterior con fondos.
         </li>
         <li>
-          Replacement is blocked while the current account may hold assets until
-          an approved onchain signer rotation is available.
+          El reemplazo está bloqueado mientras la cuenta actual pueda tener
+          activos, hasta que exista una rotación aprobada del firmante onchain.
         </li>
       </ul>
       <p className="mt-3 rounded-xl bg-amber-500/10 p-3 text-xs font-semibold text-amber-700">
-        Full onchain signer rotation is a production gate — not approximated by
-        Better Auth recovery or a new passkey. See Recovery & Rotation Gate
-        below.
+        La rotación completa del firmante onchain es un requisito para
+        producción, no se sustituye con la recuperación de Better Auth ni con
+        una passkey nueva. Consulta el requisito de recuperación y rotación más
+        abajo.
       </p>
     </div>
   );
@@ -50,32 +52,35 @@ export function SyncedVsDeviceBoundNotice({
 }) {
   return (
     <aside className="rounded-3xl bg-primary/10 p-6 text-sm leading-6">
-      <p className="font-bold">Synced vs device-bound</p>
+      <p className="font-bold">Sincronizada o vinculada al dispositivo</p>
       {backupEligible === true ? (
         <p className="mt-2">
-          This passkey is <strong>synced</strong> (iCloud Keychain / Google
-          Password Manager / password manager). Returning on a supported synced
-          device reconstructs the same Kernel address without another
-          registration — authentication finds the existing synced credential.
+          Esta passkey está <strong>sincronizada</strong> (iCloud Keychain /
+          Google Password Manager / gestor de contraseñas). Volver desde un
+          dispositivo sincronizado compatible reconstruye la misma dirección de
+          Kernel sin otro registro; la autenticación encuentra la credencial
+          sincronizada.
         </p>
       ) : backupEligible === false ? (
         <p className="mt-2">
-          This passkey appears <strong>device-bound</strong>. It will not
-          automatically appear on another device. Mint Up does not promise
-          cross-device recovery that the authenticator cannot provide. Losing
-          this credential orphans the account until onchain rotation exists.
+          Esta passkey parece estar <strong>vinculada al dispositivo</strong>.
+          No aparecerá automáticamente en otro dispositivo. Mint Up no garantiza
+          una recuperación entre dispositivos que el autenticador no pueda
+          ofrecer. Perder esta credencial deja la cuenta inaccesible hasta que
+          exista la rotación onchain.
         </p>
       ) : (
         <p className="mt-2">
-          <strong>Returning on another device?</strong> Synced passkeys may be
-          available there. Device-bound credentials do not automatically move,
-          and creating a replacement does not recover an existing account.
+          <strong>¿Vuelves desde otro dispositivo?</strong> Las passkeys
+          sincronizadas podrían estar disponibles allí. Las credenciales
+          vinculadas al dispositivo no se transfieren automáticamente, y crear
+          un reemplazo no recupera una cuenta existente.
         </p>
       )}
       <p className="mt-2 text-xs text-muted-foreground">
-        Backup state is reported by the authenticator (backupEligible /
-        backupState). Check your OS password manager to verify whether the
-        credential is synced.
+        El autenticador informa el estado de respaldo (backupEligible /
+        backupState). Revisa el gestor de contraseñas de tu sistema operativo
+        para verificar si la credencial está sincronizada.
       </p>
     </aside>
   );
@@ -88,22 +93,22 @@ export function RotationGateBanner() {
       className="mt-6 rounded-2xl border-2 border-primary/30 bg-primary/5 p-4"
     >
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-        Production gate — signer rotation
+        Requisito de producción: rotación del firmante
       </p>
       <p className="mt-2 text-sm font-semibold">
-        Full onchain Kernel signer rotation is required before production value.
+        Se requiere la rotación completa del firmante onchain de Kernel antes de
+        usar valor real en producción.
       </p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Better Auth recovery and creating a new passkey{" "}
-        <strong className="text-foreground">do not</strong> rotate the onchain
-        owner. A new credential controls a different address. Approved onchain
-        rotation (guardian/multisig/social-recovery) is a separate,
-        independently designed mechanism and remains blocked for funded
-        accounts.
+        La recuperación de Better Auth y la creación de una passkey nueva{" "}
+        <strong className="text-foreground">no</strong> rotan al propietario
+        onchain. Una credencial nueva controla una dirección diferente. La
+        rotación onchain aprobada (guardián/multifirma/recuperación social) es
+        un mecanismo independiente y sigue bloqueada para cuentas con fondos.
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        This banner is visible on /wallet and after any purchase attempt — it is
-        not approximated by Better Auth.
+        Este aviso aparece en /wallet y después de cualquier intento de compra;
+        Better Auth no sustituye este mecanismo.
       </p>
     </div>
   );

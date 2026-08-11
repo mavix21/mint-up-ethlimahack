@@ -10,7 +10,13 @@ import { Skeleton } from "~~/components/ui/skeleton";
 /**
  * Address input with ENS name resolution
  */
-export const AddressInput = ({ value, name, placeholder, onChange, disabled }: CommonInputProps<Address | string>) => {
+export const AddressInput = ({
+  value,
+  name,
+  placeholder,
+  onChange,
+  disabled,
+}: CommonInputProps<Address | string>) => {
   // Debounce the input to keep clean RPC calls when resolving ENS names
   // If the input is an address, we don't need to debounce it
   const [_debouncedValue] = useDebounceValue(value, 500);
@@ -69,7 +75,11 @@ export const AddressInput = ({ value, name, placeholder, onChange, disabled }: C
     setEnteredEnsName(undefined);
   }, [value]);
 
-  const reFocus = isEnsAddressError || isEnsNameError || ensName === null || ensAddress === null;
+  const reFocus =
+    isEnsAddressError ||
+    isEnsNameError ||
+    ensName === null ||
+    ensAddress === null;
 
   return (
     <InputBase<Address>
@@ -83,16 +93,20 @@ export const AddressInput = ({ value, name, placeholder, onChange, disabled }: C
       prefix={
         ensName ? (
           <div className="flex items-center gap-2">
-            {isEnsAvatarLoading ? <Skeleton className="size-[35px] shrink-0 rounded-full" /> : null}
+            {isEnsAvatarLoading ? (
+              <Skeleton className="size-[35px] shrink-0 rounded-full" />
+            ) : null}
             {ensAvatar ? (
               <span className="w-[35px]">
                 {
                   // eslint-disable-next-line
-                  <img className="w-full rounded-full" src={ensAvatar} alt={`${ensAddress} avatar`} />
+                  <img className="w-full rounded-full" src={ensAvatar} alt={`Avatar de ${ensAddress}`} />
                 }
               </span>
             ) : null}
-            <span className="text-muted-foreground">{enteredEnsName ?? ensName}</span>
+            <span className="text-muted-foreground">
+              {enteredEnsName ?? ensName}
+            </span>
           </div>
         ) : (
           (isEnsNameLoading || isEnsAddressLoading) && (
@@ -105,8 +119,16 @@ export const AddressInput = ({ value, name, placeholder, onChange, disabled }: C
       }
       suffix={
         // Don't want to use nextJS Image here (and adding remote patterns for the URL)
-        // eslint-disable-next-line @next/next/no-img-element
-        value && <img alt="" className="rounded-full!" src={blo(value as `0x${string}`)} width="35" height="35" />
+
+        value && (
+          <img
+            alt=""
+            className="rounded-full!"
+            src={blo(value as `0x${string}`)}
+            width="35"
+            height="35"
+          />
+        )
       }
     />
   );

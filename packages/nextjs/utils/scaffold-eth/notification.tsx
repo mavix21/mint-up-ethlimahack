@@ -59,13 +59,19 @@ const Notification = ({
         <Card size="sm">
           <CardContent>
             <div className="flex items-start justify-between gap-2">
-              <div className="self-center leading-[0]">{icon ? icon : ENUM_STATUSES[status]}</div>
-              <div className={`overflow-x-hidden break-words whitespace-pre-line ${icon ? "mt-1" : ""}`}>{content}</div>
+              <div className="self-center leading-[0]">
+                {icon ? icon : ENUM_STATUSES[status]}
+              </div>
+              <div
+                className={`overflow-x-hidden break-words whitespace-pre-line ${icon ? "mt-1" : ""}`}
+              >
+                {content}
+              </div>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 onClick={() => toast.remove(t.id)}
-                aria-label="Dismiss notification"
+                aria-label="Descartar notificación"
               >
                 <XMarkIcon />
               </Button>

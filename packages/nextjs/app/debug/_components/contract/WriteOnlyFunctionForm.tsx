@@ -4,7 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { InheritanceTooltip } from "./InheritanceTooltip";
 import { Abi, AbiFunction } from "abitype";
 import { Address, TransactionReceipt } from "viem";
-import { useAccount, useConfig, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useConfig,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
 import {
   ContractInput,
   TxReceipt,
@@ -16,7 +21,11 @@ import {
 import { IntegerInput } from "~~/components/scaffold-eth";
 import { Button } from "~~/components/ui/button";
 import { Spinner } from "~~/components/ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "~~/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~~/components/ui/tooltip";
 import { useTransactor } from "~~/hooks/scaffold-eth";
 import { applyGasFeeMultiplier } from "~~/hooks/scaffold-eth/useScaffoldWriteContract";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
@@ -38,7 +47,9 @@ export const WriteOnlyFunctionForm = ({
   contractAddress,
   inheritedFrom,
 }: WriteOnlyFunctionFormProps) => {
-  const [form, setForm] = useState<Record<string, any>>(() => getInitialFormState(abiFunction));
+  const [form, setForm] = useState<Record<string, any>>(() =>
+    getInitialFormState(abiFunction),
+  );
   const [txValue, setTxValue] = useState<string>("");
   const { chain } = useAccount();
   const writeTxn = useTransactor();
@@ -69,16 +80,23 @@ export const WriteOnlyFunctionForm = ({
           chainId: targetNetwork.id as AllowedChainIds,
         });
 
-        const makeWriteWithParams = () => writeContractAsync(bufferedWriteContractObj as typeof writeContractObj);
+        const makeWriteWithParams = () =>
+          writeContractAsync(
+            bufferedWriteContractObj as typeof writeContractObj,
+          );
         await writeTxn(makeWriteWithParams);
         onChange();
       } catch (e: any) {
-        console.error("⚡️ ~ file: WriteOnlyFunctionForm.tsx:handleWrite ~ error", e);
+        console.error(
+          "⚡️ ~ file: WriteOnlyFunctionForm.tsx:handleWrite ~ error",
+          e,
+        );
       }
     }
   };
 
-  const [displayedTxResult, setDisplayedTxResult] = useState<TransactionReceipt>();
+  const [displayedTxResult, setDisplayedTxResult] =
+    useState<TransactionReceipt>();
   const { data: txResult } = useWaitForTransactionReceipt({
     hash: result,
   });
@@ -86,7 +104,10 @@ export const WriteOnlyFunctionForm = ({
     setDisplayedTxResult(txResult);
   }, [txResult]);
 
-  const transformedFunction = useMemo(() => transformAbiFunction(abiFunction), [abiFunction]);
+  const transformedFunction = useMemo(
+    () => transformAbiFunction(abiFunction),
+    [abiFunction],
+  );
   const inputs = transformedFunction.inputs.map((input, inputIndex) => {
     const key = getFunctionInputKey(abiFunction.name, input, inputIndex);
     return (
@@ -102,7 +123,8 @@ export const WriteOnlyFunctionForm = ({
       />
     );
   });
-  const zeroInputs = inputs.length === 0 && abiFunction.stateMutability !== "payable";
+  const zeroInputs =
+    inputs.length === 0 && abiFunction.stateMutability !== "payable";
   const writeButton = (
     <Button
       type="button"
@@ -111,7 +133,7 @@ export const WriteOnlyFunctionForm = ({
       data-testid="write-function-submit"
     >
       {isPending && <Spinner />}
-      Send
+      Enviar
     </Button>
   );
 
@@ -129,8 +151,12 @@ export const WriteOnlyFunctionForm = ({
         {abiFunction.stateMutability === "payable" ? (
           <div className="flex flex-col gap-1.5 w-full">
             <div className="flex items-center ml-2">
-              <span className="text-xs font-medium mr-2 leading-none">payable value</span>
-              <span className="block text-xs leading-none text-muted-foreground">wei</span>
+              <span className="text-xs font-medium mr-2 leading-none">
+                valor payable
+              </span>
+              <span className="block text-xs leading-none text-muted-foreground">
+                wei
+              </span>
             </div>
             <IntegerInput
               value={txValue}
@@ -138,19 +164,25 @@ export const WriteOnlyFunctionForm = ({
                 setDisplayedTxResult(undefined);
                 setTxValue(updatedTxValue);
               }}
-              placeholder="value (wei)"
+              placeholder="valor (wei)"
             />
           </div>
         ) : null}
         <div className="flex flex-col gap-2">
           {!zeroInputs && (
-            <div className="w-full">{displayedTxResult ? <TxReceipt txResult={displayedTxResult} /> : null}</div>
+            <div className="w-full">
+              {displayedTxResult ? (
+                <TxReceipt txResult={displayedTxResult} />
+              ) : null}
+            </div>
           )}
           <div className="flex justify-end">
             {writeDisabled ? (
               <Tooltip>
                 <TooltipTrigger render={<span />}>{writeButton}</TooltipTrigger>
-                <TooltipContent side="bottom">Wallet not connected or in the wrong network</TooltipContent>
+                <TooltipContent side="bottom">
+                  Billetera no conectada o en la red incorrecta
+                </TooltipContent>
               </Tooltip>
             ) : (
               writeButton

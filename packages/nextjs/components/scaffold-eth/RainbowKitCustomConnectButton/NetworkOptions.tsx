@@ -26,7 +26,7 @@ export const NetworkOptions = () => {
           >
             <ArrowsRightLeftIcon />
             <span>
-              Switch to{" "}
+              Cambiar a{" "}
               <span
                 style={{
                   color: getNetworkColor(allowedNetwork, isDarkMode),

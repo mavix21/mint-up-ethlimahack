@@ -51,7 +51,7 @@ export function MarketplaceResalePurchaseGate({
         onClick={() => setOpen(true)}
         className="mt-5 w-full rounded-full bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90"
       >
-        Review and buy
+        Revisar y comprar
       </button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
@@ -59,16 +59,16 @@ export function MarketplaceResalePurchaseGate({
           className="mx-auto max-h-[90svh] w-full max-w-lg overflow-y-auto rounded-t-3xl"
         >
           <SheetHeader>
-            <SheetTitle>Buy this Event Pass</SheetTitle>
+            <SheetTitle>Comprar este Event Pass</SheetTitle>
             <SheetDescription>
-              Review the exact total before confirming.
+              Revisa el total exacto antes de confirmar.
             </SheetDescription>
           </SheetHeader>
           <div className="p-6 pt-2">
             {!authenticated ? (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Sign in to continue with this Pass resale.
+                  Inicia sesión para continuar con esta reventa.
                 </p>
                 <GoogleSignInButton callbackUrl={callbackUrl} />
               </div>

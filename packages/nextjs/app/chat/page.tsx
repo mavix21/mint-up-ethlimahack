@@ -6,9 +6,9 @@ import { Button } from "~~/components/ui/button";
 import { MintiChat } from "./_components/minti-chat";
 
 export const metadata: Metadata = {
-  title: "Ask Minti",
+  title: "Pregúntale a Minti",
   description:
-    "Discover events, meet your people, and secure an Event Pass through Mint Up.",
+    "Descubre eventos, conoce a personas afines y consigue un Event Pass a través de Mint Up.",
 };
 
 function ChatHeader() {
@@ -20,24 +20,24 @@ function ChatHeader() {
         </span>
         <div className="min-w-0">
           <h2 className="truncate text-sm font-medium">
-            Minti event assistant
+            Asistente de eventos Minti
           </h2>
           <p className="hidden items-center gap-1 text-[10px] text-muted-foreground sm:flex">
             <span className="size-1.5 rounded-full bg-primary" />
-            Current event index
+            Índice de eventos actualizado
           </p>
         </div>
       </div>
       <div className="flex items-center gap-1.5">
         <span className="hidden items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-[11px] text-muted-foreground sm:flex">
           <ShieldCheckIcon className="size-3 text-primary-foreground" />
-          Approval required to purchase
+          Se requiere aprobación para comprar
         </span>
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="Conversation details"
+          aria-label="Detalles de la conversación"
           disabled
         >
           <CalendarClockIcon />
@@ -61,11 +61,11 @@ function Welcome() {
         />
       </div>
       <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
-        Find your next room.
+        Encuentra tu próximo espacio.
       </h1>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-        Tell me what you want to learn, who you want to meet, and when
-        you&apos;re free. I&apos;ll search the current events around you.
+        Cuéntame qué quieres aprender, a quién quieres conocer y cuándo tienes
+        tiempo. Buscaré los eventos actuales cerca de ti.
       </p>
     </div>
   );

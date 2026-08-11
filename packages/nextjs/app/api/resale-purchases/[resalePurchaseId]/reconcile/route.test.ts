@@ -42,7 +42,7 @@ describe("reconcile public Pass resale purchase API", () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
-      message: "We couldn't verify the purchase yet. Try again.",
+      message: "Aún no pudimos verificar la compra. Inténtalo de nuevo.",
     });
   });
 
@@ -57,7 +57,7 @@ describe("reconcile public Pass resale purchase API", () => {
     expect(await response.json()).toEqual({
       code: "listing_unavailable",
       message:
-        "This Pass resale is no longer available. Another buyer may have completed it first. You won't be charged.",
+        "Esta reventa de Event Pass ya no está disponible. Es posible que otro comprador la haya completado primero. No se te cobrará.",
     });
   });
 });

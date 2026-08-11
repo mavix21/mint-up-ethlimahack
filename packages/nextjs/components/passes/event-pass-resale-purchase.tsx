@@ -44,7 +44,7 @@ async function responseJson<T>(response: Response): Promise<T> {
       throw new OfferUnavailableError(body.message);
     throw new StatusRequestError(
       response.status,
-      body.message ?? "The purchase could not be completed.",
+      body.message ?? "No se pudo completar la compra.",
     );
   }
   return body as T;
@@ -117,7 +117,7 @@ export function EventPassResalePurchase({
     if (result.status !== "included") {
       setRetryStep("purchase");
       setSubmittedHash(undefined);
-      throw new Error("Purchase was not included");
+      throw new Error("La compra no fue incluida");
     }
     setRetryStep("reconcile");
     await reconcile(prepared.resalePurchaseId, signal);

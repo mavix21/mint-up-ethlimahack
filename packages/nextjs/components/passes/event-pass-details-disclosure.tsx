@@ -11,7 +11,7 @@ type Props = {
 };
 
 function dateTime(value: number, timezone: string) {
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("es-PE", {
     dateStyle: "long",
     timeStyle: "short",
     timeZone: timezone,
@@ -32,28 +32,28 @@ export function EventPassDetailsDisclosure({
       <ProtectedPaymentExplanation />
       <details id="event-pass-details" className="mt-3 rounded-2xl border">
         <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
-          Details
+          Detalles
         </summary>
         <div className="border-t px-4 py-4 text-sm leading-6">
           <p>
-            <strong>Sales window:</strong>
+            <strong>Periodo de venta:</strong>
             <br />
-            Starts {dateTime(saleStartsAt, timezone)} (inclusive)
+            Empieza el {dateTime(saleStartsAt, timezone)} (incluido)
             <br />
-            Ends {dateTime(saleEndsAt, timezone)} (exclusive)
+            Termina el {dateTime(saleEndsAt, timezone)} (excluido)
           </p>
           <p className="mt-3">
-            <strong>Remaining:</strong> {remaining} of {capacity} remaining
+            <strong>Disponibles:</strong> quedan {remaining} de {capacity}
           </p>
           <p className="mt-3">
-            <strong>Event status:</strong>{" "}
+            <strong>Estado del evento:</strong>{" "}
             {lifecycle === "cancelled"
-              ? "Cancelled"
-              : "Scheduled, not cancelled"}
+              ? "Cancelado"
+              : "Programado, no cancelado"}
           </p>
           {availabilityReason ? (
             <p className="mt-3">
-              <strong>Availability:</strong> {availabilityReason}
+              <strong>Disponibilidad:</strong> {availabilityReason}
             </p>
           ) : null}
         </div>

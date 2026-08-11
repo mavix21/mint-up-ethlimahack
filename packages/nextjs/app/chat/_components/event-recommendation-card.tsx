@@ -16,10 +16,16 @@ import {
 } from "./minti-event-format";
 
 const availabilityLabels: Record<MintiEvent["availability"], string> = {
-  available: "Available",
-  waitlist: "Waitlist",
-  closed: "Closed",
-  unknown: "Availability unknown",
+  available: "Disponible",
+  waitlist: "Lista de espera",
+  closed: "Cerrado",
+  unknown: "Disponibilidad desconocida",
+};
+
+const formatLabels: Record<MintiEvent["format"], string> = {
+  online: "En línea",
+  "in-person": "Presencial",
+  hybrid: "Híbrido",
 };
 
 export function EventRecommendationCard({ event }: { event: MintiEvent }) {
@@ -38,7 +44,7 @@ export function EventRecommendationCard({ event }: { event: MintiEvent }) {
         <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/5 to-black/10" />
         <div className="absolute right-3 bottom-3 left-3 flex items-end justify-between gap-2">
           <Badge className="border-white/25 bg-black/65 text-white backdrop-blur hover:bg-black/65">
-            {event.format}
+            {formatLabels[event.format]}
           </Badge>
           <Badge className="border-white/25 bg-white/90 text-neutral-900 backdrop-blur hover:bg-white/90">
             {availabilityLabels[event.availability]}
@@ -50,7 +56,7 @@ export function EventRecommendationCard({ event }: { event: MintiEvent }) {
         <div className="mb-3">
           {event.organizerName ? (
             <p className="mb-1 text-xs font-medium text-muted-foreground">
-              Hosted by {event.organizerName}
+              Organizado por {event.organizerName}
             </p>
           ) : null}
           <h3 className="text-[15px] leading-5 font-semibold tracking-[-0.01em]">
@@ -106,7 +112,7 @@ export function EventRecommendationCard({ event }: { event: MintiEvent }) {
             className="w-full justify-between"
             size="sm"
           >
-            View event
+            Ver evento
             <ArrowUpRightIcon data-icon="inline-end" />
           </Button>
         </div>

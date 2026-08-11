@@ -32,7 +32,9 @@ export const ReadOnlyFunctionForm = ({
   inheritedFrom,
   abi,
 }: ReadOnlyFunctionFormProps) => {
-  const [form, setForm] = useState<Record<string, any>>(() => getInitialFormState(abiFunction));
+  const [form, setForm] = useState<Record<string, any>>(() =>
+    getInitialFormState(abiFunction),
+  );
   const [result, setResult] = useState<unknown>();
   const { targetNetwork } = useTargetNetwork();
 
@@ -84,7 +86,7 @@ export const ReadOnlyFunctionForm = ({
           {result !== null && result !== undefined && (
             <Card size="sm">
               <CardContent>
-                <p className="m-0 mb-1 font-bold">Result:</p>
+                <p className="m-0 mb-1 font-bold">Resultado:</p>
                 <div className="text-sm">{displayTxResult(result, "sm")}</div>
               </CardContent>
             </Card>
@@ -99,7 +101,7 @@ export const ReadOnlyFunctionForm = ({
           disabled={isFetching}
         >
           {isFetching && <Spinner />}
-          Read
+          Leer
         </Button>
       </div>
     </div>

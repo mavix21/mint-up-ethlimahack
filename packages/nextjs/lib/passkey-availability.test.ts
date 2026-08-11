@@ -26,7 +26,7 @@ describe("passkey availability", () => {
     expect(avail.supported).toBe(false);
     expect(avail.reason).toBe("unsupported_browser");
     expect(isAvailabilityBlocking(avail)).toBe(true);
-    expect(availabilityMessage(avail)).toMatch(/not supported/i);
+    expect(availabilityMessage(avail)).toMatch(/no admite passkeys/i);
   });
 
   it("detects platform authenticator unavailable", async () => {
@@ -41,7 +41,9 @@ describe("passkey availability", () => {
     expect(avail.supported).toBe(true);
     expect(avail.platformAuthenticatorAvailable).toBe(false);
     expect(isAvailabilityBlocking(avail)).toBe(true);
-    expect(availabilityMessage(avail)).toMatch(/No platform authenticator/i);
+    expect(availabilityMessage(avail)).toMatch(
+      /No hay un autenticador de plataforma/i,
+    );
   });
 
   it("supported when PublicKeyCredential present and platform available", async () => {

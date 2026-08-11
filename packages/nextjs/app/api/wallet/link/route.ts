@@ -46,7 +46,7 @@ function walletArgs(value: unknown): WalletLinkArgs | null {
 export async function POST(request: Request) {
   if (!(await isAuthenticated())) {
     return Response.json(
-      { message: "Authentication required" },
+      { message: "Autenticación requerida" },
       { status: 401 },
     );
   }
@@ -55,11 +55,11 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return Response.json({ message: "Invalid request" }, { status: 400 });
+    return Response.json({ message: "Solicitud no válida" }, { status: 400 });
   }
   const args = walletArgs(body);
   if (!args || args.chainId !== eventPassEnvironment.chainId) {
-    return Response.json({ message: "Invalid wallet" }, { status: 400 });
+    return Response.json({ message: "Wallet no válida" }, { status: 400 });
   }
 
   if (body.action === "challenge") {
@@ -67,7 +67,10 @@ export async function POST(request: Request) {
       return Response.json(await fetchAuthMutation(beginWalletLink, args));
     } catch {
       return Response.json(
-        { message: "Could not request a wallet challenge. Try again." },
+        {
+          message:
+            "No se pudo solicitar un desafío para la wallet. Inténtalo de nuevo.",
+        },
         { status: 503 },
       );
     }
@@ -88,11 +91,14 @@ export async function POST(request: Request) {
       return Response.json({ success: true });
     } catch {
       return Response.json(
-        { message: "Wallet verification failed. Request a new challenge." },
+        {
+          message:
+            "La verificación de la wallet falló. Solicita un nuevo desafío.",
+        },
         { status: 400 },
       );
     }
   }
 
-  return Response.json({ message: "Invalid request" }, { status: 400 });
+  return Response.json({ message: "Solicitud no válida" }, { status: 400 });
 }

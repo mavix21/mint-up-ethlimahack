@@ -16,16 +16,19 @@ const requestSchema = z
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to remove this listing." },
+      { message: "Inicia sesión para retirar esta publicación." },
       { status: 401 },
     );
   const body = await readBoundedJson(request);
   if ("oversized" in body)
-    return Response.json({ message: "Request is too large." }, { status: 413 });
+    return Response.json(
+      { message: "La solicitud es demasiado grande." },
+      { status: 413 },
+    );
   const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success)
     return Response.json(
-      { message: "Invalid listing request." },
+      { message: "Solicitud de publicación no válida." },
       { status: 400 },
     );
 
@@ -37,7 +40,7 @@ export async function POST(request: Request) {
     return Response.json(resaleWithdrawalPreparationSchema.parse(prepared));
   } catch {
     return Response.json(
-      { message: "This listing can no longer be removed." },
+      { message: "Esta publicación ya no se puede retirar." },
       { status: 409 },
     );
   }

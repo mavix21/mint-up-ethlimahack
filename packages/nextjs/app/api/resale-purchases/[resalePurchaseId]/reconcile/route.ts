@@ -9,13 +9,13 @@ type Context = { params: Promise<{ resalePurchaseId: string }> };
 export async function POST(_request: Request, { params }: Context) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to finish this purchase." },
+      { message: "Inicia sesión para finalizar esta compra." },
       { status: 401 },
     );
   const { resalePurchaseId } = await params;
   if (!resalePurchaseId || resalePurchaseId.length > 200)
     return Response.json(
-      { message: "Invalid purchase reference." },
+      { message: "Referencia de compra no válida." },
       { status: 400 },
     );
 
@@ -30,13 +30,13 @@ export async function POST(_request: Request, { params }: Context) {
         {
           code: "listing_unavailable",
           message:
-            "This Pass resale is no longer available. Another buyer may have completed it first. You won't be charged.",
+            "Esta reventa de Event Pass ya no está disponible. Es posible que otro comprador la haya completado primero. No se te cobrará.",
         },
         { status: 409 },
       );
     }
     return Response.json(
-      { message: "We couldn't verify the purchase yet. Try again." },
+      { message: "Aún no pudimos verificar la compra. Inténtalo de nuevo." },
       { status: 409 },
     );
   }

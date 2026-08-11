@@ -24,13 +24,14 @@ function publicKeyHex(publicKey: string) {
   );
   const point = bytes.slice(-65);
   if (point.length !== 65 || point[0] !== 4)
-    throw new Error("The authenticator did not return a P-256 public key.");
+    throw new Error("El autenticador no devolvió una clave pública P-256.");
   return `0x${Array.from(point, b => b.toString(16).padStart(2, "0")).join("")}` as const;
 }
 
 async function json(response: Response) {
   const body = await response.json();
-  if (!response.ok) throw new Error(body.message ?? "Passkey setup failed.");
+  if (!response.ok)
+    throw new Error(body.message ?? "Falló la configuración de la passkey.");
   return body;
 }
 
@@ -58,7 +59,7 @@ export function InlineSecureStep({ onSuccess }: Props) {
                 !window.PublicKeyCredential
               ) {
                 throw Object.assign(
-                  new Error("Passkeys are not supported in this browser."),
+                  new Error("Este navegador no admite passkeys."),
                   { name: "NotSupportedError" },
                 );
               }
@@ -69,7 +70,7 @@ export function InlineSecureStep({ onSuccess }: Props) {
                 begun.registrationOptions ??
                 begun) as PublicKeyCredentialCreationOptionsJSON;
               if (!options.rp?.id)
-                throw new Error("The passkey RP ID is missing.");
+                throw new Error("Falta el RP ID de la passkey.");
               const credential = await startRegistration({
                 optionsJSON: options,
               });
@@ -79,7 +80,7 @@ export function InlineSecureStep({ onSuccess }: Props) {
               ) {
                 throw Object.assign(
                   new Error(
-                    "This authenticator did not create a compatible ES256 passkey.",
+                    "Este autenticador no creó una passkey ES256 compatible.",
                   ),
                   { name: "NotSupportedError" },
                 );
@@ -108,7 +109,7 @@ export function InlineSecureStep({ onSuccess }: Props) {
                 browserAccount.address.toLowerCase()
               ) {
                 throw new Error(
-                  "Server and browser account addresses do not match.",
+                  "Las direcciones de cuenta del servidor y del navegador no coinciden.",
                 );
               }
               const { account } = (await json(
@@ -153,14 +154,16 @@ export function InlineSecureStep({ onSuccess }: Props) {
   }
 
   if (isChecking) {
-    return <p className="text-sm text-muted-foreground">Checking Face ID…</p>;
+    return (
+      <p className="text-sm text-muted-foreground">Verificando Face ID…</p>
+    );
   }
 
   return (
     <div>
-      <h2 className="font-heading text-xl font-bold">Secure your passes</h2>
+      <h2 className="font-heading text-xl font-bold">Protege tus Event Pass</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Use Face ID to keep your passes safe
+        Usa Face ID para mantener seguros tus Event Pass
       </p>
 
       {!showAvailabilityBlock && !isChecking && (
@@ -171,10 +174,10 @@ export function InlineSecureStep({ onSuccess }: Props) {
           className="mt-5 w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
         >
           {snapshot.matches("creating")
-            ? "Waiting for your device…"
+            ? "Esperando a tu dispositivo…"
             : isSuccess
-              ? "Your passes are secured"
-              : "Continue with Face ID"}
+              ? "Tus Event Pass están protegidos"
+              : "Continuar con Face ID"}
         </button>
       )}
 
@@ -183,30 +186,30 @@ export function InlineSecureStep({ onSuccess }: Props) {
           role="alert"
           className="mt-3 flex gap-2 rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive"
         >
-          <span>Not completed — try again</span>
+          <span>No se completó. Inténtalo de nuevo</span>
           <button
             type="button"
             onClick={() => send({ type: "RETRY" })}
             className="ml-auto font-bold underline underline-offset-2"
           >
-            Retry
+            Reintentar
           </button>
         </div>
       )}
 
       <p className="mt-4 text-xs text-muted-foreground">
-        No seed phrase. No extension.
+        Sin frase semilla. Sin extension.
       </p>
 
       {isSuccess && (
         <p className="mt-3 text-sm font-semibold text-emerald-700">
-          Your passes are secured
+          Tus Event Pass están protegidos
         </p>
       )}
 
       {/* hidden guard for tests */}
       <span className="hidden" data-testid="secure-step">
-        Secure your passes
+        Protege tus Event Pass
       </span>
     </div>
   );

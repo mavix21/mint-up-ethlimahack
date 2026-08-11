@@ -39,7 +39,7 @@ describe("idempotency and duplicate submit", () => {
       wait: wait as never,
       maxAttempts: 2,
     });
-    await expect(promise).rejects.toThrow("timed out");
+    await expect(promise).rejects.toThrow("agotó el tiempo de espera");
     expect(fetchStatus).toHaveBeenCalledTimes(2);
   });
 });
@@ -90,7 +90,7 @@ describe("bounded polling/backoff and unknown", () => {
         wait: wait as never,
         maxAttempts: 2,
       }),
-    ).rejects.toThrow("timed out");
+    ).rejects.toThrow("agotó el tiempo de espera");
   });
 });
 

@@ -21,11 +21,11 @@ export function CopyAddressButton({ address }: { address: string }) {
     <div className="flex flex-col items-start gap-2 sm:items-end">
       <Button type="button" variant="outline" onClick={copyAddress}>
         {state === "copied" ? <Check /> : <Copy />}
-        {state === "copied" ? "Copied" : "Copy address"}
+        {state === "copied" ? "Copiada" : "Copiar dirección"}
       </Button>
       {state === "failed" ? (
         <p className="text-xs text-destructive" role="alert">
-          Copy failed. Select the address and copy it manually.
+          No se pudo copiar. Selecciona la dirección y cópiala manualmente.
         </p>
       ) : null}
     </div>

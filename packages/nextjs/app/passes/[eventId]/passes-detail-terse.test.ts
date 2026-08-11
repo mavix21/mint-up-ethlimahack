@@ -34,7 +34,7 @@ describe("passes detail terse view", () => {
       "../../../components/passes/inline-purchase-gate.tsx",
     );
     const gateSource = readFileSync(gatePath, "utf8");
-    expect(pageSource + gateSource).toContain("Get Pass");
+    expect(pageSource + gateSource).toContain("Obtener Event Pass");
     // Jargon banned from buyer view — page should not reference these in primary copy
     const banned = [
       "Smart account",
@@ -57,10 +57,10 @@ describe("passes detail terse view", () => {
     );
     const disclosureSource = readFileSync(disclosurePath, "utf8");
     expect(disclosureSource).toContain("ProtectedPaymentExplanation");
-    expect(disclosureSource).toContain("Sales window");
-    expect(disclosureSource).toContain("Remaining");
-    expect(disclosureSource).toContain("Event status");
-    expect(disclosureSource).toContain("Availability");
+    expect(disclosureSource).toContain("Periodo de venta");
+    expect(disclosureSource).toContain("Disponibles");
+    expect(disclosureSource).toContain("Estado del evento");
+    expect(disclosureSource).toContain("Disponibilidad");
     expect(disclosureSource).not.toContain("revenueRecipient");
     expect(disclosureSource).not.toContain("Paid directly to organizer");
     expect(disclosureSource).not.toContain('"use client"');

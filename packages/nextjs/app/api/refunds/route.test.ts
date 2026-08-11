@@ -73,7 +73,7 @@ describe("prepare Event Pass refund API", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       code: "refund_unavailable",
-      message: "This refund is no longer available.",
+      message: "Este reembolso ya no está disponible.",
     });
   });
 });

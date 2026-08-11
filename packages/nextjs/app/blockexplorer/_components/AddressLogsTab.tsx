@@ -16,7 +16,8 @@ export const AddressLogsTab = ({ address }: { address: Address }) => {
               <code>
                 {contractLogs.map((log, i) => (
                   <span className="block" key={i}>
-                    <strong>Log:</strong> {JSON.stringify(log, replacer, 2)}
+                    <strong>Registro:</strong>{" "}
+                    {JSON.stringify(log, replacer, 2)}
                   </span>
                 ))}
               </code>

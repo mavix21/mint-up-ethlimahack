@@ -22,7 +22,7 @@ export function SignOutButton() {
 
   return (
     <Button variant="outline" disabled={pending} onClick={signOut}>
-      {pending ? "Signing out..." : "Sign out"}
+      {pending ? "Cerrando sesión..." : "Cerrar sesión"}
     </Button>
   );
 }

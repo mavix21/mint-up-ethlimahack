@@ -51,7 +51,7 @@ export function DebugContracts() {
   return (
     <div className="flex flex-col gap-y-6 lg:gap-y-8 py-8 lg:py-12 justify-center items-center">
       {contractNames.length === 0 ? (
-        <p className="text-3xl mt-14">No contracts found!</p>
+        <p className="text-3xl mt-14">¡No se encontraron contratos!</p>
       ) : (
         <>
           {targetNetwork.id === arbitrumNitro.id && eventPass && mockUsdc ? (
@@ -78,9 +78,9 @@ export function DebugContracts() {
                     ?.external && (
                     <Tooltip>
                       <TooltipTrigger render={<span />}>
-                        <BarsArrowUpIcon aria-label="External contract" />
+                        <BarsArrowUpIcon aria-label="Contrato externo" />
                       </TooltipTrigger>
-                      <TooltipContent>External contract</TooltipContent>
+                      <TooltipContent>Contrato externo</TooltipContent>
                     </Tooltip>
                   )}
                 </Button>

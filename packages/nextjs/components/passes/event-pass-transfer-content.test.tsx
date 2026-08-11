@@ -37,7 +37,7 @@ describe("Event Pass transfer rendered states", () => {
     };
     const eligible = renderToStaticMarkup(
       isEventPassTransferEligible(pass, true) ? (
-        <button>Transfer</button>
+        <button>Transferir</button>
       ) : null,
     );
     const ineligible = renderToStaticMarkup(
@@ -45,12 +45,12 @@ describe("Event Pass transfer rendered states", () => {
         { ...pass, cancellation: { status: "cancelled" } },
         true,
       ) ? (
-        <button>Transfer</button>
+        <button>Transferir</button>
       ) : null,
     );
 
-    expect(eligible).toContain("Transfer");
-    expect(ineligible).not.toContain("Transfer");
+    expect(eligible).toContain("Transferir");
+    expect(ineligible).not.toContain("Transferir");
   });
 
   it("reviews the Event and safe recipient with one biometric confirmation", () => {
@@ -66,8 +66,8 @@ describe("Event Pass transfer rendered states", () => {
     expect(html).toContain("ETH Lima 2026");
     expect(html).toContain("Gianna");
     expect(html).toContain("gianna@example.com");
-    expect(html).toContain("Free transfer");
-    expect(html).toContain("Confirm with Face ID or fingerprint");
+    expect(html).toContain("Transferencia gratuita");
+    expect(html).toContain("Confirmar con Face ID o huella digital");
     expectBuyerSafe(html);
   });
 
@@ -76,8 +76,8 @@ describe("Event Pass transfer rendered states", () => {
       <EventPassTransferContent state="pending" eventName="ETH Lima 2026" />,
     );
 
-    expect(html).toContain("Confirming your transfer");
-    expect(html).not.toContain("has been transferred");
+    expect(html).toContain("Confirmando tu transferencia");
+    expect(html).not.toContain("se transfirió");
     expectBuyerSafe(html);
   });
 
@@ -90,7 +90,7 @@ describe("Event Pass transfer rendered states", () => {
       />,
     );
 
-    expect(html).toContain("has been transferred to Gianna");
+    expect(html).toContain("se transfirió a Gianna");
     expectBuyerSafe(html);
   });
 
@@ -104,9 +104,9 @@ describe("Event Pass transfer rendered states", () => {
     );
 
     expect(html).toContain(
-      "Ask them to secure their passes, then check the email and try again.",
+      "Pídele que proteja sus pases, luego comprueba el correo e inténtalo de nuevo.",
     );
-    expect(html).toContain("Retry");
+    expect(html).toContain("Reintentar");
     expectBuyerSafe(html);
   });
 
@@ -120,9 +120,9 @@ describe("Event Pass transfer rendered states", () => {
     );
 
     expect(html).toContain(
-      "We couldn&#x27;t complete the transfer. Try again.",
+      "No pudimos completar la transferencia. Inténtalo de nuevo.",
     );
-    expect(html).toContain("Retry");
+    expect(html).toContain("Reintentar");
     expectBuyerSafe(html);
   });
 });

@@ -23,13 +23,13 @@ function publicKeyHex(publicKey: string) {
   );
   const point = bytes.slice(-65);
   if (point.length !== 65 || point[0] !== 4)
-    throw new Error("The authenticator did not return a P-256 public key.");
+    throw new Error("El autenticador no devolvió una clave pública P-256.");
   return `0x${Array.from(point, b => b.toString(16).padStart(2, "0")).join("")}` as const;
 }
 
 async function json(response: Response) {
   const body = await response.json();
-  if (!response.ok) throw new Error(body.message ?? "Something went wrong.");
+  if (!response.ok) throw new Error(body.message ?? "Algo salió mal.");
   return body;
 }
 
@@ -52,7 +52,7 @@ export function WalletCreateButton() {
                 !window.PublicKeyCredential
               ) {
                 throw Object.assign(
-                  new Error("Passkeys are not supported in this browser."),
+                  new Error("Este navegador no admite passkeys."),
                   { name: "NotSupportedError" },
                 );
               }
@@ -63,7 +63,7 @@ export function WalletCreateButton() {
                 begun.registrationOptions ??
                 begun) as PublicKeyCredentialCreationOptionsJSON;
               if (!options.rp?.id)
-                throw new Error("The passkey RP ID is missing.");
+                throw new Error("Falta el RP ID de la passkey.");
               const credential = await startRegistration({
                 optionsJSON: options,
               });
@@ -73,7 +73,7 @@ export function WalletCreateButton() {
               ) {
                 throw Object.assign(
                   new Error(
-                    "This authenticator did not create a compatible passkey.",
+                    "Este autenticador no creó una passkey compatible.",
                   ),
                   { name: "NotSupportedError" },
                 );
@@ -102,7 +102,7 @@ export function WalletCreateButton() {
                 browserAccount.address.toLowerCase()
               ) {
                 throw new Error(
-                  "Server and browser account addresses do not match.",
+                  "Las direcciones de cuenta del servidor y del navegador no coinciden.",
                 );
               }
               const { account } = (await json(
@@ -143,7 +143,7 @@ export function WalletCreateButton() {
         className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-4 text-[15px] font-bold text-primary-foreground opacity-60"
       >
         <Loader2 className="size-4 animate-spin" />
-        Checking your device…
+        Verificando tu dispositivo…
       </button>
     );
   }
@@ -151,16 +151,16 @@ export function WalletCreateButton() {
   if (isUnavailable && availability) {
     return (
       <div className="mx-auto max-w-sm rounded-2xl border bg-card p-4 text-center">
-        <p className="text-sm font-bold">Face ID not available here</p>
+        <p className="text-sm font-bold">Face ID no está disponible aquí</p>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">
-          Try a device with Face ID or fingerprint.
+          Prueba con un dispositivo que tenga Face ID o huella digital.
         </p>
         <button
           type="button"
           onClick={() => send({ type: "RETRY" })}
           className="mt-3 rounded-full border bg-background px-4 py-2 text-xs font-bold"
         >
-          Try again
+          Intentar de nuevo
         </button>
       </div>
     );
@@ -177,17 +177,17 @@ export function WalletCreateButton() {
         {snapshot.matches("creating") ? (
           <>
             <Loader2 className="size-4 animate-spin" />
-            Waiting for Face ID…
+            Esperando a Face ID…
           </>
         ) : isSuccess ? (
           <>
             <Fingerprint className="size-4" />
-            Secured
+            Protegido
           </>
         ) : (
           <>
             <Fingerprint className="size-4" />
-            Secure your event pass
+            Protege tu Event Pass
           </>
         )}
       </button>
@@ -202,12 +202,12 @@ export function WalletCreateButton() {
             onClick={() => send({ type: "RETRY" })}
             className="font-bold text-foreground underline underline-offset-4"
           >
-            Try again
+            Intentar de nuevo
           </button>
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Unlock with Face ID or fingerprint next time.
+          La próxima vez, desbloquéalo con Face ID o huella digital.
         </p>
       )}
     </div>

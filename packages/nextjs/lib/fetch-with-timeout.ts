@@ -1,4 +1,4 @@
-const REQUEST_TIMEOUT_MESSAGE = "Request timed out";
+const REQUEST_TIMEOUT_MESSAGE = "La solicitud agotó el tiempo de espera";
 
 export async function fetchWithTimeout(
   fetchFn: typeof fetch,

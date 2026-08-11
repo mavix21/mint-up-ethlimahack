@@ -25,38 +25,46 @@ describe("Mint Up Event Pass consumer contract", () => {
   });
 
   it.each([
-    ["unpublished", { publication: "unpublished" }, "Event is not published"],
+    [
+      "unpublished",
+      { publication: "unpublished" },
+      "El evento no está publicado",
+    ],
     [
       "inactive configuration",
       { configuration: "inactive" },
-      "Pass sales are not active",
+      "La venta de Event Pass no está activa",
     ],
     [
       "disabled contract sales",
       { contractSales: "disabled" },
-      "Onchain sales are disabled",
+      "Las ventas onchain están desactivadas",
     ],
-    ["unsupported asset", { paymentAsset: "USDT" }, "Only USDC is supported"],
+    ["unsupported asset", { paymentAsset: "USDT" }, "Solo se admite USDC"],
     [
       "multiple ticket types",
       { onchainTicketTypeCount: 2 },
-      "Exactly one Event Pass offer is required",
+      "Se requiere exactamente una oferta de Event Pass",
     ],
-    ["phased price", { pricePhaseCount: 1 }, "Price phases are not supported"],
+    ["phased price", { pricePhaseCount: 1 }, "No se admiten fases de precios"],
     [
       "flexible price",
       { pricing: "flexible" },
-      "Flexible pricing is not supported",
+      "No se admiten precios flexibles",
     ],
     [
       "approval",
       { approval: "required" },
-      "Approval-based tickets are not supported",
+      "No se admiten entradas que requieren aprobación",
     ],
-    ["before the window", { saleStartsAt: NOW + 1 }, "Sales have not started"],
-    ["at the exclusive end", { saleEndsAt: NOW }, "Sales have ended"],
-    ["exhausted", { remaining: 0 }, "This Event Pass is sold out"],
-    ["cancelled", { lifecycle: "cancelled" }, "This event was cancelled"],
+    [
+      "before the window",
+      { saleStartsAt: NOW + 1 },
+      "La venta aún no ha comenzado",
+    ],
+    ["at the exclusive end", { saleEndsAt: NOW }, "La venta ha finalizado"],
+    ["exhausted", { remaining: 0 }, "Este Event Pass está agotado"],
+    ["cancelled", { lifecycle: "cancelled" }, "Este evento fue cancelado"],
   ])("marks %s offers unavailable", (_name, patch, reason) => {
     const offer = parseOffer(offerPayload(patch), NOW);
     expect(offer.availability).toEqual({ kind: "unavailable", reason });
@@ -77,7 +85,7 @@ describe("Mint Up Event Pass consumer contract", () => {
 
     expect(offer.availability).toEqual({
       kind: "unavailable",
-      reason: "Sales have ended",
+      reason: "La venta ha finalizado",
     });
   });
 

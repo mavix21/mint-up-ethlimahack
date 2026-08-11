@@ -55,7 +55,7 @@ async function responseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new StatusRequestError(
       response.status,
-      body.message ?? "The listing could not be completed.",
+      body.message ?? "No se pudo completar el anuncio.",
     );
   }
   return body as T;
@@ -210,7 +210,7 @@ export function EventPassResale({
     if (result.status !== "included") {
       setSubmittedHash(undefined);
       setRetryStep("review");
-      throw new Error("Listing inclusion was not verified");
+      throw new Error("No se verificó la inclusión del anuncio");
     }
     setRetryStep("reconcile");
     await reconcile(resaleId, signal);
@@ -317,7 +317,7 @@ export function EventPassResale({
           onClick={openForm}
           className="min-h-10 rounded-full border bg-background px-4 text-sm font-bold hover:bg-muted"
         >
-          Put up for resale
+          Poner en reventa
         </button>
       );
     }
@@ -325,7 +325,7 @@ export function EventPassResale({
       <div className="space-y-3 rounded-xl bg-muted/60 p-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Pass resale
+            Reventa
           </p>
           <p className="mt-1 font-bold">{listing.price.amount} USDC</p>
         </div>
@@ -336,7 +336,7 @@ export function EventPassResale({
             disabled={preparingWithdrawal}
             className="min-h-10 flex-1 rounded-full border bg-background px-4 text-sm font-bold hover:bg-muted disabled:opacity-50"
           >
-            Update listing
+            Actualizar anuncio
           </button>
           <button
             type="button"
@@ -344,7 +344,7 @@ export function EventPassResale({
             disabled={preparingWithdrawal}
             className="min-h-10 flex-1 rounded-full border bg-background px-4 text-sm font-bold hover:bg-muted disabled:opacity-50"
           >
-            {preparingWithdrawal ? "Preparing..." : "Remove listing"}
+            {preparingWithdrawal ? "Preparando..." : "Eliminar anuncio"}
           </button>
         </div>
       </div>

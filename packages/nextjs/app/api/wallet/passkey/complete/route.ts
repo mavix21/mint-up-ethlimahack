@@ -24,7 +24,7 @@ const registration = z.object({
 export async function POST(request: Request) {
   if (!(await isAuthenticated())) {
     return Response.json(
-      { message: "Sign in to secure Event Passes." },
+      { message: "Inicia sesión para proteger tus Event Passes." },
       { status: 401 },
     );
   }
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   const parsed = registration.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return Response.json(
-      { message: "Invalid passkey response." },
+      { message: "Respuesta de passkey no válida." },
       { status: 400 },
     );
   }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     );
   } catch {
     return Response.json(
-      { message: "Passkey registration could not be verified." },
+      { message: "No se pudo verificar el registro de la passkey." },
       { status: 409 },
     );
   }

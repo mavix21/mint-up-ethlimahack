@@ -4,7 +4,7 @@ import { getWalletPasskeyAccount } from "../../../../lib/wallet-passkey-api";
 export async function GET() {
   if (!(await isAuthenticated())) {
     return Response.json(
-      { message: "Sign in to view your account." },
+      { message: "Inicia sesión para ver tu cuenta." },
       { status: 401 },
     );
   }
@@ -13,6 +13,9 @@ export async function GET() {
     const account = await fetchAuthQuery(getWalletPasskeyAccount, {});
     return Response.json({ account });
   } catch {
-    return Response.json({ message: "Account unavailable." }, { status: 503 });
+    return Response.json(
+      { message: "La cuenta no está disponible." },
+      { status: 503 },
+    );
   }
 }

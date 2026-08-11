@@ -73,7 +73,7 @@ import {
 } from "./minti-chat-state";
 
 const THREAD_STORAGE_PREFIX = "mint-up:minti-thread:";
-const threadDateFormatter = new Intl.DateTimeFormat(undefined, {
+const threadDateFormatter = new Intl.DateTimeFormat("es-PE", {
   month: "short",
   day: "numeric",
   hour: "numeric",
@@ -183,17 +183,23 @@ function getAssistantActivity(message: MintiMessage) {
     part => part.type === "tool-searchEvents",
   );
 
-  if (!searchPart) return { label: "Thinking...", searching: false };
+  if (!searchPart) return { label: "Pensando...", searching: false };
 
   switch (searchPart.state) {
     case "input-streaming":
-      return { label: "Preparing an event search...", searching: true };
+      return {
+        label: "Preparando una búsqueda de eventos...",
+        searching: true,
+      };
     case "input-available":
-      return { label: "Searching the current event index...", searching: true };
+      return {
+        label: "Buscando en el índice actual de eventos...",
+        searching: true,
+      };
     case "output-available":
-      return { label: "Reviewing the matching events...", searching: true };
+      return { label: "Revisando los eventos encontrados...", searching: true };
     case "output-error":
-      return { label: "Handling the search error...", searching: false };
+      return { label: "Procesando el error de búsqueda...", searching: false };
   }
 }
 
@@ -205,7 +211,7 @@ function SearchEventsPart({
   if (part.state === "output-error") {
     return (
       <p role="status" className="mx-auto max-w-3xl text-sm text-destructive">
-        Event search failed. Try rephrasing your request.
+        La búsqueda de eventos falló. Intenta reformular tu solicitud.
       </p>
     );
   }
@@ -222,13 +228,13 @@ function SearchEventsPart({
         </MarkerIcon>
         <MarkerContent>
           {events.length === 0
-            ? "No matching events found"
-            : `${events.length} event${events.length === 1 ? "" : "s"} found`}
+            ? "No se encontraron eventos"
+            : `${events.length} ${events.length === 1 ? "evento encontrado" : "eventos encontrados"}`}
         </MarkerContent>
       </Marker>
       {unresolvedFilters.length > 0 ? (
         <p className="mb-4 text-sm text-muted-foreground">
-          I could not resolve: {unresolvedFilters.join(", ")}.
+          No pude interpretar: {unresolvedFilters.join(", ")}.
         </p>
       ) : null}
       {events.length > 0 ? (
@@ -257,7 +263,7 @@ function ChatMessage({ message }: { message: MintiMessage }) {
                 <span>Minti</span>
                 <span className="size-1 rounded-full bg-primary" />
                 <span className="font-normal text-muted-foreground">
-                  Event assistant
+                  Asistente de eventos
                 </span>
               </MessageHeader>
             )}
@@ -289,7 +295,7 @@ function ChatMessage({ message }: { message: MintiMessage }) {
             {!isUser && message.status === "success" ? (
               <MessageFooter className="mt-0.5 gap-1.5 px-0">
                 <CheckIcon className="size-3" />
-                Response complete
+                Respuesta completada
               </MessageFooter>
             ) : null}
           </MessageContent>
@@ -333,10 +339,10 @@ function PendingAssistantMessage({ submissionId }: { submissionId: string }) {
             <span>Minti</span>
             <span className="size-1 rounded-full bg-primary" />
             <span className="font-normal text-muted-foreground">
-              Event assistant
+              Asistente de eventos
             </span>
           </MessageHeader>
-          <AssistantActivity label="Thinking..." />
+          <AssistantActivity label="Pensando..." />
         </MessageContent>
       </Message>
     </MessageScrollerItem>
@@ -437,7 +443,7 @@ function Conversation({
                   size="sm"
                   onClick={() => loadMore(30)}
                 >
-                  Load earlier messages
+                  Cargar mensajes anteriores
                 </Button>
               </MessageScrollerItem>
             ) : null}
@@ -521,9 +527,9 @@ function LoginDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Sign in to ask Minti</DialogTitle>
+          <DialogTitle>Inicia sesión para preguntarle a Minti</DialogTitle>
           <DialogDescription>
-            Your message is ready. Sign in to start the conversation.
+            Tu mensaje está listo. Inicia sesión para comenzar la conversación.
           </DialogDescription>
         </DialogHeader>
         <GoogleSignInButton callbackUrl="/chat" />
@@ -591,7 +597,7 @@ function Composer({
     } catch {
       onSubmissionError(submission.id);
       setError(
-        "Minti could not complete that response. Check the conversation before retrying.",
+        "Minti no pudo completar esa respuesta. Revisa la conversación antes de volver a intentarlo.",
       );
     } finally {
       onSendingChange(false);
@@ -603,13 +609,13 @@ function Composer({
       <div className="relative z-10 border-t bg-background/85 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-6">
         <form
           className="mx-auto max-w-3xl"
-          aria-label="Ask Minti"
+          aria-label="Pregúntale a Minti"
           onSubmit={submit}
         >
           <InputGroup className="min-h-14 rounded-2xl border-border bg-background shadow-[0_1px_2px_oklch(0_0_0/0.05),0_8px_30px_oklch(0_0_0/0.06)] has-[textarea]:rounded-2xl">
             <InputGroupTextarea
-              aria-label="Message Minti"
-              placeholder="Ask about events, people, places, or your budget..."
+              aria-label="Mensaje para Minti"
+              placeholder="Pregunta por eventos, personas, lugares o tu presupuesto..."
               className="max-h-32 min-h-12 py-3.5 text-sm"
               rows={1}
               value={prompt}
@@ -634,7 +640,7 @@ function Composer({
                 type="submit"
                 size="icon-sm"
                 variant="default"
-                aria-label="Send message"
+                aria-label="Enviar mensaje"
                 disabled={!prompt.trim() || isSending}
                 className="bg-foreground text-background hover:bg-foreground/85"
               >
@@ -655,7 +661,8 @@ function Composer({
             </p>
           ) : (
             <p className="mt-2 text-center text-[10px] text-muted-foreground">
-              Minti can make mistakes. Confirm event details on the event page.
+              Minti puede cometer errores. Confirma los detalles en la página
+              del evento.
             </p>
           )}
         </form>
@@ -685,7 +692,7 @@ class ThreadErrorBoundary extends Component<
       >
         <div>
           <p className="font-medium">
-            This conversation is no longer available.
+            Esta conversación ya no está disponible.
           </p>
           <Button
             type="button"
@@ -694,7 +701,7 @@ class ThreadErrorBoundary extends Component<
             className="mt-4"
             onClick={this.props.onReset}
           >
-            Start a new conversation
+            Iniciar una conversación nueva
           </Button>
         </div>
       </div>
@@ -759,15 +766,15 @@ function ConversationNavigation({
           onClick={onNewChat}
         >
           <PlusIcon />
-          New chat
+          Nueva conversación
         </Button>
       </div>
       <Separator />
       <div className="px-4 pt-4 pb-2">
-        <p className="text-xs font-medium text-muted-foreground">Recents</p>
+        <p className="text-xs font-medium text-muted-foreground">Recientes</p>
       </div>
       <ScrollArea className="min-h-0 flex-1">
-        <nav aria-label="Conversations" className="space-y-1 px-2 pb-3">
+        <nav aria-label="Conversaciones" className="space-y-1 px-2 pb-3">
           {threadsLoading ? (
             <>
               <Skeleton className="h-9 w-full rounded-md" />
@@ -776,11 +783,11 @@ function ConversationNavigation({
             </>
           ) : !signedIn ? (
             <p className="px-2 py-3 text-xs leading-5 text-muted-foreground">
-              Sign in to see your conversations.
+              Inicia sesión para ver tus conversaciones.
             </p>
           ) : threads.length === 0 ? (
             <p className="px-2 py-3 text-xs leading-5 text-muted-foreground">
-              Your conversations will appear here.
+              Tus conversaciones aparecerán aquí.
             </p>
           ) : (
             threads.map(thread => {
@@ -897,7 +904,7 @@ export function MintiChat({
         />
       </aside>
       <section
-        aria-label="Event discovery conversation"
+        aria-label="Conversación para descubrir eventos"
         className="flex min-h-0 min-w-0 flex-col"
       >
         <div className="relative shrink-0">
@@ -910,7 +917,7 @@ export function MintiChat({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Open conversations"
+                    aria-label="Abrir conversaciones"
                   />
                 }
               >
@@ -918,7 +925,7 @@ export function MintiChat({
               </SheetTrigger>
               <SheetContent side="left" className="w-[min(20rem,85vw)] p-0">
                 <SheetHeader className="border-b px-4 py-3">
-                  <SheetTitle>Conversations</SheetTitle>
+                  <SheetTitle>Conversaciones</SheetTitle>
                 </SheetHeader>
                 <ConversationNavigation
                   threads={threadList}

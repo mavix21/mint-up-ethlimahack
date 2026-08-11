@@ -40,7 +40,7 @@ export const Balance = ({ address, className = "" }: BalanceProps) => {
   if (isError) {
     return (
       <Alert variant="destructive">
-        <AlertTitle>Balance unavailable</AlertTitle>
+        <AlertTitle>Saldo no disponible</AlertTitle>
       </Alert>
     );
   }

@@ -54,10 +54,10 @@ describe("Event Pass refund rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Refund available");
+    expect(html).toContain("Reembolso disponible");
     expect(html).toContain("25 USDC");
-    expect(html).toContain("Receive refund");
-    expect(html).toContain("Face ID or fingerprint");
+    expect(html).toContain("Recibir reembolso");
+    expect(html).toContain("Face ID o huella digital");
     expectBuyerSafe(html);
   });
 
@@ -70,8 +70,8 @@ describe("Event Pass refund rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Confirming your refund");
-    expect(html).not.toContain("Refund received");
+    expect(html).toContain("Confirmando tu reembolso");
+    expect(html).not.toContain("Reembolso recibido");
     expectBuyerSafe(html);
   });
 
@@ -84,8 +84,8 @@ describe("Event Pass refund rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Refund received");
-    expect(html).not.toContain("Receive refund");
+    expect(html).toContain("Reembolso recibido");
+    expect(html).not.toContain("Recibir reembolso");
     expectBuyerSafe(html);
   });
 
@@ -121,8 +121,8 @@ describe("Event Pass refund rendered states", () => {
 
     expect(html).toContain("25 USDC");
     expect(html).not.toContain(completedResale.displayPrice);
-    expect(html).toContain("Receive refund");
-    expect(html).toContain("original protected payment");
+    expect(html).toContain("Recibir reembolso");
+    expect(html).toContain("pago protegido");
     expectBuyerSafe(html);
   });
 
@@ -136,7 +136,7 @@ describe("Event Pass refund rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Receive refund");
+    expect(html).toContain("Recibir reembolso");
     expectBuyerSafe(html);
   });
 
@@ -149,8 +149,10 @@ describe("Event Pass refund rendered states", () => {
       />,
     );
 
-    expect(html).toContain("We couldn&#x27;t finish your refund. Try again.");
-    expect(html).toContain("Retry");
+    expect(html).toContain(
+      "No pudimos completar tu reembolso. Inténtalo de nuevo.",
+    );
+    expect(html).toContain("Reintentar");
     expectBuyerSafe(html);
   });
 });

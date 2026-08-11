@@ -48,11 +48,11 @@ describe("Event Pass resale rendered states", () => {
     };
     const html = renderToStaticMarkup(
       isEventPassResaleEligible(pass, true, 100) ? (
-        <button>Put up for resale</button>
+        <button>Poner en reventa</button>
       ) : null,
     );
 
-    expect(html).not.toContain("Put up for resale");
+    expect(html).not.toContain("Poner en reventa");
   });
 
   it("renders resale controls before the event for the current eligible holder", () => {
@@ -65,11 +65,11 @@ describe("Event Pass resale rendered states", () => {
     };
     const html = renderToStaticMarkup(
       isEventPassResaleEligible(pass, true, 100) ? (
-        <button>Put up for resale</button>
+        <button>Poner en reventa</button>
       ) : null,
     );
 
-    expect(html).toContain("Put up for resale");
+    expect(html).toContain("Poner en reventa");
   });
 
   it("does not render resale controls while resale actions are paused", () => {
@@ -82,11 +82,11 @@ describe("Event Pass resale rendered states", () => {
     };
     const html = renderToStaticMarkup(
       isEventPassResaleEligible(pass, true, 100, false) ? (
-        <button>Put up for resale</button>
+        <button>Poner en reventa</button>
       ) : null,
     );
 
-    expect(html).not.toContain("Put up for resale");
+    expect(html).not.toContain("Poner en reventa");
   });
 
   it("renders a price-only form with the protected payment cap", () => {
@@ -100,7 +100,7 @@ describe("Event Pass resale rendered states", () => {
 
     expect(html).not.toContain("Buyer email");
     expect(html).not.toContain('type="email"');
-    expect(html).toContain("Price in USDC");
+    expect(html).toContain("Precio en USDC");
     expect(html).toContain("30 USDC");
     expect(html).toContain('inputMode="decimal"');
     expectBuyerSafe(html);
@@ -121,14 +121,14 @@ describe("Event Pass resale rendered states", () => {
       );
 
       expect(html).toContain(
-        kind === "replace" ? "Update listing" : "Create listing",
+        kind === "replace" ? "Actualizar anuncio" : "Crear anuncio",
       );
       expect(html).toContain("25.50 USDC");
-      expect(html).toContain("9% marketplace fee");
+      expect(html).toContain("Comisión del 9% de Marketplace");
       expect(html).toContain("2.295 USDC");
-      expect(html).toContain("You receive (91%)");
+      expect(html).toContain("Recibes (91%)");
       expect(html).toContain("23.205 USDC");
-      expect(html).toContain("Confirm with Face ID or fingerprint");
+      expect(html).toContain("Confirmar con Face ID o huella digital");
       expectBuyerSafe(html);
     },
   );
@@ -143,9 +143,9 @@ describe("Event Pass resale rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Remove listing");
-    expect(html).toContain("You keep your Event Pass");
-    expect(html).toContain("No USDC moves");
+    expect(html).toContain("Eliminar anuncio");
+    expect(html).toContain("Conservas tu Event Pass");
+    expect(html).toContain("No se transfieren USDC");
     expectBuyerSafe(html);
   });
 
@@ -166,10 +166,10 @@ describe("Event Pass resale rendered states", () => {
       />,
     );
 
-    expect(pending).toContain("Confirming your listing");
+    expect(pending).toContain("Confirmando tu anuncio");
     expect(pending).not.toContain("has been replaced");
-    expect(failure).toContain("Try again");
-    expect(failure).toContain("Retry");
+    expect(failure).toContain("Inténtalo de nuevo");
+    expect(failure).toContain("Reintentar");
     expectBuyerSafe(pending + failure);
   });
 
@@ -184,9 +184,9 @@ describe("Event Pass resale rendered states", () => {
     );
 
     expect(html).toContain(
-      "Enter a positive USDC price with up to 6 decimals that does not exceed your protected payment.",
+      "Ingresa un precio positivo en USDC con hasta 6 decimales que no supere tu pago protegido.",
     );
-    expect(html).toContain("Retry");
+    expect(html).toContain("Reintentar");
     expectBuyerSafe(html);
   });
 
@@ -199,9 +199,9 @@ describe("Event Pass resale rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Listing unavailable");
-    expect(html).not.toContain("Update listing");
-    expect(html).not.toContain("Remove listing");
+    expect(html).toContain("Anuncio no disponible");
+    expect(html).not.toContain("Actualizar anuncio");
+    expect(html).not.toContain("Eliminar anuncio");
     expectBuyerSafe(html);
   });
 });

@@ -46,13 +46,13 @@ async function purchaseIdFrom(context: Context) {
 export async function GET(_request: Request, context: Context) {
   if (!(await isAuthenticated())) {
     return Response.json(
-      { message: "Authentication required." },
+      { message: "Autenticación requerida." },
       { status: 401 },
     );
   }
   const parsed = await purchaseIdFrom(context);
   if (!parsed.success) {
-    return Response.json({ message: "Invalid purchase." }, { status: 400 });
+    return Response.json({ message: "Compra no válida." }, { status: 400 });
   }
   try {
     const status = await fetchAuthQuery(getPurchaseStatus, {
@@ -60,14 +60,14 @@ export async function GET(_request: Request, context: Context) {
     });
     return Response.json(purchaseStatusSchema.parse(status));
   } catch {
-    return Response.json({ message: "Purchase not found." }, { status: 404 });
+    return Response.json({ message: "Compra no encontrada." }, { status: 404 });
   }
 }
 
 export async function POST(request: Request, context: Context) {
   if (!(await isAuthenticated())) {
     return Response.json(
-      { message: "Authentication required." },
+      { message: "Autenticación requerida." },
       { status: 401 },
     );
   }
@@ -80,7 +80,10 @@ export async function POST(request: Request, context: Context) {
   }
   const body = submission.safeParse(value);
   if (!purchaseId.success || !body.success) {
-    return Response.json({ message: "Invalid transaction." }, { status: 400 });
+    return Response.json(
+      { message: "Transacción no válida." },
+      { status: 400 },
+    );
   }
   try {
     await fetchAuthMutation(submitPurchase, {
@@ -90,7 +93,7 @@ export async function POST(request: Request, context: Context) {
     return Response.json({ accepted: true });
   } catch {
     return Response.json(
-      { message: "The transaction could not be synchronized." },
+      { message: "No se pudo sincronizar la transacción." },
       { status: 409 },
     );
   }

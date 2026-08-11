@@ -49,7 +49,7 @@ describe("user operation status polling", () => {
         maxAttempts: 2,
       }),
     ).rejects.toThrow(
-      "Status polling timed out. The operation hash remains available below.",
+      "La consulta del estado agotó el tiempo de espera. El hash de la operación sigue disponible abajo.",
     );
     expect(fetchStatus).toHaveBeenCalledTimes(2);
   });

@@ -36,7 +36,7 @@ export function EventPassTransferContent(props: TransferContentProps) {
       >
         <div>
           <label htmlFor={inputId} className="text-sm font-bold">
-            Recipient email
+            Correo electrónico del destinatario
           </label>
           <input
             id={inputId}
@@ -56,10 +56,10 @@ export function EventPassTransferContent(props: TransferContentProps) {
             className={outlineButtonClass}
             onClick={props.onCancel}
           >
-            Cancel
+            Cancelar
           </button>
           <button type="submit" className={buttonClass}>
-            Continue
+            Continuar
           </button>
         </div>
       </form>
@@ -72,13 +72,13 @@ export function EventPassTransferContent(props: TransferContentProps) {
         <dl className="grid gap-3 rounded-2xl bg-muted/60 p-4">
           <div>
             <dt className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Event
+              Evento
             </dt>
             <dd className="mt-1 font-semibold">{props.eventName}</dd>
           </div>
           <div>
             <dt className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Recipient
+              Destinatario
             </dt>
             <dd className="mt-1 font-semibold">{props.recipientName}</dd>
             <dd className="text-sm text-muted-foreground">
@@ -87,8 +87,7 @@ export function EventPassTransferContent(props: TransferContentProps) {
           </div>
         </dl>
         <p className="text-sm text-muted-foreground">
-          Free transfer. They will receive the Event Pass as soon as it is
-          confirmed.
+          Transferencia gratuita. Recibirá el Event Pass en cuanto se confirme.
         </p>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
@@ -96,14 +95,14 @@ export function EventPassTransferContent(props: TransferContentProps) {
             className={outlineButtonClass}
             onClick={props.onCancel}
           >
-            Cancel
+            Cancelar
           </button>
           <button
             type="button"
             className={buttonClass}
             onClick={props.onConfirm}
           >
-            Confirm with Face ID or fingerprint
+            Confirmar con Face ID o huella digital
           </button>
         </div>
       </div>
@@ -115,9 +114,9 @@ export function EventPassTransferContent(props: TransferContentProps) {
       <div role="status" className="flex items-center gap-3 py-3">
         <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
         <div>
-          <p className="font-bold">Confirming your transfer</p>
+          <p className="font-bold">Confirmando tu transferencia</p>
           <p className="text-sm text-muted-foreground">
-            Keep this window open until it is complete.
+            Mantén esta ventana abierta hasta que se complete.
           </p>
         </div>
       </div>
@@ -128,17 +127,17 @@ export function EventPassTransferContent(props: TransferContentProps) {
     return (
       <div className="space-y-4">
         <p className="font-bold">
-          {props.eventName} has been transferred to {props.recipientName}.
+          {props.eventName} se transfirió a {props.recipientName}.
         </p>
         <p className="text-sm text-muted-foreground">
-          The Event Pass is now in their My Passes.
+          El Event Pass ahora está en sus pases.
         </p>
         <button
           type="button"
           className={`${buttonClass} w-full`}
           onClick={props.onDone}
         >
-          Done
+          Listo
         </button>
       </div>
     );
@@ -154,14 +153,14 @@ export function EventPassTransferContent(props: TransferContentProps) {
         <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         {recipientFailure
           ? recipientUnavailableMessage
-          : "We couldn't complete the transfer. Try again."}
+          : "No pudimos completar la transferencia. Inténtalo de nuevo."}
       </p>
       <button
         type="button"
         className={outlineButtonClass}
         onClick={props.onRetry}
       >
-        Retry
+        Reintentar
       </button>
     </div>
   );

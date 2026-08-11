@@ -25,7 +25,9 @@ export function assertApprovalConfirmed({
   price: bigint;
 }) {
   if (receiptStatus !== "success" || cancelled || allowance < price) {
-    throw new Error("USDC approval failed. No Event Pass was purchased.");
+    throw new Error(
+      "La aprobación de USDC falló. No se compró ningún Event Pass.",
+    );
   }
 }
 
@@ -36,7 +38,7 @@ export function purchasedPassFromReceipt(
   buyerAddress: `0x${string}`,
 ) {
   if (receipt.status !== "success") {
-    throw new Error("The purchase transaction failed.");
+    throw new Error("La transacción de compra falló.");
   }
   const purchased = receipt.logs.flatMap(log => {
     if (log.address.toLowerCase() !== contractAddress.toLowerCase()) return [];
@@ -53,7 +55,7 @@ export function purchasedPassFromReceipt(
     }
   });
   if (purchased.length !== 1) {
-    throw new Error("The transaction did not issue exactly one Event Pass.");
+    throw new Error("La transacción no emitió exactamente un Event Pass.");
   }
   const [event] = purchased;
   if (
@@ -61,7 +63,7 @@ export function purchasedPassFromReceipt(
     event.buyer.toLowerCase() !== buyerAddress.toLowerCase()
   ) {
     throw new Error(
-      "The issued Event Pass does not belong to the selected wallet.",
+      "El Event Pass emitido no pertenece a la wallet seleccionada.",
     );
   }
   return {

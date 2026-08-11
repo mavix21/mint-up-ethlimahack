@@ -32,7 +32,7 @@ async function responseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new StatusRequestError(
       response.status,
-      body.message ?? "The refund could not be completed.",
+      body.message ?? "No se pudo completar el reembolso.",
     );
   }
   return body as T;
@@ -88,7 +88,7 @@ export function EventPassRefund({
     if (result.status !== "included") {
       setRetryStep("refund");
       setSubmittedHash(undefined);
-      throw new Error("Refund was not included");
+      throw new Error("El reembolso no fue incluido");
     }
     setRetryStep("reconcile");
     await reconcile(prepared.refundId, signal);
@@ -116,7 +116,7 @@ export function EventPassRefund({
         ),
       );
       if (prepared.originalAmountSubunits !== originalAmountSubunits) {
-        throw new Error("Refund amount changed");
+        throw new Error("El monto del reembolso cambió");
       }
       setPreparation(prepared);
 

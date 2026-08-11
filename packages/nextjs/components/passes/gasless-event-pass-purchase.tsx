@@ -99,7 +99,7 @@ function isWebAuthnCancellation(error: unknown): boolean {
 
 function actionableSponsorshipMessage(message: string): string {
   void message;
-  return "We couldn't get your Event Pass. Try again.";
+  return "No pudimos obtener tu Event Pass. Inténtalo de nuevo.";
 }
 
 function isFundsRelatedMessage(message: string): boolean {
@@ -107,7 +107,7 @@ function isFundsRelatedMessage(message: string): boolean {
 }
 
 function buildAddUsdcMessage(delta: bigint): string {
-  return `Add USDC to continue — ${formatUsdc(delta.toString())}`;
+  return `Agrega USDC para continuar: ${formatUsdc(delta.toString())}`;
 }
 
 type Persisted = {
@@ -238,7 +238,9 @@ export function GaslessEventPassPurchase(props: Props) {
     mutationFn: readUsdcBalance,
     onSuccess: balance => setFunds(balance),
     onError: () =>
-      setError(`Could not read USDC balance. Check the network and try again.`),
+      setError(
+        `No se pudo consultar el saldo de USDC. Verifica la red e inténtalo de nuevo.`,
+      ),
   });
 
   async function refreshFunds() {
@@ -278,7 +280,7 @@ export function GaslessEventPassPurchase(props: Props) {
     let status: UserOperationStatusResult | null = null;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (abortRef.current?.signal.aborted)
-        throw new DOMException("Polling stopped", "AbortError");
+        throw new DOMException("Se detuvo la consulta", "AbortError");
       const res = await fetchWithTimeout(
         fetch,
         "/api/wallet/user-operation/status",
@@ -298,7 +300,8 @@ export function GaslessEventPassPurchase(props: Props) {
             message?: string;
           };
           throw new Error(
-            body.message ?? "Operation inclusion verification failed.",
+            body.message ??
+              "No se pudo verificar la inclusión de la operación.",
           );
         }
       } else {
@@ -312,7 +315,8 @@ export function GaslessEventPassPurchase(props: Props) {
           status.status === "reverted"
         ) {
           throw new Error(
-            status.message ?? `Operation ${status.status} by bundler.`,
+            status.message ??
+              `El bundler marcó la operación como ${status.status}.`,
           );
         }
         if (status.status === "pending") {
@@ -321,7 +325,7 @@ export function GaslessEventPassPurchase(props: Props) {
       }
       await wait(backoff(attempt));
     }
-    if (!silent) throw new Error("Not completed — try again");
+    if (!silent) throw new Error("No se completó. Inténtalo de nuevo");
     return status;
   }
 
@@ -338,7 +342,7 @@ export function GaslessEventPassPurchase(props: Props) {
     const maxAttempts = 20;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (abortRef.current?.signal.aborted)
-        throw new DOMException("Polling stopped", "AbortError");
+        throw new DOMException("Se detuvo la consulta", "AbortError");
       const res = await fetchWithTimeout(
         fetch,
         `/api/purchases/${purchaseId}`,
@@ -354,19 +358,21 @@ export function GaslessEventPassPurchase(props: Props) {
       if (status.status === "confirmed") return status;
       if (status.status === "rejected")
         throw new Error(
-          status.failure ?? "Purchase rejected during reconciliation.",
+          status.failure ?? "La compra fue rechazada durante la conciliación.",
         );
       if (status.status === "expired" || status.status === "expiredOrDropped")
-        throw new Error(status.failure ?? "Purchase expired. Prepare again.");
+        throw new Error(
+          status.failure ?? "La compra venció. Prepárala de nuevo.",
+        );
       if (status.status === "dropped")
         throw new Error(
-          status.failure ?? "Operation dropped. Retry available.",
+          status.failure ?? "La operación se descartó. Puedes reintentarlo.",
         );
       if (status.status === "unknown")
-        throw new Error("Not completed — try again");
+        throw new Error("No se completó. Inténtalo de nuevo");
       await wait(backoff(attempt));
     }
-    throw new Error("Not completed — try again");
+    throw new Error("No se completó. Inténtalo de nuevo");
   }
 
   // Reload / new session: resume status from authenticated backend data using purchase/UserOperation identities
@@ -412,7 +418,8 @@ export function GaslessEventPassPurchase(props: Props) {
           if (status.status === "rejected") {
             setStage("rejected");
             setError(
-              status.failure ?? "Purchase rejected during reconciliation.",
+              status.failure ??
+                "La compra fue rechazada durante la conciliación.",
             );
             setUserOperationHash(
               (status.userOperationHash as `0x${string}`) ??
@@ -432,7 +439,8 @@ export function GaslessEventPassPurchase(props: Props) {
           ) {
             setStage("expired");
             setError(
-              status.failure ?? "Purchase preparation expired. Prepare again.",
+              status.failure ??
+                "La preparación de la compra venció. Prepárala de nuevo.",
             );
             return null;
           }
@@ -440,13 +448,13 @@ export function GaslessEventPassPurchase(props: Props) {
             setStage("dropped");
             setError(
               status.failure ??
-                "Operation dropped or not included. Retry is available.",
+                "La operación se descartó o no fue incluida. Puedes reintentarlo.",
             );
             return null;
           }
           if (status.status === "unknown") {
             setStage("unknown");
-            setError("Not completed — try again");
+            setError("No se completó. Inténtalo de nuevo");
             return null;
           }
           // For submitted/included/synchronizing -> continue polling
@@ -485,7 +493,7 @@ export function GaslessEventPassPurchase(props: Props) {
                 }
               } catch (e) {
                 const msg =
-                  e instanceof Error ? e.message : "Reconciliation pending";
+                  e instanceof Error ? e.message : "Conciliación pendiente";
                 if (/unknown/i.test(msg)) setStage("unknown");
               }
             } else if (uop) {
@@ -555,7 +563,7 @@ export function GaslessEventPassPurchase(props: Props) {
             setStage("rejected");
             setError(
               body.result.message ??
-                "Operation rejected by bundler. Prepare again.",
+                "El bundler rechazó la operación. Prepárala de nuevo.",
             );
           }
           // persist hash even if purchaseId unknown (allows diagnostic visibility)
@@ -619,7 +627,7 @@ export function GaslessEventPassPurchase(props: Props) {
       ].filter(Boolean);
       if (mismatches.length > 0) {
         throw new Error(
-          `Prepared purchase mismatch: ${mismatches.join(", ")}. Refresh and try again.`,
+          `Los datos de la compra preparada no coinciden: ${mismatches.join(", ")}. Actualiza la página e inténtalo de nuevo.`,
         );
       }
       return preparedPurchase;
@@ -634,7 +642,7 @@ export function GaslessEventPassPurchase(props: Props) {
     },
     onError: (e: unknown) => {
       const msg =
-        e instanceof Error ? e.message : "Could not prepare purchase.";
+        e instanceof Error ? e.message : "No se pudo preparar la compra.";
       const actionable = actionableSponsorshipMessage(msg);
       setStage("failed");
       setError(actionable);
@@ -664,7 +672,7 @@ export function GaslessEventPassPurchase(props: Props) {
         frozenSnapshot.eventIdentifier !== prepared.eventIdentifier
       ) {
         throw new Error(
-          "Purchase details changed. Prepare a new purchase review.",
+          "Los datos de la compra cambiaron. Prepara una nueva revisión.",
         );
       }
 
@@ -779,7 +787,8 @@ export function GaslessEventPassPurchase(props: Props) {
               // Sponsorship rejection must be actionable and not consume purchase confirmation
               throw new Error(
                 actionableSponsorshipMessage(
-                  body.message ?? "Sponsorship rejected or simulation failed.",
+                  body.message ??
+                    "El patrocinio fue rechazado o la simulación falló.",
                 ),
               );
             }
@@ -835,7 +844,7 @@ export function GaslessEventPassPurchase(props: Props) {
               };
               throw new Error(
                 actionableSponsorshipMessage(
-                  body.message ?? "Submission rejected.",
+                  body.message ?? "El envío fue rechazado.",
                 ),
               );
             }
@@ -861,7 +870,7 @@ export function GaslessEventPassPurchase(props: Props) {
         status = await pollUserOperationInclusion(hash);
       } catch (e) {
         if (isWebAuthnCancellation(e)) throw e;
-        const msg = e instanceof Error ? e.message : "Operation failed";
+        const msg = e instanceof Error ? e.message : "La operación falló";
         if (/rejected|failed|reverted/i.test(msg)) {
           throw new Error(msg);
         }
@@ -889,7 +898,7 @@ export function GaslessEventPassPurchase(props: Props) {
           userOperationHash: hash,
           stage: "unknown",
         });
-        throw new Error("Not completed — try again");
+        throw new Error("No se completó. Inténtalo de nuevo");
       }
 
       setTransactionHash(status.transactionHash as `0x${string}`);
@@ -921,41 +930,43 @@ export function GaslessEventPassPurchase(props: Props) {
       if (isWebAuthnCancellation(e)) {
         void classifyPasskeyError(e);
         setStage("cancelled");
-        setError("Not completed — try again");
+        setError("No se completó. Inténtalo de nuevo");
         // Ensure no reusable assertion or false submission state is stored
         setUserOperationHash(null);
         setTransactionHash(null);
         // keep prepared intact for retry, do not persist submission
         return;
       }
-      const msg = e instanceof Error ? e.message : "Purchase failed.";
+      const msg = e instanceof Error ? e.message : "La compra falló.";
       // Funds-related sponsorship denial maps to same Add USDC affordance (no jargon)
       if (
         isFundsRelatedMessage(msg) ||
-        msg.startsWith("Add USDC to continue")
+        msg.startsWith("Agrega USDC para continuar")
       ) {
         const deltaForError =
           funds !== null && price > funds ? price - funds : null;
         const fundsMessage =
           deltaForError !== null && deltaForError > 0n
             ? buildAddUsdcMessage(deltaForError)
-            : msg.startsWith("Add USDC to continue")
+            : msg.startsWith("Agrega USDC para continuar")
               ? msg
-              : "Add USDC to continue";
+              : "Agrega USDC para continuar";
         setStage("rejected");
         setError(fundsMessage);
         return;
       }
       const isRejection =
-        /rejected|sponsorship|allowlist|Wrong|expired|mismatch|simulation|paymaster|denied/i.test(
+        /rejected|rechazad|sponsorship|patrocinio|allowlist|Wrong|incorrect|expired|venci|mismatch|no coinciden|simulation|simulación|paymaster|denied|denegad/i.test(
           msg,
         );
-      const isExpiry = /expired/i.test(msg);
-      const isDropped = /dropped/i.test(msg);
-      const isUnknown = /unknown|timed out/i.test(msg);
+      const isExpiry = /expired|venci/i.test(msg);
+      const isDropped = /dropped|descart/i.test(msg);
+      const isUnknown = /unknown|desconocid|timed out|agotó el tiempo/i.test(
+        msg,
+      );
       if (isUnknown) {
         setStage("unknown");
-        setError("Not completed — try again");
+        setError("No se completó. Inténtalo de nuevo");
       } else if (isDropped) {
         setStage("dropped");
         setError(msg);
@@ -995,7 +1006,7 @@ export function GaslessEventPassPurchase(props: Props) {
           const body = (await res.json().catch(() => ({}))) as {
             message?: string;
           };
-          throw new Error(body.message ?? "Reconciliation rejected.");
+          throw new Error(body.message ?? "La conciliación fue rechazada.");
         }
       } catch (err) {
         if (attempt === 4) throw err;
@@ -1003,12 +1014,12 @@ export function GaslessEventPassPurchase(props: Props) {
       }
       if (!accepted) await wait(backoff(attempt, 1000, 8000));
     }
-    if (!accepted) throw new Error("Not completed — try again");
+    if (!accepted) throw new Error("No se completó. Inténtalo de nuevo");
 
     // Bounded polling/backoff for delayed receipt, then explicit unknown
     for (let attempt = 0; attempt < 20; attempt++) {
       if (abortRef.current?.signal.aborted)
-        throw new DOMException("Polling stopped", "AbortError");
+        throw new DOMException("Se detuvo la consulta", "AbortError");
       const res = await fetchWithTimeout(
         fetch,
         `/api/purchases/${purchaseId}`,
@@ -1020,18 +1031,20 @@ export function GaslessEventPassPurchase(props: Props) {
       if (status.status === "confirmed") return status;
       if (status.status === "rejected")
         throw new Error(
-          status.failure ?? "Purchase rejected during reconciliation.",
+          status.failure ?? "La compra fue rechazada durante la conciliación.",
         );
       if (status.status === "expired" || status.status === "expiredOrDropped")
-        throw new Error(status.failure ?? "Purchase preparation expired.");
+        throw new Error(
+          status.failure ?? "La preparación de la compra venció.",
+        );
       if (status.status === "dropped")
-        throw new Error("Not completed — try again");
+        throw new Error("No se completó. Inténtalo de nuevo");
       if (status.status === "unknown")
-        throw new Error("Not completed — try again");
+        throw new Error("No se completó. Inténtalo de nuevo");
       // included/synchronizing/submitted => continue
       await wait(backoff(attempt));
     }
-    throw new Error("Not completed — try again");
+    throw new Error("No se completó. Inténtalo de nuevo");
   }
 
   async function handleRetry() {
@@ -1064,7 +1077,7 @@ export function GaslessEventPassPurchase(props: Props) {
           passId: reconciled?.pass?.passId ?? passId ?? undefined,
         });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Retry failed";
+        const msg = e instanceof Error ? e.message : "El reintento falló";
         if (/unknown/i.test(msg)) setStage("unknown");
         setError(msg);
       }
@@ -1098,7 +1111,7 @@ export function GaslessEventPassPurchase(props: Props) {
           });
         }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Retry failed";
+        const msg = e instanceof Error ? e.message : "El reintento falló";
         if (/rejected|failed/i.test(msg)) {
           setStage("rejected");
           setError(msg);
@@ -1129,11 +1142,12 @@ export function GaslessEventPassPurchase(props: Props) {
   const delta = isInsufficient ? price - (funds ?? 0n) : 0n;
   const addUsdcMessage = isInsufficient
     ? buildAddUsdcMessage(delta)
-    : "Add USDC to continue";
+    : "Agrega USDC para continuar";
   const confirmDisabled = blocking || isInsufficient;
   const isFundsError =
     error != null &&
-    (error.startsWith("Add USDC to continue") || isFundsRelatedMessage(error));
+    (error.startsWith("Agrega USDC para continuar") ||
+      isFundsRelatedMessage(error));
 
   // Fetch USDC balance when entering Review and funds still unknown (avoids hidden prompt)
   useEffect(() => {
@@ -1183,7 +1197,7 @@ export function GaslessEventPassPurchase(props: Props) {
 
       {stage === "idle" && !availabilityChecked && (
         <p className="text-sm text-muted-foreground" aria-live="polite">
-          Checking device...
+          Verificando dispositivo...
         </p>
       )}
 
@@ -1194,13 +1208,13 @@ export function GaslessEventPassPurchase(props: Props) {
           disabled={prepareMutation.isPending}
           className="w-full rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
         >
-          Get Pass
+          Obtener Event Pass
         </button>
       )}
 
       {stage === "preparing" && (
         <p className="flex items-center gap-2 text-sm" aria-live="polite">
-          <LoaderCircle className="size-4 animate-spin" /> Preparing
+          <LoaderCircle className="size-4 animate-spin" /> Preparando
         </p>
       )}
 
@@ -1226,7 +1240,7 @@ export function GaslessEventPassPurchase(props: Props) {
                   onClick={handleFaucet}
                   className="mt-2 w-full rounded-xl border bg-background px-4 py-2 text-sm font-bold"
                 >
-                  Add USDC to continue
+                  Agregar USDC para continuar
                 </button>
               </div>
             ) : null
@@ -1237,7 +1251,7 @@ export function GaslessEventPassPurchase(props: Props) {
       {isConfirming && (
         <div aria-live="polite" className="rounded-2xl bg-muted p-4 text-sm">
           <p className="flex items-center gap-2">
-            <LoaderCircle className="size-4 animate-spin" /> Confirming
+            <LoaderCircle className="size-4 animate-spin" /> Confirmando
           </p>
         </div>
       )}
@@ -1246,7 +1260,7 @@ export function GaslessEventPassPurchase(props: Props) {
         <>
           {/* Keep terse confirmed anchor for legacy coverage without showing hashes */}
           <p className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 p-4 font-bold text-emerald-700">
-            <CheckCircle2 className="size-5" /> Confirmed
+            <CheckCircle2 className="size-5" /> Confirmado
           </p>
           {shouldCelebrate ? (
             <SuccessDialog eventName={props.eventName} />
@@ -1255,7 +1269,7 @@ export function GaslessEventPassPurchase(props: Props) {
               href="/my-passes"
               className="inline-flex w-full items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground"
             >
-              View passes
+              Ver pases
             </Link>
           )}
         </>
@@ -1298,7 +1312,7 @@ export function GaslessEventPassPurchase(props: Props) {
             onClick={handleRetry}
             className="w-full rounded-xl border px-5 py-3 font-semibold"
           >
-            Retry
+            Reintentar
           </button>
         )}
     </div>

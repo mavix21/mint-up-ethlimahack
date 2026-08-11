@@ -26,11 +26,11 @@ type HeaderMenuLink = {
 
 export const menuLinks: HeaderMenuLink[] = [
   {
-    label: "Home",
+    label: "Inicio",
     href: "/",
   },
   {
-    label: "Ask Minti",
+    label: "Pregúntale a Minti",
     href: "/chat",
   },
   {
@@ -38,11 +38,11 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/marketplace",
   },
   {
-    label: "My Passes",
+    label: "Mis pases",
     href: "/my-passes",
   },
   {
-    label: "Wallet",
+    label: "Billetera",
     href: "/wallet",
   },
   // {
@@ -123,7 +123,7 @@ export const Header = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="Open navigation"
+                  aria-label="Abrir navegación"
                 />
               }
             >
@@ -131,7 +131,7 @@ export const Header = () => {
             </SheetTrigger>
             <SheetContent side="left">
               <SheetHeader>
-                <SheetTitle>Navigation</SheetTitle>
+                <SheetTitle>Navegación</SheetTitle>
               </SheetHeader>
               <nav className="px-6">
                 <ul className="flex flex-col gap-2">

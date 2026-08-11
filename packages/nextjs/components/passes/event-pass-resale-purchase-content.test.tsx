@@ -66,15 +66,15 @@ describe("public Pass resale purchase rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Pass resale");
+    expect(html).toContain("Reventa");
     expect(html).toContain("ETH Lima 2026");
     expect(html).toContain("Total: 40 USDC");
-    expect(html).toContain("Available balance: 55 USDC");
-    expect(html).toContain("Mint Up fee: 9% included");
-    expect(html).toContain("Protected payment: 25 USDC");
-    expect(html).toContain("If the Event is cancelled");
-    expect(html).toContain("This purchase is final");
-    expect(html).toContain("Face ID or fingerprint");
+    expect(html).toContain("Saldo disponible: 55 USDC");
+    expect(html).toContain("Comisión de Mint Up: 9% incluido");
+    expect(html).toContain("Pago protegido: 25 USDC");
+    expect(html).toContain("Si el evento se cancela");
+    expect(html).toContain("Esta compra es definitiva");
+    expect(html).toContain("Face ID o huella digital");
     expectBuyerSafe(html);
   });
 
@@ -83,7 +83,7 @@ describe("public Pass resale purchase rendered states", () => {
       <EventPassResalePurchaseButton priceAmountSubunits="40000000" />,
     );
 
-    expect(html).toContain("Buy for 40 USDC");
+    expect(html).toContain("Comprar por 40 USDC");
     expectBuyerSafe(html);
   });
 
@@ -97,10 +97,12 @@ describe("public Pass resale purchase rendered states", () => {
       />,
     );
 
-    expect(html).toContain("You need 15 more USDC to buy this Event Pass.");
-    expect(html).toContain("Available balance: 25 USDC");
+    expect(html).toContain(
+      "Necesitas 15 USDC más para comprar este Event Pass.",
+    );
+    expect(html).toContain("Saldo disponible: 25 USDC");
     expect(html).toContain("Total: 40 USDC");
-    expect(html).toContain("Retry");
+    expect(html).toContain("Reintentar");
     expectBuyerSafe(html);
   });
 
@@ -114,9 +116,9 @@ describe("public Pass resale purchase rendered states", () => {
     );
 
     expect(html).toContain(
-      "We couldn&#x27;t check your USDC balance. Try again.",
+      "No pudimos consultar tu saldo de USDC. Inténtalo de nuevo.",
     );
-    expect(html).toContain("Retry");
+    expect(html).toContain("Reintentar");
     expectBuyerSafe(html);
   });
 
@@ -129,10 +131,10 @@ describe("public Pass resale purchase rendered states", () => {
       />,
     );
 
-    expect(html).toContain("This Pass resale is no longer available");
-    expect(html).toContain("Another buyer may have completed it first.");
-    expect(html).toContain("You won&#x27;t be charged.");
-    expect(html).toContain("Back to Marketplace");
+    expect(html).toContain("Esta reventa ya no está disponible");
+    expect(html).toContain("otro comprador la haya completado primero");
+    expect(html).toContain("No se te cobrará.");
+    expect(html).toContain("Volver a Marketplace");
     expectBuyerSafe(html);
   });
 
@@ -145,7 +147,7 @@ describe("public Pass resale purchase rendered states", () => {
       />,
     );
 
-    expect(html).toContain("ETH Lima 2026 is now in My passes.");
+    expect(html).toContain("ETH Lima 2026 ahora está en Mis pases.");
     expectBuyerSafe(html);
   });
 
@@ -158,10 +160,10 @@ describe("public Pass resale purchase rendered states", () => {
       />,
     );
 
-    expect(html).toContain("We couldn&#x27;t finish this purchase");
-    expect(html).toContain("you won&#x27;t be charged");
-    expect(html).toContain("Retry");
-    expect(html).toContain("Back to Marketplace");
+    expect(html).toContain("No pudimos completar esta compra");
+    expect(html).toContain("no se te cobrará");
+    expect(html).toContain("Reintentar");
+    expect(html).toContain("Volver a Marketplace");
     expectBuyerSafe(html);
   });
 
@@ -169,9 +171,9 @@ describe("public Pass resale purchase rendered states", () => {
     const html = renderToStaticMarkup(<EventPassResalePurchaseLoadError />);
 
     expect(html).toContain(
-      "We couldn&#x27;t load this Pass resale. Try again.",
+      "No pudimos cargar esta reventa. Inténtalo de nuevo.",
     );
-    expect(html).toContain("Retry");
+    expect(html).toContain("Reintentar");
     expectBuyerSafe(html);
   });
 });

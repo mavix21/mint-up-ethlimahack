@@ -15,13 +15,13 @@ export async function POST(request: Request) {
       body = await request.clone().json();
     } catch {
       return Response.json(
-        { message: "Invalid SIWE request" },
+        { message: "Solicitud SIWE no válida" },
         { status: 400 },
       );
     }
     if (body.chainId !== eventPassEnvironment.chainId) {
       return Response.json(
-        { message: "Wallet is connected to an unsupported chain" },
+        { message: "La wallet está conectada a una chain no compatible" },
         { status: 400 },
       );
     }

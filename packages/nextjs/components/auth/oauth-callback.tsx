@@ -12,7 +12,7 @@ export function OAuthCallback() {
   useEffect(() => {
     const token = searchParams.get("ott");
     if (!token) {
-      setError("The sign-in token is missing or invalid.");
+      setError("El token de inicio de sesión no existe o no es válido.");
       return;
     }
     if (verificationToken.current === token) return;
@@ -26,7 +26,7 @@ export function OAuthCallback() {
       .then(response => {
         if (!response.ok)
           throw new Error(
-            "Unable to complete sign-in. Request a new sign-in link.",
+            "No se pudo completar el inicio de sesión. Solicita un enlace nuevo.",
           );
         window.location.replace(
           getLocalRedirect(searchParams.get("callbackUrl")),
@@ -36,18 +36,18 @@ export function OAuthCallback() {
         setError(
           reason instanceof Error
             ? reason.message
-            : "Unable to complete sign-in.",
+            : "No se pudo completar el inicio de sesión.",
         );
       });
   }, [searchParams]);
 
   return (
     <div className="rounded-2xl border border-base-300 bg-base-100 p-8 text-center shadow-sm">
-      <h1 className="font-heading text-2xl font-bold">Signing you in</h1>
+      <h1 className="font-heading text-2xl font-bold">Iniciando tu sesión</h1>
       <p
         className={`mt-3 text-sm ${error ? "text-error" : "text-base-content/70"}`}
       >
-        {error ?? "Verifying your secure Mint Up handoff..."}
+        {error ?? "Verificando tu acceso seguro a Mint Up..."}
       </p>
     </div>
   );

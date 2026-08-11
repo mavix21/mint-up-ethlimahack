@@ -21,16 +21,18 @@ export function PasskeyAvailabilityGate({
   if (snapshot.matches("checking")) {
     return (
       <p className="text-sm text-muted-foreground">
-        Checking passkey capability…
+        Verificando la compatibilidad con passkeys…
       </p>
     );
   }
   if (snapshot.matches("failed")) {
     return (
       <div className="rounded-xl bg-amber-500/10 p-3 text-sm">
-        <p className="font-semibold">Could not check passkey support.</p>
+        <p className="font-semibold">
+          No se pudo verificar la compatibilidad con passkeys.
+        </p>
         <p className="mt-1 text-muted-foreground">
-          Refresh to retry. No account was created.
+          Actualiza la página para reintentar. No se creó ninguna cuenta.
         </p>
       </div>
     );
@@ -41,12 +43,13 @@ export function PasskeyAvailabilityGate({
         role="alert"
         className="rounded-2xl border bg-amber-500/10 p-4 text-sm"
       >
-        <p className="font-bold">Passkey not available</p>
+        <p className="font-bold">Passkey no disponible</p>
         <p className="mt-2 leading-6">{availabilityMessage(availability)}</p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Switch to a supported browser or device (current Chromium,
-          Safari/WebKit, Firefox) with biometrics/PIN or a cross-platform
-          security key. No activation was attempted and no account was changed.
+          Cambia a un navegador o dispositivo compatible (Chromium actualizado,
+          Safari/WebKit o Firefox) con biometría/PIN o una llave de seguridad
+          multiplataforma. No se intentó ninguna activación ni se modificó
+          ninguna cuenta.
         </p>
         {fallback}
       </div>

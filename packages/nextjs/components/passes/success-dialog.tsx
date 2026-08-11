@@ -57,7 +57,7 @@ export function SuccessDialog({ eventName }: Props) {
         data-testid="success-dialog"
       >
         <DialogHeader>
-          <DialogTitle>You&apos;re in!</DialogTitle>
+          <DialogTitle>¡Ya estás dentro!</DialogTitle>
           <DialogDescription>
             <EventPassPurchaseSuccess eventName={eventName} />
           </DialogDescription>
@@ -68,7 +68,7 @@ export function SuccessDialog({ eventName }: Props) {
             onClick={handleViewPasses}
             data-testid="view-passes-button"
           >
-            View passes
+            Ver pases
           </Button>
         </div>
       </DialogContent>

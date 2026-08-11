@@ -20,23 +20,29 @@ const requestSchema = z
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to create this offer." },
+      { message: "Inicia sesión para crear esta oferta." },
       { status: 401 },
     );
 
   const body = await readBoundedJson(request);
   if ("oversized" in body)
-    return Response.json({ message: "Request is too large." }, { status: 413 });
+    return Response.json(
+      { message: "La solicitud es demasiado grande." },
+      { status: 413 },
+    );
   const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success)
-    return Response.json({ message: "Check the USDC price." }, { status: 400 });
+    return Response.json(
+      { message: "Comprueba el precio en USDC." },
+      { status: 400 },
+    );
 
   let priceAmountSubunits: string;
   try {
     priceAmountSubunits = parseHumanUsdc(parsed.data.price);
   } catch {
     return Response.json(
-      { message: "Enter a positive USDC price with up to 6 decimals." },
+      { message: "Ingresa un precio en USDC positivo con hasta 6 decimales." },
       { status: 400 },
     );
   }
@@ -54,8 +60,8 @@ export async function POST(request: Request) {
       {
         message:
           error instanceof Error && error.message.includes("resale_unavailable")
-            ? "The price must not exceed your protected payment."
-            : "We couldn't prepare this listing. Try again.",
+            ? "El precio no debe superar tu pago protegido."
+            : "No pudimos preparar esta publicación. Inténtalo de nuevo.",
       },
       { status: 409 },
     );

@@ -31,7 +31,7 @@ const imageUrl = `${baseUrl}/thumbnail.jpg`;
 const title = "Mint Up Passes";
 const titleTemplate = "%s | Mint Up Passes";
 const description =
-  "Discover and manage onchain Event Passes for Mint Up events.";
+  "Descubre y administra Event Pass onchain para eventos de Mint Up.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),

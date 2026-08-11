@@ -92,7 +92,8 @@ export const passkeySigningMachine = setup({
               conditionalMediationAvailable: null,
               reason: "availability_check_failed",
             }),
-            errorMessage: () => "Could not check passkey capability.",
+            errorMessage: () =>
+              "No se pudo comprobar la compatibilidad con passkeys.",
           }),
         },
       },

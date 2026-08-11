@@ -33,7 +33,7 @@ export interface EventListingCardViewModel {
 
 function location(event: MintUpEvent) {
   if (event.place.kind === "online")
-    return { shortLocation: "Online", venueName: undefined };
+    return { shortLocation: "En línea", venueName: undefined };
   const value = event.place.location;
   const text = value.kind === "resolved" ? value.address : value.label;
   const venueName = value.kind === "resolved" ? value.venueName : undefined;
@@ -44,7 +44,7 @@ export function getEventListingCardViewModel(
   event: MintUpEvent,
   now: number,
 ): EventListingCardViewModel {
-  const locale = "en-US";
+  const locale = "es-PE";
   const live = event.startTime <= now && event.endTime > now;
   const image = event.organizer?.image;
   const organizerImage =
@@ -71,17 +71,17 @@ export function getEventListingCardViewModel(
       getCalendarDateKey(event.endTime, event.timezone)
         ? end
         : `${new Intl.DateTimeFormat(locale, { timeZone: event.timezone, weekday: "long" }).format(event.endTime)} ${end}`;
-    timeLabel = `Until ${endLabel}`;
+    timeLabel = `Hasta ${endLabel}`;
   }
   return {
     title: event.name,
     imageUrl: event.image?.url,
     href: `${mintUpWebUrl}/en/e/${event._id}`,
-    viewEventLabel: "View event",
+    viewEventLabel: "Ver evento",
     platform: event.platform,
     platformLabel: "Mint Up",
     ...location(event),
-    bylineLabel: event.organizer ? "Organized by" : undefined,
+    bylineLabel: event.organizer ? "Organizado por" : undefined,
     bylineHosts: event.organizer
       ? [
           {
@@ -91,13 +91,13 @@ export function getEventListingCardViewModel(
         ]
       : undefined,
     dateLabel: live
-      ? "Live"
+      ? "En vivo"
       : formatEventDate(locale, event.startTime, event.timezone),
     timeLabel,
     locale,
     startTime: event.startTime,
     endTime: event.endTime,
-    liveUntilTemplate: live ? "Until {time}" : undefined,
-    liveLabel: live ? "Live" : undefined,
+    liveUntilTemplate: live ? "Hasta {time}" : undefined,
+    liveLabel: live ? "En vivo" : undefined,
   };
 }

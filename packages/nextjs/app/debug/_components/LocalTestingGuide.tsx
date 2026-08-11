@@ -55,7 +55,7 @@ export function LocalTestingGuide({
             Vuelve a <strong>mint-up-event-pass</strong> y ejecuta{" "}
             <strong>purchase</strong> con el mismo event ID. Confirma el
             resultado con <strong>eventInfo</strong> y <strong>passInfo</strong>{" "}
-            en la pestaña Read.
+            en la pestaña Leer.
           </li>
         </ol>
         <p>

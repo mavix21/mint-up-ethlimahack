@@ -62,7 +62,10 @@ export const DisplayVariable = ({
   }, [error]);
 
   return (
-    <div className="space-y-1 pb-2" data-testid={`display-variable-${abiFunction.name}`}>
+    <div
+      className="space-y-1 pb-2"
+      data-testid={`display-variable-${abiFunction.name}`}
+    >
       <div className="flex items-center">
         <h3
           className="font-medium text-lg mb-0 break-all"
@@ -72,8 +75,20 @@ export const DisplayVariable = ({
         >
           {abiFunction.name}
         </h3>
-        <Button variant="ghost" size="icon-xs" onClick={async () => await refetch()} aria-label="Refresh variable">
-          {isFetching ? <Spinner /> : <ArrowPathIcon className="h-3 w-3 cursor-pointer" aria-hidden="true" />}
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          onClick={async () => await refetch()}
+          aria-label="Actualizar variable"
+        >
+          {isFetching ? (
+            <Spinner />
+          ) : (
+            <ArrowPathIcon
+              className="h-3 w-3 cursor-pointer"
+              aria-hidden="true"
+            />
+          )}
         </Button>
         <InheritanceTooltip inheritedFrom={inheritedFrom} />
       </div>

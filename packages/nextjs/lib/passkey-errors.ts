@@ -89,7 +89,7 @@ export function classifyPasskeyError(error: unknown): ClassifiedPasskeyError {
     return {
       kind: "timeout",
       message:
-        "Passkey request timed out. Nothing was changed. Retry when ready.",
+        "La solicitud de passkey agotó el tiempo de espera. No se realizó ningún cambio. Inténtalo de nuevo cuando quieras.",
       recoverable: true,
       altersAccount: false,
     };
@@ -99,7 +99,7 @@ export function classifyPasskeyError(error: unknown): ClassifiedPasskeyError {
     return {
       kind: "locked",
       message:
-        "Authenticator is locked after too many attempts. Unlock your device (biometric/PIN) and try again. No account was created or changed.",
+        "El autenticador está bloqueado después de demasiados intentos. Desbloquea tu dispositivo (biometría/PIN) e inténtalo de nuevo. No se creó ni modificó ninguna cuenta.",
       recoverable: true,
       altersAccount: false,
     };
@@ -108,7 +108,7 @@ export function classifyPasskeyError(error: unknown): ClassifiedPasskeyError {
     return {
       kind: "missing_credential",
       message:
-        "Selected credential is not available on this authenticator. Use the synced passkey on its original device or create a replacement — a new credential will control a different account and does not recover the previous one.",
+        "La credencial seleccionada no está disponible en este autenticador. Usa la passkey sincronizada en su dispositivo original o crea una nueva; la nueva credencial controlará una cuenta diferente y no recuperará la anterior.",
       recoverable: true,
       altersAccount: false,
     };
@@ -117,7 +117,7 @@ export function classifyPasskeyError(error: unknown): ClassifiedPasskeyError {
     return {
       kind: "unavailable_transport",
       message:
-        "Authenticator transport unavailable (USB/NFC/BLE not connected or not supported). Connect your security key or use a platform passkey. Nothing was submitted.",
+        "El transporte del autenticador no está disponible (USB/NFC/BLE no conectado o no compatible). Conecta tu llave de seguridad o usa una passkey de plataforma. No se envió nada.",
       recoverable: true,
       altersAccount: false,
     };
@@ -126,7 +126,7 @@ export function classifyPasskeyError(error: unknown): ClassifiedPasskeyError {
     return {
       kind: "unsupported",
       message:
-        "This authenticator did not create a compatible ES256 passkey. Nothing was changed.",
+        "Este autenticador no creó una passkey ES256 compatible. No se realizó ningún cambio.",
       recoverable: false,
       altersAccount: false,
     };
@@ -135,7 +135,7 @@ export function classifyPasskeyError(error: unknown): ClassifiedPasskeyError {
     return {
       kind: "timeout",
       message:
-        "Passkey request timed out. Nothing was submitted. Your prepared purchase remains valid until expiry — retry the confirmation.",
+        "La solicitud de passkey agotó el tiempo de espera. No se envió nada. Tu compra preparada sigue siendo válida hasta que venza; vuelve a intentar la confirmación.",
       recoverable: true,
       altersAccount: false,
     };
@@ -146,14 +146,14 @@ export function classifyPasskeyError(error: unknown): ClassifiedPasskeyError {
       return {
         kind: "timeout",
         message:
-          "Passkey confirmation timed out. Nothing was changed. Retry when ready.",
+          "La confirmación de la passkey agotó el tiempo de espera. No se realizó ningún cambio. Inténtalo de nuevo cuando quieras.",
         recoverable: true,
         altersAccount: false,
       };
     }
     return {
       kind: "cancelled",
-      message: "Passkey confirmation was cancelled. Nothing was submitted.",
+      message: "Se canceló la confirmación de la passkey. No se envió nada.",
       recoverable: true,
       altersAccount: false,
     };
@@ -163,7 +163,7 @@ export function classifyPasskeyError(error: unknown): ClassifiedPasskeyError {
     return {
       kind: "missing_credential",
       message:
-        "Credential unavailable or already registered. No account was changed. If you lost your passkey, a new one will create a different account.",
+        "La credencial no está disponible o ya está registrada. No se modificó ninguna cuenta. Si perdiste tu passkey, una nueva creará una cuenta diferente.",
       recoverable: true,
       altersAccount: false,
     };
@@ -173,7 +173,7 @@ export function classifyPasskeyError(error: unknown): ClassifiedPasskeyError {
   const fallbackMsg =
     message && message !== "undefined"
       ? message
-      : "Passkey failed. Nothing was changed.";
+      : "La passkey falló. No se realizó ningún cambio.";
   return {
     kind: "unknown",
     message: fallbackMsg,

@@ -11,7 +11,7 @@ const event = {
 
 describe("authoritative Minti event formatting", () => {
   it("does not invent a price when the projection has none", () => {
-    expect(formatEventPrice(event)).toBe("Price unavailable");
+    expect(formatEventPrice(event)).toBe("Precio no disponible");
   });
 
   it("formats normalized ranges as USD", () => {
@@ -20,10 +20,12 @@ describe("authoritative Minti event formatting", () => {
         ...event,
         price: { kinds: ["paid"], minUsd: 10, maxUsd: 18 },
       }),
-    ).toBe("$10.00 - $18.00");
+    ).toBe("USD 10.00 - USD 18.00");
   });
 
   it("uses the authoritative online format before physical location fields", () => {
-    expect(formatEventLocation({ ...event, format: "online" })).toBe("Online");
+    expect(formatEventLocation({ ...event, format: "online" })).toBe(
+      "En línea",
+    );
   });
 });

@@ -11,7 +11,9 @@ import { authClient } from "~~/lib/auth-client";
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 if (!convexUrl) {
-  throw new Error("NEXT_PUBLIC_CONVEX_URL is required for Minti chat.");
+  throw new Error(
+    "NEXT_PUBLIC_CONVEX_URL es obligatoria para el chat de Minti.",
+  );
 }
 
 const convexClient = new ConvexReactClient(convexUrl);

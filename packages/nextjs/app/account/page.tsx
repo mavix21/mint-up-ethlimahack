@@ -10,11 +10,11 @@ async function ProtectedAccountStatus() {
   return protectedAccount ? (
     <section className="mb-8 rounded-2xl border bg-card p-6">
       <h2 className="font-heading text-2xl font-bold">
-        Your passes are secured
+        Tus pases están protegidos
       </h2>
       <p className="mt-2 text-muted-foreground">
-        Use Face ID or your fingerprint when a pass action needs your
-        confirmation.
+        Usa Face ID o tu huella digital cuando una acción sobre un pase necesite
+        tu confirmación.
       </p>
     </section>
   ) : (
@@ -26,14 +26,14 @@ export default function AccountPage() {
   return (
     <main className="mx-auto min-h-[70svh] w-full max-w-4xl px-6 py-16">
       <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-        Authenticated
+        Sesión iniciada
       </p>
       <h1 className="mt-3 font-heading text-4xl font-bold">
-        Your Passes account
+        Tu cuenta de Mint Up Passes
       </h1>
       <p className="mb-8 mt-3 max-w-xl text-base-content/70">
-        This route is available only while your isolated Mint Up Passes session
-        is valid.
+        Esta ruta solo está disponible mientras tu sesión aislada de Mint Up
+        Passes sea válida.
       </p>
       <Suspense
         fallback={

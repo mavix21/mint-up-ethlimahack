@@ -19,10 +19,10 @@ async function Offers({ returnTo }: { returnTo: string | null }) {
     <section aria-labelledby="available-passes">
       <div className="mb-6 flex items-baseline justify-between gap-4">
         <h2 id="available-passes" className="font-heading text-2xl font-bold">
-          Available passes
+          Pases disponibles
         </h2>
         <p className="text-sm text-muted-foreground">
-          {offers.length} live offer{offers.length === 1 ? "" : "s"}
+          {offers.length} oferta{offers.length === 1 ? " activa" : "s activas"}
         </p>
       </div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -37,9 +37,9 @@ async function Offers({ returnTo }: { returnTo: string | null }) {
         <EmptyMedia variant="icon">
           <CalendarXIcon />
         </EmptyMedia>
-        <EmptyTitle>No Event Passes available</EmptyTitle>
+        <EmptyTitle>No hay Event Pass disponibles</EmptyTitle>
         <EmptyDescription>
-          There are no eligible offers on sale right now. Check back soon.
+          No hay ofertas aptas a la venta en este momento. Vuelve pronto.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
@@ -48,7 +48,7 @@ async function Offers({ returnTo }: { returnTo: string | null }) {
 
 function OffersFallback() {
   return (
-    <section aria-label="Loading available passes">
+    <section aria-label="Cargando pases disponibles">
       <div className="mb-6 h-8 w-48 animate-pulse rounded-lg bg-muted" />
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2].map(item => (
@@ -79,12 +79,12 @@ export default function Home({ searchParams }: HomePageProps) {
             Mint Up Passes
           </p>
           <h1 className="font-heading text-4xl font-black tracking-tight sm:text-6xl">
-            Your way into what&apos;s next.
+            Tu entrada a lo que viene.
           </h1>
         </div>
         <p className="text-base leading-7 text-muted-foreground">
-          Browse eligible Mint Up events and secure an Event Pass with your
-          original USDC payment protected until the Event begins.
+          Explora los eventos de Mint Up y obtén un Event Pass con tu pago en
+          USDC protegido hasta que comience el evento.
         </p>
       </header>
 

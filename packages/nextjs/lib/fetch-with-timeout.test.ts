@@ -15,7 +15,7 @@ describe("fetchWithTimeout", () => {
 
     await expect(
       fetchWithTimeout(fetchFn, "/api/purchases/purchase-1", {}, 1),
-    ).rejects.toThrow("Request timed out");
+    ).rejects.toThrow("La solicitud agotó el tiempo de espera");
   });
 
   it("propagates cancellation from the purchase flow", async () => {

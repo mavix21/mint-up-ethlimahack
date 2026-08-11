@@ -6,8 +6,8 @@ import { fetchAuthQuery } from "~~/lib/auth-server";
 import { getWalletPasskeyAccount } from "~~/lib/wallet-passkey-api";
 
 export const metadata: Metadata = {
-  title: "Wallet",
-  description: "Your secure pass wallet.",
+  title: "Billetera",
+  description: "Tu billetera segura para pases.",
 };
 
 export default async function WalletPage() {

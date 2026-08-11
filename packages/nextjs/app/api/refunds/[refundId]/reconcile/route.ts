@@ -6,13 +6,13 @@ type Context = { params: Promise<{ refundId: string }> };
 export async function POST(_request: Request, { params }: Context) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to finish this refund." },
+      { message: "Inicia sesión para finalizar este reembolso." },
       { status: 401 },
     );
   const { refundId } = await params;
   if (!refundId || refundId.length > 200)
     return Response.json(
-      { message: "Invalid refund reference." },
+      { message: "Referencia de reembolso no válida." },
       { status: 400 },
     );
 
@@ -21,7 +21,7 @@ export async function POST(_request: Request, { params }: Context) {
     return Response.json({ status: "verified" });
   } catch {
     return Response.json(
-      { message: "We couldn't verify the refund yet. Try again." },
+      { message: "Aún no pudimos verificar el reembolso. Inténtalo de nuevo." },
       { status: 409 },
     );
   }

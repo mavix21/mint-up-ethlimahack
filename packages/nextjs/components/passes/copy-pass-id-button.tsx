@@ -23,11 +23,11 @@ export function CopyPassIdButton({ passId }: { passId: string }) {
       variant="ghost"
       size="sm"
       onClick={copy}
-      aria-label={copied ? "Copied" : "Copy pass ID"}
+      aria-label={copied ? "Copiado" : "Copiar ID del pase"}
       className="h-7 gap-1.5 px-2 text-xs"
     >
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-      {copied ? "Copied" : "Copy"}
+      {copied ? "Copiado" : "Copiar"}
     </Button>
   );
 }

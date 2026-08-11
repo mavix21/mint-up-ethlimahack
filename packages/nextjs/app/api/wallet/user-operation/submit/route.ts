@@ -9,16 +9,19 @@ import {
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to send this action." },
+      { message: "Inicia sesión para enviar esta acción." },
       { status: 401 },
     );
   const body = await readBoundedJson(request);
   if ("oversized" in body)
-    return Response.json({ message: "Request is too large." }, { status: 413 });
+    return Response.json(
+      { message: "La solicitud es demasiado grande." },
+      { status: 413 },
+    );
   const parsed = submittedOperationSchema.safeParse(body.value);
   if (!parsed.success)
     return Response.json(
-      { message: "Invalid signed operation." },
+      { message: "Operación firmada no válida." },
       { status: 400 },
     );
   try {
@@ -31,7 +34,7 @@ export async function POST(request: Request) {
     );
   } catch {
     return Response.json(
-      { message: "The signed operation was rejected." },
+      { message: "La operación firmada fue rechazada." },
       { status: 409 },
     );
   }

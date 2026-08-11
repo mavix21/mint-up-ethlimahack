@@ -3,7 +3,14 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { createContext, use } from "react";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "~~/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~~/components/ui/card";
 import { shouldOptimizeImage } from "~~/lib/image-optimization";
 import { cn } from "~~/lib/utils";
 
@@ -26,7 +33,12 @@ interface EventCardRootProps {
 type EventCardMediaRootProps = EventCardRootProps;
 type EventCardListRootProps = Omit<EventCardRootProps, "size">;
 
-function EventCardFrame({ children, className, size = "default", context }: EventCardRootProps) {
+function EventCardFrame({
+  children,
+  className,
+  size = "default",
+  context,
+}: EventCardRootProps) {
   return (
     <EventCardContext.Provider value={context ?? null}>
       <Card size={size} className={cn("transition-transform", className)}>
@@ -43,7 +55,11 @@ function EventCardMediaRoot({ className, ...props }: EventCardMediaRootProps) {
 }
 function EventCardListRoot({ className, ...props }: EventCardListRootProps) {
   return (
-    <EventCardFrame className={cn("flex-row items-start gap-3 rounded-3xl p-2", className)} size="sm" {...props} />
+    <EventCardFrame
+      className={cn("flex-row items-start gap-3 rounded-3xl p-2", className)}
+      size="sm"
+      {...props}
+    />
   );
 }
 
@@ -54,16 +70,28 @@ interface EventCardImageProps {
   aspectRatio?: "video" | "square" | "portrait";
   children?: ReactNode;
 }
-function EventCardImage({ src, alt, className, aspectRatio = "video", children }: EventCardImageProps) {
+function EventCardImage({
+  src,
+  alt,
+  className,
+  aspectRatio = "video",
+  children,
+}: EventCardImageProps) {
   const context = useEventCardContext();
   const imageSrc = src ?? context?.imageUrl;
   const optimize = shouldOptimizeImage(imageSrc);
-  const ratios = { video: "aspect-video", square: "aspect-square", portrait: "aspect-[4/3]" };
+  const ratios = {
+    video: "aspect-video",
+    square: "aspect-square",
+    portrait: "aspect-[4/3]",
+  };
   return (
-    <div className={cn("relative overflow-hidden", ratios[aspectRatio], className)}>
+    <div
+      className={cn("relative overflow-hidden", ratios[aspectRatio], className)}
+    >
       <Image
         src={imageSrc || "/logo.svg"}
-        alt={alt ?? context?.title ?? "Event image"}
+        alt={alt ?? context?.title ?? "Imagen del evento"}
         fill
         quality={optimize ? 60 : undefined}
         sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
@@ -74,14 +102,25 @@ function EventCardImage({ src, alt, className, aspectRatio = "video", children }
     </div>
   );
 }
-function EventCardListImage({ className, children }: { className?: string; children?: ReactNode }) {
+function EventCardListImage({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: ReactNode;
+}) {
   const context = useEventCardContext();
   const optimize = shouldOptimizeImage(context?.imageUrl);
   return (
-    <div className={cn("relative size-24 shrink-0 overflow-hidden rounded-2xl bg-muted", className)}>
+    <div
+      className={cn(
+        "relative size-24 shrink-0 overflow-hidden rounded-2xl bg-muted",
+        className,
+      )}
+    >
       <Image
         src={context?.imageUrl || "/logo.svg"}
-        alt={context?.title ?? "Event image"}
+        alt={context?.title ?? "Imagen del evento"}
         fill
         quality={optimize ? 60 : undefined}
         sizes="(min-width: 768px) 144px, 96px"
@@ -92,30 +131,80 @@ function EventCardListImage({ className, children }: { className?: string; child
     </div>
   );
 }
-function EventCardHeader({ children, className }: { children: ReactNode; className?: string }) {
+function EventCardHeader({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return <CardHeader className={className}>{children}</CardHeader>;
 }
-function EventCardTitle({ children, className }: { children?: ReactNode; className?: string }) {
+function EventCardTitle({
+  children,
+  className,
+}: {
+  children?: ReactNode;
+  className?: string;
+}) {
   const context = useEventCardContext();
-  return <CardTitle className={cn("text-lg font-semibold", className)}>{children ?? context?.title}</CardTitle>;
+  return (
+    <CardTitle className={cn("text-lg font-semibold", className)}>
+      {children ?? context?.title}
+    </CardTitle>
+  );
 }
 function EventCardListTitle() {
   const context = useEventCardContext();
-  return <CardTitle className="line-clamp-2 text-base leading-tight font-semibold">{context?.title}</CardTitle>;
+  return (
+    <CardTitle className="line-clamp-2 text-base leading-tight font-semibold">
+      {context?.title}
+    </CardTitle>
+  );
 }
-function EventCardDescription({ children, className }: { children?: ReactNode; className?: string }) {
+function EventCardDescription({
+  children,
+  className,
+}: {
+  children?: ReactNode;
+  className?: string;
+}) {
   const context = useEventCardContext();
   const description = children ?? context?.description;
-  return description ? <CardDescription className={className}>{description}</CardDescription> : null;
+  return description ? (
+    <CardDescription className={className}>{description}</CardDescription>
+  ) : null;
 }
-function EventCardAction({ children, className }: { children: ReactNode; className?: string }) {
+function EventCardAction({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return <CardAction className={className}>{children}</CardAction>;
 }
-function EventCardContent({ children, className }: { children: ReactNode; className?: string }) {
+function EventCardContent({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return <CardContent className={className}>{children}</CardContent>;
 }
-function EventCardListContent({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("flex min-w-0 flex-1 flex-col gap-1 py-0.5", className)}>{children}</div>;
+function EventCardListContent({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-w-0 flex-1 flex-col gap-1 py-0.5", className)}>
+      {children}
+    </div>
+  );
 }
 
 export const EventCard = {

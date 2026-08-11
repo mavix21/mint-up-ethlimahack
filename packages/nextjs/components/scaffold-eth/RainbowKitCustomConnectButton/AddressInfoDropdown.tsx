@@ -53,38 +53,55 @@ export const AddressInfoDropdown = ({
   const { connector } = useAccount();
   const checkSumAddress = getAddress(address);
 
-  const { copyToClipboard: copyAddressToClipboard, isCopiedToClipboard: isAddressCopiedToClipboard } =
-    useCopyToClipboard();
+  const {
+    copyToClipboard: copyAddressToClipboard,
+    isCopiedToClipboard: isAddressCopiedToClipboard,
+  } = useCopyToClipboard();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        <BlockieAvatar address={checkSumAddress} size={24} ensImage={ensAvatar} />
+        <BlockieAvatar
+          address={checkSumAddress}
+          size={24}
+          ensImage={ensAvatar}
+        />
         <span>
-          {isENS(displayName) ? displayName : checkSumAddress.slice(0, 6) + "..." + checkSumAddress.slice(-4)}
+          {isENS(displayName)
+            ? displayName
+            : checkSumAddress.slice(0, 6) + "..." + checkSumAddress.slice(-4)}
         </span>
         <ChevronDownIcon />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem closeOnClick={false} onClick={() => copyAddressToClipboard(checkSumAddress)}>
-          {isAddressCopiedToClipboard ? <CheckCircleIcon /> : <DocumentDuplicateIcon />}
-          <span>{isAddressCopiedToClipboard ? "Copied!" : "Copy address"}</span>
+        <DropdownMenuItem
+          closeOnClick={false}
+          onClick={() => copyAddressToClipboard(checkSumAddress)}
+        >
+          {isAddressCopiedToClipboard ? (
+            <CheckCircleIcon />
+          ) : (
+            <DocumentDuplicateIcon />
+          )}
+          <span>
+            {isAddressCopiedToClipboard ? "¡Copiada!" : "Copiar dirección"}
+          </span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onShowQRCode}>
           <QrCodeIcon />
-          <span>View QR Code</span>
+          <span>Ver código QR</span>
         </DropdownMenuItem>
         {allowedNetworks.some(network => network.id === arbitrumNitro.id) && (
           <DropdownMenuItem onClick={onSwitchAccount}>
             <UserCircleIcon />
-            <span>Switch account</span>
+            <span>Cambiar cuenta</span>
           </DropdownMenuItem>
         )}
         {allowedNetworks.length > 1 ? (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <ArrowsRightLeftIcon />
-              <span>Switch network</span>
+              <span>Cambiar red</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               <NetworkOptions />
@@ -94,13 +111,13 @@ export const AddressInfoDropdown = ({
         {connector?.id === BURNER_WALLET_ID ? (
           <DropdownMenuItem onClick={onRevealBurnerPK}>
             <EyeIcon />
-            <span>Reveal private key</span>
+            <span>Mostrar clave privada</span>
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={() => disconnect()}>
           <ArrowLeftEndOnRectangleIcon />
-          <span>Disconnect</span>
+          <span>Desconectar</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

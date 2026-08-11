@@ -10,10 +10,10 @@ export function WalletEmptyState() {
         <ShieldCheck className="size-8" />
       </div>
       <h1 className="mt-6 font-heading text-[28px] font-black tracking-tight text-foreground sm:text-[34px]">
-        Your passes, secured
+        Tus Event Pass, protegidos
       </h1>
       <p className="mt-3 max-w-sm text-[15px] leading-6 text-muted-foreground">
-        One tap to create your secure pass. Next time, just use Face ID.
+        Un toque para crear tu pase seguro. La próxima vez, solo usa Face ID.
       </p>
 
       <div className="mt-8 w-full">
@@ -21,7 +21,7 @@ export function WalletEmptyState() {
       </div>
 
       <p className="mt-6 max-w-xs text-xs leading-5 text-muted-foreground">
-        Nothing extra to remember. Your device keeps it safe.
+        Nada más que recordar. Tu dispositivo lo mantiene seguro.
       </p>
     </div>
   );

@@ -20,10 +20,10 @@ describe("EventPassDetailsDisclosure", () => {
       <EventPassDetailsDisclosure {...baseProps} />,
     );
 
-    expect(html).toContain("Protected payment");
-    expect(html).toContain("full original price");
-    expect(html).toContain("Sales window:");
-    expect(html).toContain("37 of 250 remaining");
+    expect(html).toContain("Pago protegido");
+    expect(html).toContain("precio original completo");
+    expect(html).toContain("Periodo de venta:");
+    expect(html).toContain("quedan 37 de 250");
     expect(html).not.toContain("Paid directly to organizer");
     expect(html).not.toContain(
       "Cancellation does not automatically return USDC",
@@ -36,11 +36,11 @@ describe("EventPassDetailsDisclosure", () => {
       <EventPassDetailsDisclosure
         {...baseProps}
         lifecycle="cancelled"
-        availabilityReason="This Event Pass is sold out"
+        availabilityReason="Este Event Pass está agotado"
       />,
     );
 
-    expect(html).toContain("Cancelled");
-    expect(html).toContain("This Event Pass is sold out");
+    expect(html).toContain("Cancelado");
+    expect(html).toContain("Este Event Pass está agotado");
   });
 });

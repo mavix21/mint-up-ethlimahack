@@ -28,9 +28,9 @@ type Props = {
 };
 
 function actionLabel(action?: ResaleAction) {
-  if (action === "replace") return "Update listing";
-  if (action === "withdraw") return "Remove listing";
-  return "Create listing";
+  if (action === "replace") return "Actualizar anuncio";
+  if (action === "withdraw") return "Eliminar anuncio";
+  return "Crear anuncio";
 }
 
 export function EventPassResaleContent(props: Props) {
@@ -46,7 +46,7 @@ export function EventPassResaleContent(props: Props) {
       >
         <div>
           <label htmlFor={priceInputId} className="text-sm font-bold">
-            Price in USDC
+            Precio en USDC
           </label>
           <input
             id={priceInputId}
@@ -60,8 +60,8 @@ export function EventPassResaleContent(props: Props) {
             placeholder="25.00"
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            Enter a positive amount with up to 6 decimals
-            {props.maximumPrice ? `, up to ${props.maximumPrice}` : ""}.
+            Ingresa un importe positivo con hasta 6 decimales
+            {props.maximumPrice ? `, hasta ${props.maximumPrice}` : ""}.
           </p>
         </div>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -70,10 +70,10 @@ export function EventPassResaleContent(props: Props) {
             className={outlineButtonClass}
             onClick={props.onCancel}
           >
-            Cancel
+            Cancelar
           </button>
           <button type="submit" className={buttonClass}>
-            Continue
+            Continuar
           </button>
         </div>
       </form>
@@ -92,15 +92,15 @@ export function EventPassResaleContent(props: Props) {
           {props.price && !withdrawal ? (
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between gap-4">
-                <dt>Listing price</dt>
+                <dt>Precio del anuncio</dt>
                 <dd className="font-bold">{props.price} USDC</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt>9% marketplace fee</dt>
+                <dt>Comisión del 9% de Marketplace</dt>
                 <dd>{props.fee}</dd>
               </div>
               <div className="flex justify-between gap-4 border-t pt-2">
-                <dt>You receive (91%)</dt>
+                <dt>Recibes (91%)</dt>
                 <dd className="font-bold">{props.net}</dd>
               </div>
             </dl>
@@ -108,8 +108,8 @@ export function EventPassResaleContent(props: Props) {
         </div>
         <p className="text-sm text-muted-foreground">
           {withdrawal
-            ? "You keep your Event Pass. No USDC moves."
-            : "Your Pass resale listing becomes public only after confirmation is verified."}
+            ? "Conservas tu Event Pass. No se transfieren USDC."
+            : "Tu anuncio de reventa se publica solo después de verificar la confirmación."}
         </p>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
@@ -117,14 +117,14 @@ export function EventPassResaleContent(props: Props) {
             className={outlineButtonClass}
             onClick={props.onCancel}
           >
-            Cancel
+            Cancelar
           </button>
           <button
             type="button"
             className={buttonClass}
             onClick={props.onConfirm}
           >
-            Confirm with Face ID or fingerprint
+            Confirmar con Face ID o huella digital
           </button>
         </div>
       </div>
@@ -136,9 +136,9 @@ export function EventPassResaleContent(props: Props) {
       <div role="status" className="flex items-center gap-3 py-3">
         <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
         <div>
-          <p className="font-bold">Confirming your listing</p>
+          <p className="font-bold">Confirmando tu anuncio</p>
           <p className="text-sm text-muted-foreground">
-            Keep this window open until it is complete.
+            Mantén esta ventana abierta hasta que se complete.
           </p>
         </div>
       </div>
@@ -150,17 +150,17 @@ export function EventPassResaleContent(props: Props) {
       <div className="space-y-4">
         <p className="font-bold">
           {props.action === "withdraw"
-            ? "Your listing has been removed."
+            ? "Tu anuncio se eliminó."
             : props.action === "replace"
-              ? "Your listing has been updated."
-              : "Your listing is public."}
+              ? "Tu anuncio se actualizó."
+              : "Tu anuncio es público."}
         </p>
         <button
           type="button"
           className={`${buttonClass} w-full`}
           onClick={props.onDone}
         >
-          Done
+          Listo
         </button>
       </div>
     );
@@ -169,9 +169,9 @@ export function EventPassResaleContent(props: Props) {
   if (props.state === "unavailable") {
     return (
       <div className="rounded-xl bg-muted/60 p-3 text-sm">
-        <p className="font-bold">Listing unavailable</p>
+        <p className="font-bold">Anuncio no disponible</p>
         <p className="text-muted-foreground">
-          This listing can no longer be changed.
+          Este anuncio ya no se puede modificar.
         </p>
       </div>
     );
@@ -179,8 +179,8 @@ export function EventPassResaleContent(props: Props) {
 
   const message =
     props.failure === "validation"
-      ? "Enter a positive USDC price with up to 6 decimals that does not exceed your protected payment."
-      : "We couldn't complete this listing. Try again.";
+      ? "Ingresa un precio positivo en USDC con hasta 6 decimales que no supere tu pago protegido."
+      : "No pudimos completar este anuncio. Inténtalo de nuevo.";
   return (
     <div className="space-y-4">
       <p
@@ -195,7 +195,7 @@ export function EventPassResaleContent(props: Props) {
         className={outlineButtonClass}
         onClick={props.onRetry}
       >
-        Retry
+        Reintentar
       </button>
     </div>
   );

@@ -36,7 +36,7 @@ export function SessionButton() {
   if (isPending) {
     return (
       <Button variant="outline" size="sm" disabled>
-        Checking session...
+        Verificando sesión...
       </Button>
     );
   }
@@ -44,7 +44,7 @@ export function SessionButton() {
   if (!session) {
     return (
       <Button render={<Link href="/login" />} nativeButton={false} size="sm">
-        Log in
+        Iniciar sesión
       </Button>
     );
   }
@@ -60,7 +60,7 @@ export function SessionButton() {
           <Button
             variant="outline"
             size="sm"
-            aria-label={`Logged in as ${displayName}`}
+            aria-label={`Sesión iniciada como ${displayName}`}
           />
         }
       >
@@ -76,7 +76,7 @@ export function SessionButton() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/account" />}>
-          Account
+          Cuenta
         </DropdownMenuItem>
         <DropdownMenuItem
           variant="destructive"
@@ -84,7 +84,7 @@ export function SessionButton() {
           onClick={signOut}
         >
           <LogOutIcon />
-          {isSigningOut ? "Signing out..." : "Sign out"}
+          {isSigningOut ? "Cerrando sesión..." : "Cerrar sesión"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

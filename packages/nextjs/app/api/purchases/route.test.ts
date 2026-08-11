@@ -114,7 +114,7 @@ describe("purchase preparation route", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       code: "event_pass_sold_out",
-      message: "This Event Pass is sold out.",
+      message: "Este Event Pass está agotado.",
       stage: "backend_preparation",
     });
   });

@@ -23,7 +23,7 @@ export const SwitchTheme = ({ className }: { className?: string }) => {
         variant="outline"
         size="icon"
         onClick={() => setTheme(isDarkMode ? "light" : "dark")}
-        aria-label={`Switch to ${isDarkMode ? "light" : "dark"} theme`}
+        aria-label={`Cambiar al tema ${isDarkMode ? "claro" : "oscuro"}`}
       >
         {isDarkMode ? <SunIcon /> : <MoonIcon />}
       </Button>

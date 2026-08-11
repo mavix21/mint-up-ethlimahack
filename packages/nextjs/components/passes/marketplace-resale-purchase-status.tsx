@@ -15,31 +15,31 @@ export function MarketplaceResalePurchaseStatus({
 }) {
   const content = {
     email_unverified: {
-      title: "Verify your email to continue",
+      title: "Verifica tu correo electrónico para continuar",
       detail:
-        "Open your Mint Up verification message, verify your email, then return to this page.",
+        "Abre el mensaje de verificación de Mint Up, verifica tu correo electrónico y vuelve a esta página.",
       action: null,
     },
     blocked: {
-      title: "Your Mint Up account cannot make purchases",
-      detail: "Contact Mint Up support if you think this is a mistake.",
+      title: "Tu cuenta de Mint Up no puede realizar compras",
+      detail: "Contacta al soporte de Mint Up si crees que es un error.",
       action: null,
     },
     own_listing: {
-      title: "You listed this Event Pass",
-      detail: "You cannot buy your own resale listing.",
-      action: { href: "/my-passes", label: "Manage My passes" },
+      title: "Publicaste este Event Pass",
+      detail: "No puedes comprar tu propio anuncio de reventa.",
+      action: { href: "/my-passes", label: "Administrar Mis pases" },
     },
     already_has_event_pass: {
-      title: "You already have an active Event Pass for this Event",
+      title: "Ya tienes un Event Pass activo para este evento",
       detail:
-        "Only one active Event Pass is available per person for an Event.",
-      action: { href: "/my-passes", label: "View My passes" },
+        "Solo se permite un Event Pass activo por persona para cada evento.",
+      action: { href: "/my-passes", label: "Ver Mis pases" },
     },
     unavailable: {
-      title: "This Pass resale is no longer available",
-      detail: "You will not be charged. Choose another available option.",
-      action: { href: "/marketplace", label: "Back to Marketplace" },
+      title: "Esta reventa ya no está disponible",
+      detail: "No se te cobrará. Elige otra opción disponible.",
+      action: { href: "/marketplace", label: "Volver a Marketplace" },
     },
   }[status];
 

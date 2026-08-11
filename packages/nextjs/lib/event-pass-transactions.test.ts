@@ -68,7 +68,7 @@ describe("Event Pass purchase transaction semantics", () => {
         allowance: 25_000_000n,
         price: 25_000_000n,
       }),
-    ).toThrow("approval failed");
+    ).toThrow("La aprobación de USDC falló");
     expect(() =>
       assertApprovalConfirmed({
         receiptStatus: "success",
@@ -76,7 +76,7 @@ describe("Event Pass purchase transaction semantics", () => {
         allowance: 0n,
         price: 25_000_000n,
       }),
-    ).toThrow("approval failed");
+    ).toThrow("La aprobación de USDC falló");
   });
 
   it("accepts exactly one pass issued to the selected buyer", () => {
@@ -90,6 +90,6 @@ describe("Event Pass purchase transaction semantics", () => {
         eventIdentifier,
         buyer,
       ),
-    ).toThrow("does not belong to the selected wallet");
+    ).toThrow("no pertenece a la wallet seleccionada");
   });
 });

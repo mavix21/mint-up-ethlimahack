@@ -53,7 +53,7 @@ export const AddressStorageTab = ({ address }: { address: Address }) => {
                 <code>
                   {storage.map((data, i) => (
                     <span className="block" key={i}>
-                      <strong>Storage Slot {i}:</strong> {data}
+                      <strong>Slot de almacenamiento {i}:</strong> {data}
                     </span>
                   ))}
                 </code>
@@ -62,7 +62,7 @@ export const AddressStorageTab = ({ address }: { address: Address }) => {
           </CardContent>
         </Card>
       ) : (
-        <div className="text-lg">This contract does not have any variables.</div>
+        <div className="text-lg">Este contrato no tiene variables.</div>
       )}
     </div>
   );

@@ -77,7 +77,8 @@ describe("wallet linking route", () => {
 
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
-      message: "Could not request a wallet challenge. Try again.",
+      message:
+        "No se pudo solicitar un desafío para la wallet. Inténtalo de nuevo.",
     });
   });
 
@@ -120,7 +121,7 @@ describe("wallet linking route", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
-      message: "Wallet verification failed. Request a new challenge.",
+      message: "La verificación de la wallet falló. Solicita un nuevo desafío.",
     });
   });
 });

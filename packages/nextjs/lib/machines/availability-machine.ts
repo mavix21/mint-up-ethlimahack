@@ -39,7 +39,9 @@ export const passkeyAvailabilityMachine = setup({
         },
         onError: {
           target: "failed",
-          actions: assign({ error: () => "Availability check failed." }),
+          actions: assign({
+            error: () => "La comprobación de disponibilidad falló.",
+          }),
         },
       },
     },

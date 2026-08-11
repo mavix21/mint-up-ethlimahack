@@ -38,7 +38,7 @@ async function json<T>(response: Response): Promise<T> {
   if (!response.ok)
     throw new StatusRequestError(
       response.status,
-      body.message ?? "The action failed.",
+      body.message ?? "La acción falló.",
     );
   return body;
 }
@@ -161,14 +161,14 @@ export function SponsoredAction({
         classified.kind === "unavailable_transport";
       if (isCancellationLike) {
         setState("cancelled");
-        setMessage(`${classified.message} Nothing was submitted.`);
+        setMessage(`${classified.message} No se envió nada.`);
       } else {
         setState(classified.kind === "unsupported" ? "failure" : "failure");
         setMessage(
           classified.message ??
             (error instanceof Error
               ? error.message
-              : "The sponsored action failed."),
+              : "La acción patrocinada falló."),
         );
       }
     }
@@ -177,20 +177,20 @@ export function SponsoredAction({
   const busy =
     state === "preparing" || state === "biometric" || state === "submitted";
   const labels: Record<State, string> = {
-    idle: "Run approved action",
-    preparing: "Preparing sponsored operation...",
-    biometric: "Confirm with your passkey...",
-    submitted: "Submitted, waiting for inclusion...",
-    included: "Included on Arbitrum Sepolia",
-    rejected: "Operation rejected",
-    failure: "Operation failed",
-    cancelled: "Confirmation cancelled",
+    idle: "Ejecutar acción aprobada",
+    preparing: "Preparando operación patrocinada...",
+    biometric: "Confirma con tu passkey...",
+    submitted: "Enviada, esperando inclusión...",
+    included: "Incluida en Arbitrum Sepolia",
+    rejected: "Operación rechazada",
+    failure: "La operación falló",
+    cancelled: "Confirmación cancelada",
   };
 
   return (
     <div className="mt-6 border-t border-neutral-content/10 pt-6">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-content/50">
-        Approved action
+        Acción aprobada
       </p>
       <p className="mt-2 text-sm">
         EntryPoint.balanceOf(account) · 0 ETH · Arbitrum Sepolia
@@ -200,11 +200,11 @@ export function SponsoredAction({
           role="alert"
           className="mt-3 rounded-xl bg-amber-500/10 p-3 text-sm"
         >
-          <p className="font-bold">Passkey not available</p>
+          <p className="font-bold">Passkey no disponible</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            WebAuthn capability unavailable. Purchase and sponsored controls are
-            disabled until a supported browser/authenticator is available. No
-            account change was made.
+            WebAuthn no está disponible. Los controles de compra y patrocinio
+            están deshabilitados hasta que haya un navegador o autenticador
+            compatible. No se modificó ninguna cuenta.
           </p>
         </div>
       )}
@@ -214,7 +214,7 @@ export function SponsoredAction({
         disabled={busy || blocking}
         className="mt-4 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:cursor-wait disabled:opacity-65"
       >
-        {blocking ? "Passkey unavailable" : labels[state]}
+        {blocking ? "Passkey no disponible" : labels[state]}
       </button>
       {message ? (
         <p role="alert" className="mt-3 text-sm">
@@ -228,7 +228,7 @@ export function SponsoredAction({
       ) : null}
       {transactionHash ? (
         <p className="mt-2 break-all font-mono text-xs">
-          Transaction: {transactionHash}
+          Transacción: {transactionHash}
         </p>
       ) : null}
     </div>

@@ -23,18 +23,21 @@ const requestSchema = z
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to transfer this Event Pass." },
+      { message: "Inicia sesión para transferir este Event Pass." },
       { status: 401 },
     );
 
   const body = await readBoundedJson(request);
   if ("oversized" in body)
-    return Response.json({ message: "Request is too large." }, { status: 413 });
+    return Response.json(
+      { message: "La solicitud es demasiado grande." },
+      { status: 413 },
+    );
 
   const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success)
     return Response.json(
-      { message: "Check the recipient email and try again." },
+      { message: "Comprueba el correo del destinatario e inténtalo de nuevo." },
       { status: 400 },
     );
 
@@ -54,7 +57,10 @@ export async function POST(request: Request) {
             code: "recipient_unavailable",
             message: recipientUnavailableMessage,
           }
-        : { message: "We couldn't prepare the transfer. Try again." },
+        : {
+            message:
+              "No pudimos preparar la transferencia. Inténtalo de nuevo.",
+          },
       { status: 409 },
     );
   }

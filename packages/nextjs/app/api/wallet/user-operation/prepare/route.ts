@@ -6,15 +6,18 @@ import { readBoundedJson } from "../../../../../lib/pimlico-user-operation-route
 export async function POST(request: Request) {
   if (!(await isAuthenticated()))
     return Response.json(
-      { message: "Sign in to send this action." },
+      { message: "Inicia sesión para enviar esta acción." },
       { status: 401 },
     );
   const body = await readBoundedJson(request);
   if ("oversized" in body)
-    return Response.json({ message: "Request is too large." }, { status: 413 });
+    return Response.json(
+      { message: "La solicitud es demasiado grande." },
+      { status: 413 },
+    );
   if (typeof body.value !== "object" || body.value === null) {
     return Response.json(
-      { message: "Invalid preparation request." },
+      { message: "Solicitud de preparación no válida." },
       { status: 400 },
     );
   }
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
     1
   ) {
     return Response.json(
-      { message: "Invalid preparation request." },
+      { message: "Solicitud de preparación no válida." },
       { status: 400 },
     );
   }
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
     return Response.json(prepareUserOperationResultSchema.parse(prepared));
   } catch {
     return Response.json(
-      { message: "The sponsored action could not be prepared." },
+      { message: "No se pudo preparar la acción patrocinada." },
       { status: 409 },
     );
   }

@@ -37,16 +37,16 @@ async function LoginCard({
           Mint Up Passes
         </p>
         <h1 className="mt-3 font-heading text-3xl font-bold">
-          Your passes, one sign-in away.
+          Accede a tus pases con solo iniciar sesión.
         </h1>
         <p className="mb-8 mt-3 text-base-content/70">
-          Continue with your Mint Up identity or prove control of an external
-          wallet.
+          Continúa con tu identidad de Mint Up o demuestra que controlas una
+          billetera externa.
         </p>
         <GoogleSignInButton callbackUrl={destination} />
         <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-widest text-base-content/45">
           <span className="h-px flex-1 bg-base-300" />
-          or
+          o
           <span className="h-px flex-1 bg-base-300" />
         </div>
         <WalletProofButton

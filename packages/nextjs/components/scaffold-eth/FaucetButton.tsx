@@ -7,7 +7,11 @@ import { useAccount } from "wagmi";
 import { BanknotesIcon } from "@heroicons/react/24/outline";
 import { Button } from "~~/components/ui/button";
 import { Spinner } from "~~/components/ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "~~/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~~/components/ui/tooltip";
 import { useTransactor } from "~~/hooks/scaffold-eth";
 import { useWatchBalance } from "~~/hooks/scaffold-eth/useWatchBalance";
 import { arbitrumNitro } from "~~/utils/scaffold-stylus/supportedChains";
@@ -59,13 +63,13 @@ export const FaucetButton = () => {
             size="icon-sm"
             onClick={sendETH}
             disabled={loading}
-            aria-label="Grab funds from faucet"
+            aria-label="Obtener fondos del faucet"
           />
         }
       >
         {loading ? <Spinner /> : <BanknotesIcon />}
       </TooltipTrigger>
-      <TooltipContent side="bottom">Grab funds from faucet</TooltipContent>
+      <TooltipContent side="bottom">Obtener fondos del faucet</TooltipContent>
     </Tooltip>
   );
 };

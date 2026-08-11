@@ -46,7 +46,7 @@ describe("reconcile Event Pass transfer API", () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
-      message: "We couldn't verify the transfer yet. Try again.",
+      message: "Aún no pudimos verificar la transferencia. Inténtalo de nuevo.",
     });
   });
 });
