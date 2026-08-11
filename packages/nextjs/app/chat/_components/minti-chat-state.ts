@@ -8,6 +8,11 @@ type IdentifiedMessage = {
   key: string;
 };
 
+type ThreadSubmission = {
+  userId: string;
+  threadId: string | null;
+};
+
 export function getMessageScrollMetadata(message: IdentifiedMessage) {
   return { messageId: message.key };
 }
@@ -18,6 +23,18 @@ export function getConversationUserId(
   lastSettledUserId: string | undefined,
 ) {
   return userId ?? (isPending ? lastSettledUserId : undefined);
+}
+
+export function getActiveSubmission<T extends ThreadSubmission>(
+  submission: T | null,
+  userId: string | undefined,
+  threadId: string | null,
+) {
+  return submission &&
+    submission.userId === userId &&
+    submission.threadId === threadId
+    ? submission
+    : null;
 }
 
 export function selectConversationMessages<T>(

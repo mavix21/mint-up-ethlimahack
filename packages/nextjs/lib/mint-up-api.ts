@@ -132,6 +132,18 @@ type CreateMintiThread = FunctionReference<
   string
 >;
 
+export type MintiThread = {
+  threadId: string;
+  createdAt: number;
+};
+
+type ListMintiThreads = FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  MintiThread[]
+>;
+
 type ListMintiMessages = FunctionReference<
   "query",
   "public",
@@ -160,6 +172,7 @@ interface MintUpPublicApi {
   };
   minti: {
     createThread: CreateMintiThread;
+    listThreads: ListMintiThreads;
     listMessages: ListMintiMessages;
     sendMessage: SendMintiMessage;
   };

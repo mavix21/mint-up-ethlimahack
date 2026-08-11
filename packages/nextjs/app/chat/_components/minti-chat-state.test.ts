@@ -1,12 +1,36 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getActiveSubmission,
   getConversationUserId,
   getConversationRevision,
   getMessageScrollMetadata,
   hasAssistantMessageAfter,
   selectConversationMessages,
 } from "./minti-chat-state";
+
+describe("getActiveSubmission", () => {
+  const submission = { userId: "user-1", threadId: "thread-1" };
+
+  it("returns a submission only for its conversation", () => {
+    expect(getActiveSubmission(submission, "user-1", "thread-1")).toBe(
+      submission,
+    );
+    expect(getActiveSubmission(submission, "user-1", "thread-2")).toBeNull();
+    expect(getActiveSubmission(submission, "user-2", "thread-1")).toBeNull();
+  });
+
+  it("supports a lazy new chat before its thread is created", () => {
+    const newChatSubmission = { userId: "user-1", threadId: null };
+
+    expect(getActiveSubmission(newChatSubmission, "user-1", null)).toBe(
+      newChatSubmission,
+    );
+    expect(
+      getActiveSubmission(newChatSubmission, "user-1", "thread-1"),
+    ).toBeNull();
+  });
+});
 
 describe("getConversationUserId", () => {
   it("keeps the conversation mounted while auth revalidates", () => {

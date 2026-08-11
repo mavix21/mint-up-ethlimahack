@@ -3,11 +3,13 @@
 import { Component, useEffectEvent, useLayoutEffect, useState } from "react";
 import Image from "next/image";
 import { useSmoothText, useUIMessages } from "@convex-dev/agent/react";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
   ArrowUpIcon,
   CheckIcon,
   LoaderCircleIcon,
+  MessageSquareIcon,
+  PlusIcon,
   SearchIcon,
 } from "lucide-react";
 
@@ -43,10 +45,14 @@ import {
   MessageScrollerViewport,
   useMessageScroller,
 } from "~~/components/ui/message-scroller";
+import { ScrollArea } from "~~/components/ui/scroll-area";
+import { Separator } from "~~/components/ui/separator";
+import { Skeleton } from "~~/components/ui/skeleton";
 import { authClient } from "~~/lib/auth-client";
 import { mintUpApi, type MintiMessage } from "~~/lib/mint-up-api";
 import { EventRecommendationCard } from "./event-recommendation-card";
 import {
+  getActiveSubmission,
   getConversationUserId,
   getConversationRevision,
   getMessageScrollMetadata,
@@ -55,6 +61,12 @@ import {
 } from "./minti-chat-state";
 
 const THREAD_STORAGE_PREFIX = "mint-up:minti-thread:";
+const threadDateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
 
 function readSavedThread(storageKey: string) {
   try {
@@ -78,6 +90,10 @@ function removeSavedThread(storageKey: string) {
   } catch {
     // A replacement in-memory thread can still be created.
   }
+}
+
+function formatThreadLabel(createdAt: number) {
+  return threadDateFormatter.format(createdAt);
 }
 
 function MintiAvatar() {
@@ -469,7 +485,7 @@ function StaticConversation({
   );
 }
 
-type ActiveThread = {
+type SelectedThread = {
   userId: string;
   threadId: string;
 };
@@ -477,6 +493,7 @@ type ActiveThread = {
 type PendingSubmission = {
   id: string;
   userId: string;
+  threadId: string | null;
   prompt: string;
   createdAt: number;
 };
@@ -505,21 +522,24 @@ function LoginDialog({
 
 function Composer({
   userId,
-  thread,
-  onThreadReady,
+  selectedThread,
+  isSending,
+  onSendingChange,
+  onThreadSelected,
   onSubmissionStart,
   onSubmissionError,
 }: {
   userId: string | undefined;
-  thread: ActiveThread | null;
-  onThreadReady: (thread: ActiveThread) => void;
+  selectedThread: SelectedThread | null;
+  isSending: boolean;
+  onSendingChange: (isSending: boolean) => void;
+  onThreadSelected: (thread: SelectedThread, submissionId: string) => void;
   onSubmissionStart: (submission: PendingSubmission) => void;
   onSubmissionError: (submissionId: string) => void;
 }) {
   const createThread = useMutation(mintUpApi.minti.createThread);
   const sendMessage = useAction(mintUpApi.minti.sendMessage);
   const [prompt, setPrompt] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -537,24 +557,24 @@ function Composer({
     const submission = {
       id: crypto.randomUUID(),
       userId,
+      threadId:
+        selectedThread?.userId === userId ? selectedThread.threadId : null,
       prompt: nextPrompt,
       createdAt: Date.now(),
     };
-    setIsSending(true);
+    onSendingChange(true);
     setPrompt("");
     onSubmissionStart(submission);
 
     try {
-      const storageKey = `${THREAD_STORAGE_PREFIX}${userId}`;
-      let threadId = thread?.userId === userId ? thread.threadId : null;
-      threadId ??= readSavedThread(storageKey);
+      let threadId =
+        selectedThread?.userId === userId ? selectedThread.threadId : null;
 
       if (!threadId) {
         threadId = await createThread({});
-        saveThread(storageKey, threadId);
       }
 
-      onThreadReady({ userId, threadId });
+      onThreadSelected({ userId, threadId }, submission.id);
       await sendMessage({ threadId, prompt: nextPrompt });
     } catch {
       onSubmissionError(submission.id);
@@ -562,7 +582,7 @@ function Composer({
         "Minti could not complete that response. Check the conversation before retrying.",
       );
     } finally {
-      setIsSending(false);
+      onSendingChange(false);
     }
   }
 
@@ -671,22 +691,17 @@ class ThreadErrorBoundary extends Component<
 }
 
 function AuthenticatedConversation({
-  userId,
-  thread,
+  selectedThread,
   welcome,
   pending,
   onThreadReset,
 }: {
-  userId: string;
-  thread: ActiveThread | null;
+  selectedThread: SelectedThread | null;
   welcome: React.ReactNode;
   pending: PendingSubmission | null;
   onThreadReset: () => void;
 }) {
-  const [savedThreadId, setSavedThreadId] = useState(() =>
-    readSavedThread(`${THREAD_STORAGE_PREFIX}${userId}`),
-  );
-  const threadId = thread?.threadId ?? savedThreadId;
+  const threadId = selectedThread?.threadId;
 
   if (!threadId) {
     return <StaticConversation pending={pending}>{welcome}</StaticConversation>;
@@ -696,8 +711,6 @@ function AuthenticatedConversation({
     <ThreadErrorBoundary
       key={threadId}
       onReset={() => {
-        removeSavedThread(`${THREAD_STORAGE_PREFIX}${userId}`);
-        setSavedThreadId(null);
         onThreadReset();
       }}
     >
@@ -706,57 +719,182 @@ function AuthenticatedConversation({
   );
 }
 
-export function MintiChat({ welcome }: { welcome: React.ReactNode }) {
+export function MintiChat({
+  welcome,
+  header,
+}: {
+  welcome: React.ReactNode;
+  header: React.ReactNode;
+}) {
   const { data: session, isPending } = authClient.useSession();
-  const [thread, setThread] = useState<ActiveThread | null>(null);
+  const userId = session?.user.id;
+  const { isAuthenticated } = useConvexAuth();
+  const threads = useQuery(
+    mintUpApi.minti.listThreads,
+    userId && isAuthenticated ? {} : "skip",
+  );
+  const [selectedThread, setSelectedThread] = useState<SelectedThread | null>(
+    () => {
+      const userId = session?.user.id;
+      const threadId = userId
+        ? readSavedThread(`${THREAD_STORAGE_PREFIX}${userId}`)
+        : null;
+      return userId && threadId ? { userId, threadId } : null;
+    },
+  );
   const [pendingSubmission, setPendingSubmission] =
     useState<PendingSubmission | null>(null);
-  const userId = session?.user.id;
+  const [isSending, setIsSending] = useState(false);
   const [lastSettledUserId, setLastSettledUserId] = useState(userId);
   if (!isPending && lastSettledUserId !== userId) {
     setLastSettledUserId(userId);
+    const savedThreadId = userId
+      ? readSavedThread(`${THREAD_STORAGE_PREFIX}${userId}`)
+      : null;
+    setSelectedThread(
+      userId && savedThreadId ? { userId, threadId: savedThreadId } : null,
+    );
   }
   const conversationUserId = getConversationUserId(
     userId,
     isPending,
     lastSettledUserId,
   );
-  const activeThread = thread?.userId === conversationUserId ? thread : null;
-  const activeSubmission =
-    pendingSubmission?.userId === conversationUserId ? pendingSubmission : null;
+  const activeThread =
+    selectedThread?.userId === conversationUserId ? selectedThread : null;
+  const activeSubmission = getActiveSubmission(
+    pendingSubmission,
+    conversationUserId,
+    activeThread?.threadId ?? null,
+  );
+  const threadList = threads ?? [];
+  const threadsLoading =
+    isPending || Boolean(userId && (!isAuthenticated || !threads));
+
+  function startNewChat() {
+    if (userId) removeSavedThread(`${THREAD_STORAGE_PREFIX}${userId}`);
+    setSelectedThread(null);
+    setPendingSubmission(null);
+  }
+
+  function selectThread(threadId: string) {
+    if (!userId || threadId === activeThread?.threadId) return;
+    saveThread(`${THREAD_STORAGE_PREFIX}${userId}`, threadId);
+    setSelectedThread({ userId, threadId });
+    setPendingSubmission(null);
+  }
 
   return (
-    <>
-      <div className="min-h-0 flex-1">
-        {conversationUserId ? (
-          <AuthenticatedConversation
-            key={conversationUserId}
-            userId={conversationUserId}
-            thread={activeThread}
-            welcome={welcome}
-            pending={activeSubmission}
-            onThreadReset={() => {
-              setThread(null);
-              setPendingSubmission(null);
-            }}
-          />
-        ) : isPending ? (
-          <StaticConversation />
-        ) : (
-          <StaticConversation>{welcome}</StaticConversation>
-        )}
-      </div>
-      <Composer
-        userId={userId}
-        thread={activeThread}
-        onThreadReady={setThread}
-        onSubmissionStart={setPendingSubmission}
-        onSubmissionError={submissionId =>
-          setPendingSubmission(current =>
-            current?.id === submissionId ? null : current,
-          )
-        }
-      />
-    </>
+    <div className="grid size-full min-h-0 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+      <aside className="hidden min-h-0 flex-col border-r bg-muted/25 lg:flex">
+        <div className="p-3">
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full justify-start"
+            disabled={isSending}
+            onClick={startNewChat}
+          >
+            <PlusIcon />
+            New chat
+          </Button>
+        </div>
+        <Separator />
+        <div className="px-4 pt-4 pb-2">
+          <p className="text-xs font-medium text-muted-foreground">Recents</p>
+        </div>
+        <ScrollArea className="min-h-0 flex-1">
+          <nav aria-label="Conversations" className="space-y-1 px-2 pb-3">
+            {threadsLoading ? (
+              <>
+                <Skeleton className="h-9 w-full rounded-md" />
+                <Skeleton className="h-9 w-4/5 rounded-md" />
+                <Skeleton className="h-9 w-11/12 rounded-md" />
+              </>
+            ) : !userId ? (
+              <p className="px-2 py-3 text-xs leading-5 text-muted-foreground">
+                Sign in to see your conversations.
+              </p>
+            ) : threadList.length === 0 ? (
+              <p className="px-2 py-3 text-xs leading-5 text-muted-foreground">
+                Your conversations will appear here.
+              </p>
+            ) : (
+              threadList.map(thread => {
+                const isActive = thread.threadId === activeThread?.threadId;
+                const label = formatThreadLabel(thread.createdAt);
+
+                return (
+                  <Button
+                    key={thread.threadId}
+                    type="button"
+                    variant={isActive ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-9 w-full justify-start gap-2 px-2 font-normal"
+                    aria-current={isActive ? "page" : undefined}
+                    disabled={isSending}
+                    title={label}
+                    onClick={() => selectThread(thread.threadId)}
+                  >
+                    <MessageSquareIcon className="shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </Button>
+                );
+              })
+            )}
+          </nav>
+        </ScrollArea>
+      </aside>
+      <section
+        aria-label="Event discovery conversation"
+        className="flex min-h-0 min-w-0 flex-col"
+      >
+        {header}
+        <div className="min-h-0 flex-1">
+          {conversationUserId ? (
+            <AuthenticatedConversation
+              key={conversationUserId}
+              selectedThread={activeThread}
+              welcome={welcome}
+              pending={activeSubmission}
+              onThreadReset={() => {
+                removeSavedThread(
+                  `${THREAD_STORAGE_PREFIX}${conversationUserId}`,
+                );
+                setSelectedThread(null);
+              }}
+            />
+          ) : isPending ? (
+            <StaticConversation />
+          ) : (
+            <StaticConversation>{welcome}</StaticConversation>
+          )}
+        </div>
+        <Composer
+          userId={userId}
+          selectedThread={activeThread}
+          isSending={isSending}
+          onSendingChange={setIsSending}
+          onThreadSelected={(nextThread, submissionId) => {
+            saveThread(
+              `${THREAD_STORAGE_PREFIX}${nextThread.userId}`,
+              nextThread.threadId,
+            );
+            setSelectedThread(nextThread);
+            setPendingSubmission(current =>
+              current?.id === submissionId
+                ? { ...current, threadId: nextThread.threadId }
+                : current,
+            );
+          }}
+          onSubmissionStart={setPendingSubmission}
+          onSubmissionError={submissionId =>
+            setPendingSubmission(current =>
+              current?.id === submissionId ? null : current,
+            )
+          }
+        />
+      </section>
+    </div>
   );
 }
