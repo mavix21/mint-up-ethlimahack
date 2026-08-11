@@ -9,14 +9,14 @@ import {
   MarketplaceResalePurchaseAccessFallback,
 } from "~~/components/passes/marketplace-resale-purchase-access";
 import { Badge } from "~~/components/ui/badge";
-import { listEventPassOffers } from "~~/lib/event-pass-offer-data";
 import { formatUsdc } from "~~/lib/event-pass-offers";
+import { fetchMyPasses } from "~~/lib/event-pass-ownerships";
 import { composeMarketplace } from "~~/lib/marketplace";
 import { listPassResales } from "~~/lib/marketplace-data";
 
 export const metadata: Metadata = {
   title: "Marketplace",
-  description: "Browse public Event Pass offers and Pass resale listings.",
+  description: "Browse available Event Pass resale listings.",
 };
 export const instant = false;
 
@@ -26,16 +26,17 @@ export default async function MarketplacePage({
   searchParams: Promise<{ buy?: string }>;
 }) {
   await connection();
-  const [{ buy }, primary, resales] = await Promise.all([
+  const [{ buy }, resales, myPasses] = await Promise.all([
     searchParams,
-    listEventPassOffers(),
     listPassResales(),
+    fetchMyPasses(),
   ]);
-  const groups = composeMarketplace(primary, resales);
+  const groups = composeMarketplace(
+    resales,
+    new Set(myPasses.map(pass => pass.passId)),
+  );
   const selectedListingAvailable = groups.some(group =>
-    group.offers.some(
-      offer => offer.kind === "pass_resale" && offer.passId === buy,
-    ),
+    group.offers.some(offer => offer.passId === buy),
   );
 
   return (
@@ -48,8 +49,8 @@ export default async function MarketplacePage({
           Find your next Event Pass.
         </h1>
         <p className="mt-4 max-w-2xl text-muted-foreground">
-          Compare passes offered by Mint Up with verified Pass resale listings.
-          No sign-in required to browse.
+          Browse verified Event Pass resales available to buy. No sign-in
+          required to browse.
         </p>
       </header>
       {buy && !selectedListingAvailable ? (
@@ -100,55 +101,34 @@ export default async function MarketplacePage({
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {group.offers.map(offer => (
                   <article
-                    key={`${offer.kind}-${offer.kind === "pass_resale" ? offer.passId : offer.eventId}`}
+                    key={offer.passId}
                     className="rounded-3xl border bg-card p-5 shadow-sm"
                   >
-                    <Badge
-                      variant={
-                        offer.kind === "pass_resale" ? "secondary" : "default"
-                      }
-                    >
-                      {offer.kind === "pass_resale"
-                        ? "Pass resale"
-                        : "Event Pass Offer"}
-                    </Badge>
+                    <Badge variant="secondary">Pass resale</Badge>
                     <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
                       <Ticket className="size-4" />
-                      {offer.kind === "pass_resale"
-                        ? offer.ticketTypeName
-                        : "New Event Pass"}
+                      {offer.ticketTypeName}
                     </p>
                     <p className="mt-2 text-2xl font-black">
                       {formatUsdc(offer.priceAmountSubunits)}
                     </p>
-                    {offer.kind === "pass_resale" ? (
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Protected payment:{" "}
-                        {formatUsdc(offer.originalProtectedPriceAmountSubunits)}
-                      </p>
-                    ) : null}
-                    {offer.kind === "event_pass_offer" ? (
-                      <Link
-                        href={`/passes/${encodeURIComponent(offer.eventId)}`}
-                        className="mt-5 inline-flex rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
-                      >
-                        View offer
-                      </Link>
-                    ) : (
-                      <Suspense
-                        fallback={<MarketplaceResalePurchaseAccessFallback />}
-                      >
-                        <MarketplaceResalePurchaseAccess
-                          passId={offer.passId}
-                          eventName={group.event.name}
-                          priceAmountSubunits={offer.priceAmountSubunits}
-                          originalProtectedAmountSubunits={
-                            offer.originalProtectedPriceAmountSubunits
-                          }
-                          selected={buy === offer.passId}
-                        />
-                      </Suspense>
-                    )}
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Protected payment:{" "}
+                      {formatUsdc(offer.originalProtectedPriceAmountSubunits)}
+                    </p>
+                    <Suspense
+                      fallback={<MarketplaceResalePurchaseAccessFallback />}
+                    >
+                      <MarketplaceResalePurchaseAccess
+                        passId={offer.passId}
+                        eventName={group.event.name}
+                        priceAmountSubunits={offer.priceAmountSubunits}
+                        originalProtectedAmountSubunits={
+                          offer.originalProtectedPriceAmountSubunits
+                        }
+                        selected={buy === offer.passId}
+                      />
+                    </Suspense>
                   </article>
                 ))}
               </div>

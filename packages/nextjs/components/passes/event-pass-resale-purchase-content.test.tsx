@@ -158,7 +158,7 @@ describe("public Pass resale purchase rendered states", () => {
       />,
     );
 
-    expect(html).toContain("Another buyer may have completed it first");
+    expect(html).toContain("We couldn&#x27;t finish this purchase");
     expect(html).toContain("you won&#x27;t be charged");
     expect(html).toContain("Retry");
     expect(html).toContain("Back to Marketplace");

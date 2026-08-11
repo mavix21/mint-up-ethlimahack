@@ -3,28 +3,8 @@ import { describe, expect, it } from "vitest";
 import { composeMarketplace } from "./marketplace";
 
 describe("composeMarketplace", () => {
-  it("groups primary and resale offers by event, then sorts events and prices", () => {
+  it("groups resale listings by event, excludes owned passes, then sorts", () => {
     const result = composeMarketplace(
-      [
-        {
-          eventId: "later",
-          name: "Later",
-          startTime: 200,
-          price: { amountSubunits: "1000000" },
-        },
-        {
-          eventId: "soon",
-          name: "Soon",
-          startTime: 100,
-          price: { amountSubunits: "3000000" },
-        },
-        {
-          eventId: "soon",
-          name: "Soon",
-          startTime: 100,
-          price: { amountSubunits: "5000000" },
-        },
-      ],
       [
         {
           event: { id: "soon", name: "Soon", startTime: 100 },
@@ -39,18 +19,40 @@ describe("composeMarketplace", () => {
               },
               offerKind: "pass_resale",
             },
+            {
+              passId: "pass-1",
+              ticketTypeName: "VIP",
+              price: { amountSubunits: "1000000", denomination: "USDC" },
+              originalProtectedPrice: {
+                amountSubunits: "2000000",
+                denomination: "USDC",
+              },
+              offerKind: "pass_resale",
+            },
+          ],
+        },
+        {
+          event: { id: "later", name: "Later", startTime: 200 },
+          listings: [
+            {
+              passId: "pass-3",
+              ticketTypeName: "General",
+              price: { amountSubunits: "3000000", denomination: "USDC" },
+              originalProtectedPrice: {
+                amountSubunits: "3000000",
+                denomination: "USDC",
+              },
+              offerKind: "pass_resale",
+            },
           ],
         },
       ],
+      new Set(["pass-1"]),
     );
 
     expect(result.map(group => group.event.id)).toEqual(["soon", "later"]);
-    expect(
-      result[0]?.offers.map(offer => [offer.kind, offer.priceAmountSubunits]),
-    ).toEqual([
-      ["pass_resale", "2000000"],
-      ["event_pass_offer", "3000000"],
-      ["event_pass_offer", "5000000"],
+    expect(result[0]?.offers.map(offer => offer.priceAmountSubunits)).toEqual([
+      "2000000",
     ]);
     expect(result[0]?.offers[0]).toMatchObject({
       originalProtectedPriceAmountSubunits: "4000000",

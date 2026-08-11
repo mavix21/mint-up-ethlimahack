@@ -103,8 +103,8 @@ export function EventPassResalePurchaseContent({
           className="flex gap-2 rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive"
         >
           <CircleAlert className="size-4 shrink-0" /> We couldn&apos;t finish
-          this purchase. Another buyer may have completed it first, but you
-          won&apos;t be charged. Retry to check the listing.
+          this purchase, but you won&apos;t be charged. Retry to check the
+          listing.
         </p>
         <RetryButton onRetry={onRetry} />
         <a

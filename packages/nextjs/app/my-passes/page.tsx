@@ -244,12 +244,7 @@ async function MyPassesContent() {
     Promise.all(
       passes.map(
         async pass =>
-          [
-            pass.passId,
-            pass.refund.status === "available"
-              ? await fetchEventPassRefundAmount(pass.passId)
-              : null,
-          ] as const,
+          [pass.passId, await fetchEventPassRefundAmount(pass.passId)] as const,
       ),
     ),
   ]);

@@ -1,0 +1,5 @@
+# Offer Event Passes through a public fixed-price marketplace
+
+Event Pass holders publish a Pass for resale by choosing only its USDC price; they do not designate a buyer by email. Listings are publicly discoverable without exposing seller identity, and any eligible authenticated Mint Up user may buy one, with the first confirmed purchase changing payment and ownership atomically. A listing remains active until purchased, withdrawn, or invalidated by the Pass or Event lifecycle. This replaces private addressed offers to simplify selling and let demand discover available Passes, while Pass transfer remains a separate free handoff.
+
+The seller supplies only the total USDC price, then authorizes publishing, changing, or withdrawing the listing with Face ID or fingerprint. A buyer likewise authorizes the exact Pass and price before purchase. Resale pays 91% immediately to the seller and 9% to Mint Up; the seller sees that net amount before confirming. A later Event cancellation returns only the original Protected payment to the current holder, not the resale price.
