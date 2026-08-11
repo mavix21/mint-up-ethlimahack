@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getLocalRedirect } from "~~/lib/auth-redirect";
 
 export function OAuthCallback() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const verificationToken = useRef<string | null>(null);
 
   useEffect(() => {
     const token = searchParams.get("ott");
@@ -14,13 +15,13 @@ export function OAuthCallback() {
       setError("The sign-in token is missing or invalid.");
       return;
     }
+    if (verificationToken.current === token) return;
+    verificationToken.current = token;
 
-    const controller = new AbortController();
     void fetch("/api/auth/cross-domain/one-time-token/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
-      signal: controller.signal,
     })
       .then(response => {
         if (!response.ok)
@@ -32,15 +33,12 @@ export function OAuthCallback() {
         );
       })
       .catch((reason: unknown) => {
-        if (controller.signal.aborted) return;
         setError(
           reason instanceof Error
             ? reason.message
             : "Unable to complete sign-in.",
         );
       });
-
-    return () => controller.abort();
   }, [searchParams]);
 
   return (
