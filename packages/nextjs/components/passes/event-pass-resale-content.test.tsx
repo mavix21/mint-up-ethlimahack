@@ -106,6 +106,20 @@ describe("Event Pass resale rendered states", () => {
     expectBuyerSafe(html);
   });
 
+  it("disables Continue and shows feedback while preparing the resale", () => {
+    const html = renderToStaticMarkup(
+      <EventPassResaleContent
+        state="form"
+        eventName="ETH Lima 2026"
+        preparing
+      />,
+    );
+
+    expect(html).toContain("disabled");
+    expect(html).toContain("Cargando...");
+    expect(html).toContain("animate-spin");
+  });
+
   it.each(["create", "replace"] as const)(
     "reviews %s with one biometric confirmation",
     kind => {

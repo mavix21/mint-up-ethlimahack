@@ -85,6 +85,8 @@ export function EventPassResale({
   );
   const [retryStep, setRetryStep] = useState<RetryStep>("form");
   const [submittedHash, setSubmittedHash] = useState<`0x${string}`>();
+  const [preparingOffer, setPreparingOffer] = useState(false);
+  const preparingOfferRef = useRef(false);
   const [preparingWithdrawal, setPreparingWithdrawal] = useState(false);
   const controller = useRef<AbortController>(null);
   const idempotency = useRef<{ action: string; key: string }>(null);
@@ -113,6 +115,8 @@ export function EventPassResale({
   }
 
   async function prepareOffer() {
+    if (preparingOfferRef.current) return;
+
     try {
       const amount = parseHumanUsdc(price);
       if (BigInt(amount) > BigInt(maximumPriceAmountSubunits))
@@ -124,6 +128,8 @@ export function EventPassResale({
       return;
     }
 
+    preparingOfferRef.current = true;
+    setPreparingOffer(true);
     controller.current?.abort();
     controller.current = new AbortController();
     try {
@@ -148,6 +154,9 @@ export function EventPassResale({
       setFailure("operation");
       setRetryStep("form");
       setState("failure");
+    } finally {
+      preparingOfferRef.current = false;
+      setPreparingOffer(false);
     }
   }
 
@@ -363,6 +372,7 @@ export function EventPassResale({
         maximumPrice={formatUsdc(maximumPriceAmountSubunits)}
         failure={failure}
         priceInputId={priceId}
+        preparing={preparingOffer}
         onPriceChange={setPrice}
         onPrepare={prepareOffer}
         onConfirm={confirm}

@@ -5,7 +5,7 @@ export type ResaleContentState =
   "form" | "review" | "pending" | "success" | "failure" | "unavailable";
 
 const buttonClass =
-  "inline-flex min-h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50";
+  "inline-flex min-h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground enabled:hover:bg-primary/90 disabled:opacity-50";
 const outlineButtonClass =
   "inline-flex min-h-10 items-center justify-center rounded-full border bg-background px-4 text-sm font-bold disabled:opacity-50";
 
@@ -19,6 +19,7 @@ type Props = {
   maximumPrice?: string;
   failure?: "validation" | "operation";
   priceInputId?: string;
+  preparing?: boolean;
   onPriceChange?: (value: string) => void;
   onPrepare?: () => void;
   onConfirm?: () => void;
@@ -72,8 +73,18 @@ export function EventPassResaleContent(props: Props) {
           >
             Cancelar
           </button>
-          <button type="submit" className={buttonClass}>
-            Continuar
+          <button
+            type="submit"
+            className={`${buttonClass} gap-2`}
+            disabled={props.preparing}
+          >
+            {props.preparing ? (
+              <LoaderCircle
+                className="size-4 animate-spin"
+                aria-hidden="true"
+              />
+            ) : null}
+            {props.preparing ? "Cargando..." : "Continuar"}
           </button>
         </div>
       </form>

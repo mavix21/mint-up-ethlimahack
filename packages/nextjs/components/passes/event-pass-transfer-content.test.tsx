@@ -71,6 +71,20 @@ describe("Event Pass transfer rendered states", () => {
     expectBuyerSafe(html);
   });
 
+  it("disables Continue and shows feedback while preparing the transfer", () => {
+    const html = renderToStaticMarkup(
+      <EventPassTransferContent
+        state="form"
+        eventName="ETH Lima 2026"
+        preparing
+      />,
+    );
+
+    expect(html).toContain("disabled");
+    expect(html).toContain("Cargando...");
+    expect(html).toContain("animate-spin");
+  });
+
   it("keeps pending state non-authoritative", () => {
     const html = renderToStaticMarkup(
       <EventPassTransferContent state="pending" eventName="ETH Lima 2026" />,

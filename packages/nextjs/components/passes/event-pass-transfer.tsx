@@ -58,6 +58,8 @@ export function EventPassTransfer({
   );
   const [retryStep, setRetryStep] = useState<RetryStep>("form");
   const [submittedHash, setSubmittedHash] = useState<`0x${string}`>();
+  const [preparing, setPreparing] = useState(false);
+  const preparingRef = useRef(false);
   const controller = useRef<AbortController>(null);
   const inputId = useId();
   const router = useRouter();
@@ -71,6 +73,9 @@ export function EventPassTransfer({
   }
 
   async function prepareRecipient() {
+    if (preparingRef.current) return;
+    preparingRef.current = true;
+    setPreparing(true);
     controller.current?.abort();
     controller.current = new AbortController();
     try {
@@ -96,6 +101,9 @@ export function EventPassTransfer({
       );
       setRetryStep("form");
       setState("failure");
+    } finally {
+      preparingRef.current = false;
+      setPreparing(false);
     }
   }
 
@@ -250,6 +258,7 @@ export function EventPassTransfer({
         failure={failure}
         inputId={inputId}
         email={email}
+        preparing={preparing}
         onEmailChange={setEmail}
         onPrepare={prepareRecipient}
         onConfirm={confirmTransfer}
