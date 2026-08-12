@@ -16,7 +16,7 @@ despliegue, el frontend Next.js y el flujo local de Nitro.
 | Arbitrum Stylus | ✅ | El contrato es un `cdylib` de Rust que utiliza `stylus-sdk` y `openzeppelin-stylus`. | `packages/stylus/contracts/mint-up-event-pass/Cargo.toml`, `src/lib.rs` |
 | Lógica esencial en Stylus | ✅ | Compra, minting ERC-721, contabilidad USDC, reembolsos, check-in, transferencias y reventa están implementados en el contrato Stylus. | `packages/stylus/contracts/mint-up-event-pass/src/lib.rs` (`purchase`, `claim_refund`, `check_in`, `purchase_public_resale`) |
 | Scaffold Stylus | ✅ | El despliegue genera el registro de ABI/direcciones que consume Next.js; la configuración de red y los hooks están en las utilidades de Scaffold Stylus. | `packages/stylus/scripts/deploy.ts`, `packages/nextjs/contracts/deployedContracts.ts`, `packages/nextjs/utils/scaffold-stylus/` |
-| Inteligencia Artificial y Tecnologías Emergentes | ✅ | Minti interpreta consultas en lenguaje natural, usa un modelo LLM con tool calling y devuelve eventos públicos filtrados desde Convex. | Cliente: `packages/nextjs/app/chat/`; backend compartido: `mint-up-corp/packages/backend/convex/lib/mintiAgent.ts`, `mintiTools.ts`, `mintiEventSearch.ts` |
+| Inteligencia Artificial y Tecnologías Emergentes | ✅ | Minti interpreta consultas en lenguaje natural con tool calling y presenta tarjetas de eventos. Para eventos pagados de Mint Up, esas tarjetas integran un checkout de Event Pass que el usuario confirma con su passkey. | Chat y compra: `packages/nextjs/app/chat/`; backend de IA compartido: `mint-up-corp/packages/backend/convex/lib/mintiAgent.ts`, `mintiTools.ts`, `mintiEventSearch.ts` |
 
 ## ¿Por qué Arbitrum?
 
@@ -156,12 +156,14 @@ Sepolia, configura `NEXT_PUBLIC_EVENT_PASS_ENVIRONMENT=sepolia` y proporciona
 ```mermaid
 flowchart TD
   User[Usuario] --> Frontend[Frontend Next.js]
-  Frontend --> Minti[Minti AI<br/>chat + streaming]
-  Minti --> ConvexAI[Convex compartido<br/>Agent + event search]
+  Frontend --> Minti[Minti<br/>chat y streaming]
+  Minti --> ConvexAI[Convex compartido<br/>agente + búsqueda de eventos]
   ConvexAI --> LLM[Vercel AI Gateway<br/>openai/gpt-5-mini]
   ConvexAI --> EventData[Eventos públicos<br/>filtros + disponibilidad]
-  Frontend --> Wallet[Wallet / cuenta passkey]
-  Wallet --> RPC[RPC Arbitrum Nitro o Arbitrum Sepolia]
+  Minti --> Cards[Tarjetas de eventos]
+  Cards --> Checkout[Checkout integrado<br/>de Event Pass]
+  Checkout --> Wallet[Cuenta Kernel con passkey]
+  Wallet --> RPC[UserOperation ERC-4337<br/>Arbitrum Sepolia]
   RPC --> Stylus[MintUpEventPass<br/>Rust + Arbitrum Stylus]
   Stylus --> USDC[Contrato USDC]
   Frontend -. datos y flujos de servidor .-> Convex[Despliegue Convex compartido]
@@ -179,9 +181,9 @@ flowchart TD
 - **Convex:** datos de aplicación y flujos de servidor externos configurados
   por `NEXT_PUBLIC_CONVEX_URL`; no es un despliegue de smart contract de este
   repositorio.
-- **Minti:** isla de interfaz en Next.js que usa el mismo despliegue Convex para
-  autenticación, hilos, mensajes y búsqueda de eventos. No firma transacciones
-  ni modifica el contrato Stylus automáticamente.
+- **Minti:** interfaz conversacional en Next.js que usa Convex para
+  autenticación, hilos, mensajes y búsqueda de eventos. Sus tarjetas de eventos
+  pagados de Mint Up abren un checkout integrado y permite a los usuarios comprar Event Pass.
 
 ## 🔄 Flujo principal
 
@@ -292,13 +294,23 @@ direcciones pueden cambiar al reiniciar el devnode.
 
 ## 🤖 Minti — Asistente de eventos con IA
 
-Minti es el asistente conversacional de eventos de Mint Up. Resuelve el problema
-de descubrir eventos sin obligar al usuario a conocer de antemano los nombres de
-los campos, categorías o filtros de la interfaz. El usuario escribe una consulta
-en lenguaje natural y Minti la convierte en filtros estructurados para buscar
-eventos públicos autorizados.
+Minti es una interfaz conversacional integrada en Mint Up: combina descubrimiento
+de eventos por lenguaje natural con una acción de compra disponible dentro de las
+tarjetas de resultados. Por ello no es solo un chatbot informativo: ayuda a
+encontrar un evento y permite abrir el checkout de su Event Pass sin salir de la
+conversación. La confirmación de compra sigue siendo una acción explícita del
+usuario con su passkey; el LLM no firma ni envía transacciones.
+
+```text
+Minti
+ ├── 🔎 Buscar eventos
+ ├── ℹ️ Presentar datos verificables de eventos
+ └── 🎟️ Abrir el checkout de un Event Pass elegible
+```
 
 ### Capacidades implementadas
+
+#### 🔎 Descubrimiento de eventos
 
 - Busca próximos eventos mediante lenguaje natural.
 - Filtra por ventana temporal, formato (`online`, `in-person`, `hybrid`), mercado,
@@ -306,19 +318,26 @@ eventos públicos autorizados.
 - Devuelve hasta 10 resultados con título, horario, zona horaria, formato,
   ubicación, organizador, categorías, precio, disponibilidad, distancia, imagen y
   URL canónica.
-- Presenta los resultados como tarjetas de eventos enlazadas a la página del
-  evento.
 - Mantiene conversaciones autenticadas mediante hilos persistidos y muestra
   respuestas progresivas por streaming.
 - Recomienda únicamente eventos devueltos por `searchEvents`; el prompt del agente
   prohíbe inventar IDs, precios, inventario o detalles.
 
-La implementación actual no demuestra RAG, embeddings, base vectorial, búsqueda
-semántica, agentes multi-etapa, structured output para la respuesta final,
-transacciones blockchain desde el chat ni una herramienta de compra. La única
-herramienta expuesta al modelo es una búsqueda de eventos de solo lectura.
+#### 🎟️ Compra de Event Pass desde la conversación
 
-### Flujo técnico
+- Las tarjetas de eventos que cumplen `platform === "mintup"` y tienen precio
+  `paid` muestran el botón `Get pass`.
+- El botón abre un checkout en un panel dentro de `/chat`; no redirige a otra
+  pantalla de compra.
+- El checkout consulta la oferta vigente por `eventId`, incluidos identificador
+  on-chain, precio, disponibilidad, destinatario del pago y red.
+- Solo se prepara una oferta cuando el backend comprueba un único tipo de entrada
+  pagada, activo, de precio fijo y aprobación inmediata. La interfaz no permite
+  elegir entre varios tipos de Event Pass ni cantidades.
+- El usuario debe iniciar sesión y disponer de una cuenta Kernel/WebAuthn. Si no
+  existe, el panel solicita registrar una passkey antes de comprar.
+
+### Flujo técnico de búsqueda
 
 ```text
 Usuario autenticado
@@ -334,35 +353,115 @@ Usuario autenticado
   -> streaming persistido y mostrado en la interfaz
 ```
 
-El contexto no se obtiene de documentos indexados: procede del mensaje del
-usuario y del resultado estructurado de `searchEvents`. Los hilos y mensajes se
-guardan en el componente Agent de Convex. La propiedad, liquidación y acciones de
-Event Pass siguen teniendo como fuente autoritativa el contrato Stylus en
-Arbitrum, no Minti.
+El contexto no procede de documentos indexados: procede del mensaje del usuario y
+del resultado estructurado de `searchEvents`. Los hilos y mensajes se guardan en
+el componente Agent de Convex.
+
+### 🎟️ Compra de Event Pass con Minti
+
+La compra se enlaza a los resultados de la conversación, no a un tool del agente.
+El usuario identifica visualmente el evento en una tarjeta y el checkout utiliza
+el `eventId` de esa tarjeta para resolver la oferta vigente.
+
+```text
+Usuario autenticado
+  ↓ consulta en lenguaje natural
+Minti + searchEvents
+  ↓ tarjetas de eventos
+Tarjeta de evento pagado de Mint Up
+  ↓ botón Get pass
+Checkout integrado en /chat
+  ↓ oferta validada + revisión de precio
+Cuenta Kernel con passkey
+  ↓ confirmación biométrica y UserOperation ERC-4337 patrocinada
+USDC approve exacto + MintUpEventPass.purchase(event_id)
+  ↓ Arbitrum Sepolia
+EventPassPurchased + verificación y conciliación
+  ↓
+Event Pass confirmado y acceso a /my-passes
+```
+
+1. El usuario pide a Minti eventos con restricciones expresadas en lenguaje
+   natural. El agente invoca `searchEvents`; no hay una intención de compra
+   separada ni una tool de compra en el modelo.
+2. `EventRecommendationCard` renderiza los resultados. Si el evento pertenece a
+   Mint Up y es pagado, muestra `Get pass`; en otro caso muestra `Ver evento`.
+3. Al pulsar `Get pass`, `ChatEventPassPurchase` consulta
+   `/api/event-pass-offers/[eventId]` y `/api/wallet/passkey`. La oferta aporta
+   el evento, su identificador `bytes32`, precio, disponibilidad, contrato,
+   USDC y red activa.
+4. Si hace falta, `InlineSecureStep` registra una passkey y deriva la cuenta
+   Kernel WebAuthn. Si la cuenta ya existe, `GaslessEventPassPurchase` prepara la
+   compra para esa dirección.
+5. Al pulsar `Obtener Event Pass`, el checkout autentica la solicitud, verifica
+   la oferta vigente y el estado on-chain. Después muestra una revisión con el
+   evento y el total en USDC.
+6. El usuario confirma con Face ID o huella digital. La passkey firma una
+   `UserOperation` ERC-4337 patrocinada; no se usa una extensión de wallet en
+   este flujo.
+7. La operación agrupa una aprobación de USDC por el importe exacto y la llamada
+   `purchase(event_id)` de `MintUpEventPass`. La transacción se envía mediante
+   la infraestructura de patrocinio y se espera su inclusión.
+8. El backend verifica la `UserOperation`, el evento `EventPassPurchased`, la
+   transferencia de USDC y la propiedad resultante del pase. Tras la conciliación
+   se muestra la confirmación y el usuario puede abrir `/my-passes`.
+
+El contrato `MintUpEventPass` es la fuente de verdad de la compra: valida venta,
+ventana, inventario y pago; ejecuta `transferFrom` de USDC, acuña el ERC-721 y
+emite `EventPassPurchased`.
+
+### 💬 Ejemplo: comprar un Event Pass con Minti
+
+Este ejemplo describe controles y datos que existen en la interfaz; no pretende
+reproducir mensajes literales del modelo.
+
+```text
+Usuario:
+"¿Qué eventos de Web3 están disponibles?"
+
+Minti:
+[respuesta breve y tarjetas devueltas por searchEvents]
+
+Usuario:
+[en la tarjeta de un evento pagado de Mint Up, pulsa "Get pass"]
+
+Aplicación:
+[abre el checkout en la conversación y muestra el evento y el precio]
+
+Usuario:
+[pulsa "Obtener Event Pass" y confirma con Face ID o huella digital]
+
+Aplicación:
+[espera la UserOperation, verifica la compra y confirma el Event Pass]
+```
 
 ## 🧠 Inteligencia artificial y tecnologías emergentes
 
-Minti aporta una capa de IA verificable dentro del producto, no un mock visual.
-El LLM entiende intención, fechas, idioma, presupuesto y restricciones expresadas
-en lenguaje natural; después decide cuándo invocar la herramienta y con qué
-argumentos. La búsqueda, resolución de slugs, disponibilidad, precios y URLs son
-lógica de aplicación determinista en Convex. Finalmente el modelo redacta el
-texto de introducción y la UI renderiza los datos de eventos devueltos por la
-herramienta.
+Minti aporta una capa de IA verificable dentro de un flujo funcional del producto,
+no un mock visual. El LLM comprende solicitudes en lenguaje natural y decide
+cuándo invocar `searchEvents` con argumentos validados por Zod. La búsqueda,
+resolución de slugs, disponibilidad, precios y URLs se resuelven de forma
+determinista en Convex. La interfaz presenta esos resultados como tarjetas y,
+cuando la tarjeta representa un evento pagado elegible de Mint Up, habilita el
+checkout de Event Pass.
 
 ```text
-AI layer: comprensión de lenguaje + generación + tool calling
-  -> searchEvents con argumentos validados por Zod
-  -> application logic: filtros, geospatial, disponibilidad y precios
-  -> Convex: proyección de eventos públicos
-  -> Minti UI: respuesta por streaming y tarjetas verificables
+Lenguaje natural
+  -> Minti: comprensión + generación + tool calling
+  -> searchEvents: filtros validados
+  -> Convex: eventos públicos, disponibilidad y precio
+  -> tarjetas de eventos en Minti
+  -> acción explícita del usuario: Get pass
+  -> passkey + UserOperation ERC-4337
+  -> Arbitrum Sepolia + MintUpEventPass.purchase
 ```
 
-Esto permite descubrir y comparar eventos con una interfaz conversacional que no
-requiere navegar manualmente por cada filtro. La categoría de IA está respaldada
-por un modelo configurado, un Agent ejecutable, una herramienta real y datos de
-eventos reales. La candidatura debe aclarar que la IA es read-only respecto a
-blockchain: no ejecuta compras ni firma operaciones.
+La IA funciona como capa conversacional sobre la experiencia Web3: reduce la
+navegación manual para descubrir eventos y deja la acción de compra disponible en
+el contexto de los resultados. La autorización, firma, envío y verificación no
+las realiza el LLM; dependen del usuario, su passkey y la lógica Web3 de la dApp.
+Esto preserva una confirmación explícita para la acción financiera mientras la IA
+forma parte del recorrido que conduce a ella.
 
 ## 🔎 Evidencia verificable de IA
 
@@ -372,34 +471,38 @@ el agente pertenece al repositorio compartido `mint-up-corp`, configurado por
 
 | Capacidad | Implementación | Evidencia |
 | --- | --- | --- |
-| AI chat UI | Composer, autenticación, hilos y renderizado de mensajes | `packages/nextjs/app/chat/_components/minti-chat.tsx` |
-| Convex connection | Provider requerido para Minti y Better Auth | `packages/nextjs/app/chat/_components/chat-convex-provider.tsx` |
-| Agent + model | `@convex-dev/agent`, `gateway("openai/gpt-5-mini")`, instrucciones y límite de pasos | `mint-up-corp/packages/backend/convex/lib/mintiAgent.ts` |
-| Tool calling | Herramienta `searchEvents` con esquema Zod y ejecución de query Convex | `mint-up-corp/packages/backend/convex/lib/mintiTools.ts` |
-| Event retrieval | Resolución de mercados/categorías, filtros, geospatial, precios y disponibilidad | `mint-up-corp/packages/backend/convex/mintiEventSearch.ts` |
-| Message persistence | Creación/autorización de hilos, mensajes paginados y sincronización de streams | `mint-up-corp/packages/backend/convex/minti.ts` |
-| Event result rendering | Tarjetas y formato autoritativo de fecha, precio y ubicación | `packages/nextjs/app/chat/_components/event-recommendation-card.tsx`, `minti-event-format.ts` |
-| AI dependency | AI SDK 6 and Convex Agent dependencies | `packages/nextjs/package.json`, `mint-up-corp/packages/backend/package.json` |
+| Chat de IA | Composer, autenticación, hilos y renderizado de mensajes | `packages/nextjs/app/chat/_components/minti-chat.tsx` |
+| Agente y modelo | `@convex-dev/agent`, `gateway("openai/gpt-5-mini")`, instrucciones y límite de pasos | `mint-up-corp/packages/backend/convex/lib/mintiAgent.ts` |
+| Tool de búsqueda | `searchEvents`, con esquema Zod y consulta Convex | `mint-up-corp/packages/backend/convex/lib/mintiTools.ts` |
+| Búsqueda de eventos | Filtros, geolocalización, precios y disponibilidad | `mint-up-corp/packages/backend/convex/mintiEventSearch.ts` |
+| Tarjetas de resultados | Datos de evento y bifurcación entre `Get pass` y `Ver evento` | `packages/nextjs/app/chat/_components/event-recommendation-card.tsx` |
+| Inicio de compra desde Minti | `ChatEventPassPurchase` abre el checkout integrado para el `eventId` de la tarjeta | `packages/nextjs/app/chat/_components/chat-event-pass-purchase.tsx` |
+| Selección de Event Pass | El backend exige un único tipo pagado, activo, de precio fijo y aprobación inmediata | `mint-up-corp/packages/backend/convex/eventPassPurchases.ts` (`prepare`) |
+| Wallet y confirmación | Cuenta Kernel/WebAuthn, passkey y firma de `UserOperation` | `packages/nextjs/components/passes/inline-secure-step.tsx`, `packages/nextjs/components/passes/gasless-event-pass-purchase.tsx` |
+| Compra on-chain | Lote con `approve` exacto de USDC y llamada `purchase(event_id)` | `packages/nextjs/lib/event-pass-purchase-batch.ts` (`buildPurchaseBatchCalls`) |
+| Smart Contract de compra | `MintUpEventPass.purchase` cobra USDC, acuña ERC-721 y emite `EventPassPurchased` | `packages/stylus/contracts/mint-up-event-pass/src/lib.rs` (`purchase`) |
+| Verificación de compra | Verifica UserOperation, recibo, `EventPassPurchased`, pago USDC y propiedad | `packages/nextjs/lib/event-pass-purchase-server.ts` (`verifyEventPassPurchase`) |
 
 ## 🔗 Web3 + IA
 
 Arbitrum y Stylus proporcionan la infraestructura descentralizada: el contrato
 Rust `MintUpEventPass` controla propiedad, minting ERC-721, pagos USDC,
-reembolsos, check-in y reventa. Minti proporciona una interfaz de lenguaje natural
-para descubrir y comprender el ecosistema de eventos mediante datos públicos del
-backend compartido. Ambas capas forman una experiencia única: Minti ayuda a
-encontrar el evento y la dApp ejecuta el ciclo de vida del Event Pass con wallet y
-confirmaciones explícitas.
+reembolsos, check-in y reventa. Minti añade lenguaje natural y resultados de
+eventos a esa dApp. Las tarjetas producidas a partir de la búsqueda conectan el
+descubrimiento conversacional con el checkout integrado para eventos pagados de
+Mint Up.
 
-Minti no lee directamente el estado on-chain ni inicia transacciones. La compra
-continúa por el flujo normal del frontend y la wallet, con el contrato Arbitrum
-Stylus como fuente de verdad.
+La compra es on-chain, pero la IA no la ejecuta de forma autónoma. El usuario abre
+el checkout desde una tarjeta, confirma con su passkey y firma la `UserOperation`;
+la dApp verifica el resultado contra el contrato Stylus en Arbitrum Sepolia. Así,
+Minti es la capa conversacional de acceso a un flujo Web3 con confirmación humana.
 
-## 💬 Ejemplos de preguntas
+## 💬 Ejemplos de preguntas para Minti
 
 ### Descubrimiento de eventos
 
 - `¿Qué eventos se realizarán esta semana?`
+- `¿Qué eventos relacionados con Web3 están disponibles?`
 - `Encuentra eventos en línea sobre inteligencia artificial.`
 - `Muéstrame eventos gratuitos en Lima.`
 - `¿Qué eventos presenciales están disponibles en Lima?`
@@ -410,33 +513,38 @@ Stylus como fuente de verdad.
 - `¿Qué eventos se realizarán el próximo mes?`
 - `Muéstrame eventos de tecnología en Lima.`
 
+Para comprar, el flujo implementado se inicia pulsando `Get pass` en la tarjeta de un
+evento pagado de Mint Up.
+
 ## 🔄 Flujo de Minti (IA)
 
 1. El usuario inicia sesión y escribe una consulta en `/chat`.
 2. `MintiChat` crea o reutiliza un hilo y llama a `minti.sendMessage`.
 3. Convex autoriza el hilo y `mintiAgent.streamText` envía el prompt al Agent.
 4. `openai/gpt-5-mini`, vía Vercel AI Gateway, interpreta la consulta y puede
-   invocar `searchEvents` una vez dentro del límite configurado.
+   invocar `searchEvents` dentro del límite configurado.
 5. La herramienta valida y normaliza argumentos, y `mintiEventSearch` consulta
    eventos públicos usando filtros deterministas y datos de disponibilidad/precio.
 6. El resultado estructurado vuelve al Agent; el modelo redacta una introducción
    sin inventar información.
-7. Convex persiste deltas y mensajes; la UI los sincroniza y renderiza las
-   tarjetas enlazadas al evento.
+7. Convex persiste deltas y mensajes; la UI los sincroniza y renderiza tarjetas.
+8. Para una tarjeta pagada elegible de Mint Up, el usuario puede pulsar `Get pass`
+   y continuar en el checkout integrado descrito arriba.
 
-## 🧰 Stack Tecnológico de IA
+## 🧰 Stack tecnológico de IA
 
 | Capa | Tecnología |
 | --- | --- |
-| AI provider | Vercel AI Gateway |
-| Model | `openai/gpt-5-mini` |
+| Proveedor de IA | Vercel AI Gateway |
+| Modelo | `openai/gpt-5-mini` |
 | SDK | AI SDK `6.0.247` |
-| Agent runtime | `@convex-dev/agent` `0.6.4` |
-| Backend | Convex actions, queries, Agent component and database |
-| Frontend | Next.js / React, `MintiChat`, Convex React client |
-| Tool | `searchEvents`, Zod-validated, read-only |
-| Data source | Public event projections and taxonomy in Convex |
-| Streaming/history | Convex Agent persisted messages and synchronized streams |
+| Ejecución del agente | `@convex-dev/agent` `0.6.4` |
+| Backend | Acciones, queries, componente Agent y base de datos de Convex |
+| Frontend | Next.js / React, `MintiChat`, cliente React de Convex |
+| Tool de IA | `searchEvents`, validada con Zod y de solo lectura |
+| Acción Web3 vinculada | Checkout de Event Pass desde tarjetas elegibles; no es una tool del agente |
+| Fuente de datos | Proyecciones públicas de eventos y taxonomía en Convex |
+| Streaming e historial | Mensajes persistidos y streams sincronizados por Convex Agent |
 
 ## 🔐 Seguridad y configuración de la IA
 
@@ -445,7 +553,7 @@ Stylus como fuente de verdad.
 - `AI_GATEWAY_API_KEY` se configura en el entorno server-side del backend Convex,
   según la configuración del proyecto compartido. No debe agregarse a este
   repositorio ni a `.env.example` del frontend.
-- El backend autoriza el propietario de cada hilo antes de leer mensajes o
-  enviar prompts (`minti.ts`).
-- `searchEvents` es una herramienta de lectura y limita los datos a proyecciones
-  públicas; las acciones financieras permanecen fuera del Agent.
+- El backend autoriza el propietario de cada hilo antes de leer mensajes o enviar
+  prompts (`minti.ts`).
+- `searchEvents` es una herramienta de lectura; no tiene permisos para comprar,
+  firmar ni llamar al contrato.
