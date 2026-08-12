@@ -291,16 +291,20 @@ async function MyPassesContent() {
     isEventPassResaleContractActive(),
     getEventPassResaleNow(),
   ]);
-  const groups = groupPassesByEvent(passes);
+  const visiblePasses = passes.filter(pass => {
+    const eventEndTime = pass.event?.endTime ?? pass.event?.startTime;
+    return eventEndTime === undefined || eventEndTime > now;
+  });
+  const groups = groupPassesByEvent(visiblePasses);
   const [resaleEntries, refundAmountEntries] = await Promise.all([
     Promise.all(
-      passes.map(
+      visiblePasses.map(
         async pass =>
           [pass.passId, await fetchCurrentResaleListing(pass.passId)] as const,
       ),
     ),
     Promise.all(
-      passes.map(
+      visiblePasses.map(
         async pass =>
           [pass.passId, await fetchEventPassRefundAmount(pass.passId)] as const,
       ),
@@ -337,8 +341,9 @@ async function MyPassesContent() {
       {groups.length > 0 ? (
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            {passes.length} pase{passes.length === 1 ? "" : "s"} en{" "}
-            {groups.length} evento{groups.length === 1 ? "" : "s"}
+            {visiblePasses.length} pase
+            {visiblePasses.length === 1 ? "" : "s"} en {groups.length} evento
+            {groups.length === 1 ? "" : "s"}
           </p>
         </div>
       ) : null}
