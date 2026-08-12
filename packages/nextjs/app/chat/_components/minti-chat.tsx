@@ -609,7 +609,7 @@ function Composer({
       <div className="relative z-10 border-t bg-background/85 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-6">
         <form
           className="mx-auto max-w-3xl"
-          aria-label="Pregúntale a Minti"
+          aria-label="Minti"
           onSubmit={submit}
         >
           <InputGroup className="min-h-14 rounded-2xl border-border bg-background shadow-[0_1px_2px_oklch(0_0_0/0.05),0_8px_30px_oklch(0_0_0/0.06)] has-[textarea]:rounded-2xl">
