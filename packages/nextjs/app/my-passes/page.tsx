@@ -75,6 +75,30 @@ function PassHistory({
     <ol className="space-y-5 border-l pl-5">
       {history.map((entry, index) => {
         const actor = entry.actor.isCurrentUser ? "Tú" : entry.actor.name;
+        if (entry.kind === "transferred") {
+          const recipient = entry.recipient.isCurrentUser
+            ? "ti"
+            : entry.recipient.name;
+          return (
+            <li
+              key={`${entry.kind}-${entry.occurredAt}-${index}`}
+              className="relative"
+            >
+              <span className="absolute top-1.5 -left-[1.56rem] size-2 rounded-full bg-primary" />
+              <p className="font-medium">
+                {actor}{" "}
+                {entry.actor.isCurrentUser ? "transferiste" : "transfirió"} este
+                pase a {recipient}.
+              </p>
+              <time
+                dateTime={new Date(entry.occurredAt).toISOString()}
+                className="mt-1 block text-xs text-muted-foreground"
+              >
+                {formatEventDate(entry.occurredAt, timezone)}
+              </time>
+            </li>
+          );
+        }
         const action =
           entry.kind === "purchased"
             ? entry.actor.isCurrentUser

@@ -119,6 +119,13 @@ export function EventPassRefund({
         throw new Error("El monto del reembolso cambió");
       }
       setPreparation(prepared);
+      if (prepared.requiresReconciliation) {
+        setRetryStep("reconcile");
+        await reconcile(prepared.refundId, signal);
+        setState("received");
+        startTransition(() => router.refresh());
+        return;
+      }
 
       const kernel = await reconstructKernelAccount(account);
       const { userOperationHash } = await prepareSignAndSubmitUserOperation({

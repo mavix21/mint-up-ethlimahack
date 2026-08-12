@@ -31,15 +31,29 @@ const passSchema = z.object({
   checkIn: z.object({ status: z.enum(["notRecorded", "recorded"]) }),
   history: z
     .array(
-      z.object({
-        kind: z.enum(["purchased", "listed", "resold"]),
-        occurredAt: z.number(),
-        actor: z.object({
-          name: z.string(),
-          isCurrentUser: z.boolean(),
+      z.discriminatedUnion("kind", [
+        z.object({
+          kind: z.enum(["purchased", "listed", "resold"]),
+          occurredAt: z.number(),
+          actor: z.object({
+            name: z.string(),
+            isCurrentUser: z.boolean(),
+          }),
+          amountSubunits: z.string(),
         }),
-        amountSubunits: z.string(),
-      }),
+        z.object({
+          kind: z.literal("transferred"),
+          occurredAt: z.number(),
+          actor: z.object({
+            name: z.string(),
+            isCurrentUser: z.boolean(),
+          }),
+          recipient: z.object({
+            name: z.string(),
+            isCurrentUser: z.boolean(),
+          }),
+        }),
+      ]),
     )
     .default([]),
   // Enriched event metadata – optional for backwards compatibility.

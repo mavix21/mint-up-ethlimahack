@@ -34,6 +34,7 @@ describe("prepare Event Pass refund API", () => {
     fetchAuthMutation.mockResolvedValue({
       refundId: "event-pass-refund-0001",
       originalAmountSubunits: "25000000",
+      requiresReconciliation: false,
     });
 
     const response = await POST(request(validRequest));
@@ -42,6 +43,7 @@ describe("prepare Event Pass refund API", () => {
     expect(await response.json()).toEqual({
       refundId: "event-pass-refund-0001",
       originalAmountSubunits: "25000000",
+      requiresReconciliation: false,
     });
     expect(fetchAuthMutation).toHaveBeenCalledWith(expect.anything(), {
       ...validRequest,
